@@ -39,6 +39,25 @@ diagnosis can be accepted (documented blind spot); the fix is limited to the fai
 repository are run by the service; Sentry, Alertmanager, GitHub PR creation and Langfuse were exercised through
 fakes, not against live services. See [Known limitations](#known-limitations).
 
+## Command line
+
+A standard-library client for a running API (no extra dependencies):
+
+```bash
+export OPSPULSE_URL=http://127.0.0.1:8000 OPSPULSE_API_KEY=<key>
+python -m src.cli submit --repo owner/repo --error "KeyError: 'x'" --trace-file trace.txt --wait
+python -m src.cli list --status awaiting_approval
+python -m src.cli show <incident-id> --patch
+python -m src.cli guidance <incident-id>        # state, reason and next steps (no LLM)
+python -m src.cli ask <incident-id> "Why was this not accepted?"
+python -m src.cli health
+python -m src.cli demo                          # console on a throwaway demo database
+```
+
+`--json` prints the raw response for scripting; exit codes are 0 ok, 1 the API refused or failed, 2 usage or
+connection. There is deliberately **no `approve` command**: the decision stays with a reviewer in the console (or
+the decision endpoint), where the evidence and the patch are in front of them.
+
 ## Documentation site and releases
 
 The README, runbook, ADRs and changelog are also published as a searchable site (MkDocs Material), assembled from
