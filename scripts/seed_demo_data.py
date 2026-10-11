@@ -39,6 +39,11 @@ DEMO_CASES = (
 )
 
 
+def _scripted(model: ScriptedModel):
+    """A model factory that always returns the scripted model (the temperature is irrelevant)."""
+    return lambda temperature: model
+
+
 def main() -> int:
     if not settings.database_url:
         raise SystemExit("DATABASE_URL is not set")
@@ -46,7 +51,7 @@ def main() -> int:
     for case_id in DEMO_CASES:
         case = cases[case_id]
         model = ScriptedModel(case)
-        graph = build_graph(local_source_fetcher(case), local_history(case), lambda temperature, m=model: m)
+        graph = build_graph(local_source_fetcher(case), local_history(case), _scripted(model))
         incident_id = uuid.uuid4()
         incident_service.submit_incident(
             incident_id, case.repo_name, case.error_message, case.stack_trace, submitted_by="demo-reporter"

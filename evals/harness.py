@@ -10,7 +10,7 @@ from __future__ import annotations
 import difflib
 import time
 import uuid
-from typing import Any
+from typing import Any, cast
 
 from langchain_core.messages import AIMessage
 
@@ -186,9 +186,12 @@ def run_final(case: EvalCase, model_factory: ModelFactory | None) -> tuple[Incid
     graph = build_graph(local_source_fetcher(case), local_history(case), model_factory)
     incident_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"opspulse-eval/{case.id}"))
     started = time.perf_counter()
-    final: IncidentState = graph.invoke(
-        initial_state(incident_id, case.error_message, case.stack_trace, case.repo_name),
-        config=build_run_config(incident_id, case.repo_name, "eval"),
+    final = cast(
+        IncidentState,
+        graph.invoke(
+            initial_state(incident_id, case.error_message, case.stack_trace, case.repo_name),
+            config=build_run_config(incident_id, case.repo_name, "eval"),
+        ),
     )
     return final, int((time.perf_counter() - started) * 1000)
 
@@ -235,7 +238,8 @@ def run_case(case: EvalCase, model_factory: ModelFactory | None) -> dict[str, An
     )
     evidence = verify_evidence(inp)
     files = verify_affected_files(inp)
-    control = analysis.get("control_flow") if isinstance(analysis.get("control_flow"), dict) else {}
+    raw_control = analysis.get("control_flow")
+    control: dict[str, Any] = raw_control if isinstance(raw_control, dict) else {}
     return {
         "case_id": case.id,
         "expected": case.expected.model_dump(),
