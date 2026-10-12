@@ -92,3 +92,17 @@ def test_console_ask_panel_is_wired_and_uses_only_text_nodes():
     assert "/ask`" in js and "result.answer" in js
     assert "node.textContent = result.answer" in js  # model output is rendered as text, never as markup
     assert "/guidance`" in js and "plainMarkup" in js
+
+
+def test_demo_key_is_embedded_only_when_explicitly_configured(client, set_settings):
+    assert "opspulse-demo-key" not in client.get("/console").text  # off by default
+    set_settings(console_demo_key='demo"key')
+    html = client.get("/console").text
+    assert '<meta name="opspulse-demo-key" content="demo&quot;key">' in html  # escaped, never raw
+    assert "unsafe-inline" not in client.get("/console").headers["content-security-policy"]
+
+
+def test_console_supports_theme_and_status_query_options():
+    js = (STATIC_DIR / "app.js").read_text(encoding="utf-8")
+    assert 'params.get("theme")' in js and 'params.get("status")' in js
+    assert 'meta[name="opspulse-demo-key"]' in js

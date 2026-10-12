@@ -27,6 +27,9 @@ All notable changes are listed here. Versions of behaviour-critical components a
   `"` were flagged as not in the record; verification now uses the record's decoded strings.
 
 ### Added
+- Console deep-link options `?theme=light|dark|auto` and `?status=...`; `CONSOLE_DEMO_KEY` (local demo only: the page
+  connects by itself; empty by default). `python -m scripts.capture_screenshots` regenerates the README screenshots
+  from the real page with headless Edge/Chrome; the demo database now has proposals waiting for a decision.
 - `python -m src.cli`: a standard-library command-line client (`submit`, `list`, `show`, `guidance`, `ask`,
   `retry`, `health`, `demo`; `--json`; exit codes 0/1/2). No `approve` command by design.
 - Guidance and patch answers flag a **guard-or-default patch** (only an early return, guard or default value was

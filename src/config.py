@@ -116,6 +116,10 @@ def _identities() -> tuple[ApiIdentity, ...]:
 class Settings:
     """Immutable snapshot of the environment, created once at import time."""
 
+    # --- Local demo only: when set, GET /console embeds this key so the page connects by itself.
+    # Never set it on a server that holds real incidents (the key is then readable by anyone who can load the page).
+    console_demo_key: str = field(default_factory=lambda: _env("CONSOLE_DEMO_KEY"))
+
     # --- "Ask about this incident" (grounded Q&A over the stored record) ---
     ask_enabled: bool = field(default_factory=lambda: _env("ASK_ENABLED", default="true").lower() != "false")
     ask_rate_limit_per_minute: int = field(

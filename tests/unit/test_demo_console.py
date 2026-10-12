@@ -21,4 +21,4 @@ def test_demo_console_prepares_a_migrated_and_seeded_database(tmp_path):
     with sqlite3.connect(db) as conn:
         total = conn.execute("select count(*) from incidents").fetchone()[0]
         statuses = {row[0] for row in conn.execute("select distinct status from incidents")}
-    assert total == 10 and statuses & {"analysis_ready", "needs_review", "awaiting_approval"}
+    assert total == 10 and {"needs_review", "awaiting_approval"} <= statuses

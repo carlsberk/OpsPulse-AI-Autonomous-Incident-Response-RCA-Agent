@@ -754,8 +754,22 @@ function setAutoRefresh(on) {
   }, REFRESH_MS) : null;
 }
 
+// Deep-link options: /console?theme=dark|light|auto and /console?status=all|needs_review|... (not persisted).
+function applyQueryOptions() {
+  const params = new URLSearchParams(location.search);
+  const theme = params.get("theme");
+  if (THEMES.includes(theme)) applyTheme(theme);
+  const wanted = params.get("status");
+  if (wanted !== null) {
+    const value = wanted === "all" ? "" : wanted;
+    const select = $("status-filter");
+    if ([...select.options].some((option) => option.value === value)) select.value = value;
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   applyTheme(store("local", THEME_STORAGE) || "auto");
+  applyQueryOptions();
   $("theme").addEventListener("click", cycleTheme);
   $("key-form").addEventListener("submit", (event) => {
     event.preventDefault();
@@ -793,6 +807,12 @@ document.addEventListener("DOMContentLoaded", () => {
       document.querySelectorAll(".seg-btn").forEach((b) => b.setAttribute("aria-pressed", String(b === button)));
       if (state.current) renderEvidence((state.current.analysis || {}).evidence || []);
     });
+  }
+  // Local demo only: the server embeds a key when CONSOLE_DEMO_KEY is set (scripts/demo_console.py).
+  const demoKey = document.querySelector('meta[name="opspulse-demo-key"]');
+  if (demoKey && !apiKey() && demoKey.content) {
+    setKey(demoKey.content);
+    setConnection("on", "Demo key loaded");
   }
   $("forget-key").hidden = !apiKey();
   window.addEventListener("hashchange", route);

@@ -18,7 +18,7 @@ which waits for an **explicit human approval** and is never merged automatically
 
 ---
 
-![Review console with incidents awaiting approval (demo data)](docs/images/console-incidents.jpg)
+![Review console: incident list (demo data, scripted model)](docs/images/console-list-light.png)
 
 ## At a glance
 
@@ -694,7 +694,12 @@ privileges of its own.
 - **Accessibility and comfort:** light/dark/auto theme, keyboard-reachable rows (real links), live regions for
   status messages, reduced-motion support, responsive layout down to phone width (tables become cards), print styles.
 
-![Evidence view in the review console (demo data, earlier design)](docs/images/console-evidence.jpg)
+| Incident that needs a human | A proposal waiting for a decision (dark theme) |
+|---|---|
+| [![Incident detail](docs/images/console-detail-light.png)](docs/images/console-detail-light.png) | [![Approval](docs/images/console-approval-dark.png)](docs/images/console-approval-dark.png) |
+
+Screenshots are produced from the demo data by `python -m scripts.capture_screenshots` (headless Edge/Chrome); the
+page accepts `?theme=light|dark|auto` and `?status=all|needs_review|...` for deep links.
 
 - The API key is kept only in the tab's `sessionStorage`.
 - All API data (which includes LLM output and log text) is rendered with `textContent`; there is no

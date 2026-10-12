@@ -29,6 +29,7 @@ def prepare(db_path: pathlib.Path) -> None:
         {
             "DATABASE_URL": f"sqlite:///{db_path.as_posix()}",
             "API_KEY": DEMO_KEY,
+            "CONSOLE_DEMO_KEY": DEMO_KEY,  # the page connects by itself; never use this on a real server
             "API_KEYS": "",
             "EMBEDDED_WORKER": "false",
             "GROQ_API_KEY": "",  # offline: deterministic guidance only
@@ -36,6 +37,12 @@ def prepare(db_path: pathlib.Path) -> None:
             "LANGFUSE_SECRET_KEY": "",
             "SENTRY_CLIENT_SECRET": "",
             "ALLOW_UNAUTHENTICATED": "false",
+            # Remediation on with a placeholder token, set here because `src.config` is read once at import time
+            # (alembic imports it before the seed script's own defaults would apply). Approvals therefore wait
+            # for a decision; approving ends as `pr_failed`, the honest outcome without a real token.
+            "ENABLE_GITHUB_REMEDIATION": "true",
+            "GITHUB_TOKEN": "demo-placeholder-not-a-token",
+            "REQUIRE_REMEDIATION_APPROVAL": "true",
         }
     )
     os.chdir(ROOT)
@@ -66,7 +73,7 @@ def main(argv: list[str] | None = None) -> int:
 
     import uvicorn
 
-    print(f"\nConsole:  http://{args.host}:{args.port}/console\nAPI key:  {DEMO_KEY}   (local demo only)\n")
+    print(f"\nConsole:  http://{args.host}:{args.port}/console   (connects with the local demo key by itself)\n")
     uvicorn.run("src.main:app", host=args.host, port=args.port, log_level="warning")
     return 0
 
