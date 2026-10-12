@@ -110,3 +110,20 @@ def test_unrecognised_source_is_normalised_only_for_unverified_evidence():
 
 def test_prompt_states_that_uncertainties_are_never_empty():
     assert '"uncertainties" is NEVER empty' in RCA_SYSTEM_PROMPT
+
+
+@pytest.mark.parametrize("name", ["caller_context", "Caller-Context", "<CALLER_CONTEXT>", " caller context "])
+def test_caller_context_is_accepted_as_an_alias_of_code_context(name):
+    from src.agent.schemas import EvidenceItem
+
+    item = EvidenceItem.model_validate({"kind": "observed", "claim": "c", "source": name, "quote": "x = 1"})
+    assert item.source == "code_context"  # still verified verbatim by the gate against trigger + caller windows
+
+
+def test_unrelated_sources_are_still_rejected_for_observed_evidence():
+    from pydantic import ValidationError
+
+    from src.agent.schemas import EvidenceItem
+
+    with pytest.raises(ValidationError):
+        EvidenceItem.model_validate({"kind": "observed", "claim": "c", "source": "readme", "quote": "x = 1"})

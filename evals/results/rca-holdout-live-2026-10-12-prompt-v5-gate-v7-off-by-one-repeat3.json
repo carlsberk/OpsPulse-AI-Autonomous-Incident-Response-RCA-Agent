@@ -1,0 +1,409 @@
+{
+  "mode": "live",
+  "started_at": "2026-10-12T09:35:55.204863+00:00",
+  "dataset_version": "rca-holdout-v1",
+  "run_metadata": {
+    "agent_version": "1.2.0-opspulse",
+    "prompt_version": "rca-prompt-v5",
+    "evaluator_version": "quality-gate-v7",
+    "retrieval_strategy": "lexical-v1",
+    "model": "openai/gpt-oss-120b",
+    "quality_threshold": 0.85,
+    "max_analysis_iterations": 3,
+    "max_output_tokens": 4096
+  },
+  "metrics": {
+    "cases": 3,
+    "cases_not_evaluated": [],
+    "structured_output_validity": {
+      "value": 1.0,
+      "numerator": 8,
+      "denominator": 8,
+      "definition": "LLM attempts whose reply validated against RCAOutput / LLM attempts (provider errors excluded)"
+    },
+    "category_accuracy": {
+      "value": 1.0,
+      "numerator": 3,
+      "denominator": 3,
+      "definition": "final category == labelled category / cases labelled conclusive"
+    },
+    "evidence_grounding_accuracy": {
+      "value": 1.0,
+      "numerator": 8,
+      "denominator": 8,
+      "definition": "'observed' quotes found verbatim in their cited source / all 'observed' quotes (final analyses)"
+    },
+    "unsupported_claim_rate": {
+      "value": 0.0,
+      "numerator": 0,
+      "denominator": 11,
+      "definition": "(unverifiable 'observed' quotes + affected files absent from trace/retrieved file) / (all quotes + all affected files)"
+    },
+    "abstention_recall": {
+      "value": null,
+      "numerator": 0,
+      "denominator": 0,
+      "definition": "inconclusive-labelled cases where the model declared insufficient evidence or category 'unknown' / inconclusive-labelled cases"
+    },
+    "inconclusive_not_accepted_rate": {
+      "value": null,
+      "numerator": 0,
+      "denominator": 0,
+      "definition": "inconclusive-labelled cases the quality gate did NOT accept / inconclusive-labelled cases"
+    },
+    "false_abstention_rate": {
+      "value": 0.0,
+      "numerator": 0,
+      "denominator": 3,
+      "definition": "conclusive-labelled cases where the model abstained / conclusive-labelled cases"
+    },
+    "gate_acceptance_rate": {
+      "value": 0.6667,
+      "numerator": 2,
+      "denominator": 3,
+      "definition": "cases accepted by the quality gate / evaluated cases"
+    },
+    "false_acceptance_rate": {
+      "value": 0.0,
+      "numerator": 0,
+      "denominator": 2,
+      "definition": "accepted cases that are inconclusive-labelled or have the wrong category / accepted cases"
+    },
+    "relevant_file_hit_rate": {
+      "value": 1.0,
+      "numerator": 3,
+      "denominator": 3,
+      "definition": "cases whose affected_files contain a labelled relevant file / cases with labelled files"
+    },
+    "unsupported_acceptance_rate": {
+      "value": null,
+      "numerator": 0,
+      "denominator": 0,
+      "definition": "unsupported analyses (inconclusive-labelled or with an unverifiable quote) the gate accepted / unsupported analyses"
+    },
+    "workflow_failure_rate": {
+      "value": 0.0,
+      "numerator": 0,
+      "denominator": 3,
+      "definition": "cases ending in workflow status 'failed' (e.g. provider errors) / cases"
+    },
+    "avg_attempts": 2.667,
+    "llm_latency_ms": {
+      "mean": 20589,
+      "p95": 33364,
+      "samples": 8
+    },
+    "case_wall_ms": {
+      "mean": 54915,
+      "p95": 81971
+    },
+    "tokens": {
+      "input": 19809,
+      "output": 14150,
+      "attempts_with_usage": 8
+    },
+    "estimated_cost_usd": null,
+    "calibration": {
+      "model_confidence": {
+        "samples": 3,
+        "brier": 0.1275,
+        "bins": [
+          {
+            "range": "0.50-0.70",
+            "n": 1,
+            "mean_score": 0.55,
+            "accuracy": 1.0
+          },
+          {
+            "range": "0.70-0.85",
+            "n": 2,
+            "mean_score": 0.7,
+            "accuracy": 1.0
+          }
+        ]
+      },
+      "quality_score": {
+        "samples": 3,
+        "brier": 0.0333,
+        "bins": [
+          {
+            "range": "0.50-0.70",
+            "n": 1,
+            "mean_score": 0.685,
+            "accuracy": 1.0
+          },
+          {
+            "range": "0.85-1.00",
+            "n": 2,
+            "mean_score": 0.981,
+            "accuracy": 1.0
+          }
+        ]
+      }
+    },
+    "consistency": {
+      "cases_repeated": 1,
+      "stable_outcome_rate": {
+        "value": 0.0,
+        "numerator": 0,
+        "denominator": 1,
+        "definition": "repeated cases whose outcome never changed / repeated cases"
+      },
+      "per_case": {
+        "ho-off-by-one": {
+          "runs": 3,
+          "accepted": 2,
+          "correct_category": 3,
+          "distinct_outcomes": 2
+        }
+      }
+    }
+  },
+  "results": [
+    {
+      "case_id": "ho-off-by-one",
+      "expected": {
+        "root_cause_category": "logic_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/pages.py"
+        ]
+      },
+      "workflow_status": "needs_review",
+      "error_category": "retry_budget_exhausted",
+      "error": null,
+      "gate_passed": false,
+      "quality_score": 0.685,
+      "predicted_category": "logic_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.7,
+      "observed_quotes": 2,
+      "grounded_quotes": 2,
+      "affected_files": [
+        "app/pages.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 16960,
+          "input_tokens": 2036,
+          "output_tokens": 1394,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.69,
+          "gate_passed": false,
+          "failed_checks": [
+            "self_assessment",
+            "diff_applies",
+            "patch_locality",
+            "patch_effective"
+          ],
+          "decision": "retrying with evaluator feedback"
+        },
+        {
+          "iteration": 2,
+          "latency_ms": 31634,
+          "input_tokens": 2766,
+          "output_tokens": 1664,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.652,
+          "gate_passed": false,
+          "failed_checks": [
+            "self_assessment",
+            "diff_applies",
+            "patch_locality",
+            "patch_effective"
+          ],
+          "decision": "retrying with evaluator feedback"
+        },
+        {
+          "iteration": 3,
+          "latency_ms": 33364,
+          "input_tokens": 2742,
+          "output_tokens": 1631,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.685,
+          "gate_passed": false,
+          "failed_checks": [
+            "self_assessment",
+            "diff_applies",
+            "patch_locality",
+            "patch_effective"
+          ],
+          "decision": "analysis attempt budget exhausted"
+        }
+      ],
+      "patch": "--- a/app/pages.py\n+++ b/app/pages.py\n@@ -2,4 +2,4 @@\n     titles = []\n-    for i in range(len(pages) + 1):\n+    for i in range(len(pages)):\n     titles.append(pages[i][\"title\"])\n     return titles",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.70 (uncalibrated)",
+        "diff_applies": "patch does not apply to the retrieved source: hunk 1: context/removed lines were not found in the source (first line: '    titles = []'). Closest lines in the source - copy them exactly, including indentation: L2: '    titles = []' | L3: '    for i in range(len(pages) + 1):' | L4: '        titles.append(pages[i][\"title\"])' | L5: '    return titles'. Copy context/removed lines verbatim",
+        "patch_locality": "patch not applicable",
+        "patch_effective": "patch not applicable"
+      },
+      "wall_ms": 81971,
+      "run": 1
+    },
+    {
+      "case_id": "ho-off-by-one",
+      "expected": {
+        "root_cause_category": "logic_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/pages.py"
+        ]
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.9775,
+      "predicted_category": "logic_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.55,
+      "observed_quotes": 3,
+      "grounded_quotes": 3,
+      "affected_files": [
+        "app/pages.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 4432,
+          "input_tokens": 2036,
+          "output_tokens": 1786,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.685,
+          "gate_passed": false,
+          "failed_checks": [
+            "self_assessment",
+            "diff_applies",
+            "patch_locality",
+            "patch_effective"
+          ],
+          "decision": "retrying with evaluator feedback"
+        },
+        {
+          "iteration": 2,
+          "latency_ms": 19027,
+          "input_tokens": 2798,
+          "output_tokens": 2388,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.9775,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/pages.py\n+++ b/app/pages.py\n@@ -2,4 +2,4 @@\n     titles = []\n-    for i in range(len(pages) + 1):\n+    for i in range(len(pages)):\n         titles.append(pages[i][\"title\"])\n     return titles",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.55 (uncalibrated)"
+      },
+      "wall_ms": 23466,
+      "run": 2
+    },
+    {
+      "case_id": "ho-off-by-one",
+      "expected": {
+        "root_cause_category": "logic_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/pages.py"
+        ]
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.985,
+      "predicted_category": "logic_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.7,
+      "observed_quotes": 3,
+      "grounded_quotes": 3,
+      "affected_files": [
+        "app/pages.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 10424,
+          "input_tokens": 2036,
+          "output_tokens": 1475,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.69,
+          "gate_passed": false,
+          "failed_checks": [
+            "self_assessment",
+            "diff_applies",
+            "patch_locality",
+            "patch_effective"
+          ],
+          "decision": "retrying with evaluator feedback"
+        },
+        {
+          "iteration": 2,
+          "latency_ms": 32202,
+          "input_tokens": 2688,
+          "output_tokens": 1555,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.652,
+          "gate_passed": false,
+          "failed_checks": [
+            "self_assessment",
+            "diff_applies",
+            "patch_locality",
+            "patch_effective"
+          ],
+          "decision": "retrying with evaluator feedback"
+        },
+        {
+          "iteration": 3,
+          "latency_ms": 16672,
+          "input_tokens": 2707,
+          "output_tokens": 2257,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.985,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/pages.py\n+++ b/app/pages.py\n@@ -2,3 +2,3 @@\n     titles = []\n-    for i in range(len(pages) + 1):\n+    for i in range(len(pages)):\n         titles.append(pages[i][\"title\"])",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.70 (uncalibrated)"
+      },
+      "wall_ms": 59307,
+      "run": 3
+    }
+  ]
+}

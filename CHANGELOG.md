@@ -15,6 +15,10 @@ All notable changes are listed here. Versions of behaviour-critical components a
   Motivated by `ho-off-by-one` (right diagnosis, three diffs that never applied). Not yet measured live.
 
 ### Fixed
+- Evidence `source: "caller_context"` (the model naming the source after our `<CALLER_CONTEXT>` block) failed schema
+  validation and cost an attempt in 9 of 10 live runs; it is now an exact alias of `code_context` (`rca-prompt-v5.1`;
+  quotes are still verified verbatim). The guard-or-default label also handles a line that is removed and re-typed
+  unchanged, and `x = 0` assignments inside a guard. Both unit-tested; not yet measured live.
 - Assistant quote verification mis-paired backticks (stray or doubled backticks turned the prose between two code
   spans into a "quote" and flagged correct answers; seen with a live model). Spans are paired by backtick-run width
   and the better of two alignments is used.
@@ -27,6 +31,9 @@ All notable changes are listed here. Versions of behaviour-critical components a
   `"` were flagged as not in the record; verification now uses the record's decoded strings.
 
 ### Added
+- Fifth live session with repeats (callers x2, `ho-off-by-one` x3, `ho-drift-attribute` x2, assistant): outcome of the
+  same case varies between runs; every accepted caller-set patch was made in the failing function; deploy drift
+  handled 2/2; the fixed quote validator held up live.
 - Console deep-link options `?theme=light|dark|auto` and `?status=...`; `CONSOLE_DEMO_KEY` (local demo only: the page
   connects by itself; empty by default). `python -m scripts.capture_screenshots` regenerates the README screenshots
   from the real page with headless Edge/Chrome; the demo database now has proposals waiting for a decision.

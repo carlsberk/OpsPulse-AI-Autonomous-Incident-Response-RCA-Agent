@@ -132,3 +132,14 @@ def test_a_guard_patch_gets_a_reviewer_warning_in_guidance_and_in_the_patch_answ
 
     answer = rules_answer("patch_summary", guide, incident)["answer"]
     assert "only adds a guard or default value" in answer
+
+
+def test_a_reretyped_line_is_not_counted_as_a_change_when_classifying_live_patches():
+    from src.services.guidance import classify_patch
+
+    # live gpt-oss-120b patch: the original return line is removed and typed again unchanged
+    added = ["    if value is None:", "        value = 0", '    return f"{round(value, 2):.2f} EUR"']
+    removed = ['    return f"{round(value, 2):.2f} EUR"']
+    assert classify_patch(added, removed) == "guard_or_default"
+    # a coercion is a different kind of change and is not labelled a guard
+    assert classify_patch(["    return (int(page) - 1) * size"], ["    return (page - 1) * size"]) is None

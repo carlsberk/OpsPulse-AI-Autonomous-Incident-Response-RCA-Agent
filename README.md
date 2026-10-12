@@ -479,6 +479,34 @@ What this says, and does not say:
 - **One sample per case.** `ho-off-by-one` went from "diffs never apply" to "accepted first try" with no code
   change between sessions; see *Run-to-run variation* above. None of this establishes a rate.
 
+**Fifth live session, with repeats** (2026-10-12, `prompt v5` + `quality-gate-v7`, `gpt-oss-120b`, every case run
+2-3 times; reports in [`evals/results/`](evals/results), files dated 2026-10-12). This is the first session where a
+single sample is not the whole story:
+
+| Set | Runs | Accepted | Category = label | Not accepted when it should not be |
+|---|---|---|---|---|
+| callers (5 cases x 2) | 10 | 9 | 6/10 | - |
+| `ho-off-by-one` x 3 | 3 | 2 | 3/3 | - |
+| `ho-drift-attribute` (inconclusive) x 2 | 2 | 0 | - | **2/2** (model abstained with `unknown`) |
+
+- **Run-to-run variation is real.** `ho-off-by-one`: needs_review after 3 attempts once, accepted after 2 and after 3
+  attempts in the other two runs, with the right category every time. A single run of this case would have shown
+  "fails" or "passes" depending on the draw.
+- **Callers set: category 6/10 and "false acceptance 4/9" need reading, not quoting.** The four misses are
+  `caller-passes-none` and `caller-symptomatic-patch` classified `missing_key` in every run, against the label
+  `null_reference` (earlier sessions answered `null_reference`). The caller passes `row.get("amount")`, a missing
+  key, so the label is arguably the weaker one; the point stands that the same case gives different categories on
+  different days.
+- **Every accepted patch was made in the failing function** (`value = 0` guard, `if parts == 0: return []`,
+  `int(page)`, `if not values: return 0`); the policy allows nothing else. `fix_location` fired in 1 of 10 runs.
+  The guard-or-default label now covers the re-typed-line form of these patches (see below).
+- **A cost we caused:** in 9 of 10 runs the first attempt failed `schema` because the model wrote
+  `source: "caller_context"` - the name of our own `<CALLER_CONTEXT>` block - and the schema accepts four values. It
+  recovered on attempt 2 (hence 2.0 attempts per case, one wasted call each), but the schema now treats
+  `caller_context` as `code_context` (`prompt v5.1`; the quote is still verified verbatim against the trigger and
+  caller windows). **Not yet measured live.**
+- **Deploy drift handled 2/2**; the assistant's quote validator held up (grounded answers 4/4, see above).
+
 What the first live run showed, and what changed:
 
 - **The model did not fabricate evidence**: every "observed" quote was verbatim in the retrieved data (50/50).

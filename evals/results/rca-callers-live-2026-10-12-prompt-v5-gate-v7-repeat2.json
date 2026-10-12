@@ -1,0 +1,875 @@
+{
+  "mode": "live",
+  "started_at": "2026-10-12T09:27:13.496867+00:00",
+  "dataset_version": "rca-callers-v2",
+  "run_metadata": {
+    "agent_version": "1.2.0-opspulse",
+    "prompt_version": "rca-prompt-v5",
+    "evaluator_version": "quality-gate-v7",
+    "retrieval_strategy": "lexical-v1",
+    "model": "openai/gpt-oss-120b",
+    "quality_threshold": 0.85,
+    "max_analysis_iterations": 3,
+    "max_output_tokens": 4096
+  },
+  "metrics": {
+    "cases": 10,
+    "cases_not_evaluated": [],
+    "structured_output_validity": {
+      "value": 0.55,
+      "numerator": 11,
+      "denominator": 20,
+      "definition": "LLM attempts whose reply validated against RCAOutput / LLM attempts (provider errors excluded)"
+    },
+    "category_accuracy": {
+      "value": 0.6,
+      "numerator": 6,
+      "denominator": 10,
+      "definition": "final category == labelled category / cases labelled conclusive"
+    },
+    "evidence_grounding_accuracy": {
+      "value": 1.0,
+      "numerator": 20,
+      "denominator": 20,
+      "definition": "'observed' quotes found verbatim in their cited source / all 'observed' quotes (final analyses)"
+    },
+    "unsupported_claim_rate": {
+      "value": 0.0,
+      "numerator": 0,
+      "denominator": 30,
+      "definition": "(unverifiable 'observed' quotes + affected files absent from trace/retrieved file) / (all quotes + all affected files)"
+    },
+    "abstention_recall": {
+      "value": null,
+      "numerator": 0,
+      "denominator": 0,
+      "definition": "inconclusive-labelled cases where the model declared insufficient evidence or category 'unknown' / inconclusive-labelled cases"
+    },
+    "inconclusive_not_accepted_rate": {
+      "value": null,
+      "numerator": 0,
+      "denominator": 0,
+      "definition": "inconclusive-labelled cases the quality gate did NOT accept / inconclusive-labelled cases"
+    },
+    "false_abstention_rate": {
+      "value": 0.0,
+      "numerator": 0,
+      "denominator": 10,
+      "definition": "conclusive-labelled cases where the model abstained / conclusive-labelled cases"
+    },
+    "gate_acceptance_rate": {
+      "value": 0.9,
+      "numerator": 9,
+      "denominator": 10,
+      "definition": "cases accepted by the quality gate / evaluated cases"
+    },
+    "false_acceptance_rate": {
+      "value": 0.4444,
+      "numerator": 4,
+      "denominator": 9,
+      "definition": "accepted cases that are inconclusive-labelled or have the wrong category / accepted cases"
+    },
+    "relevant_file_hit_rate": {
+      "value": 0.2,
+      "numerator": 2,
+      "denominator": 10,
+      "definition": "cases whose affected_files contain a labelled relevant file / cases with labelled files"
+    },
+    "unsupported_acceptance_rate": {
+      "value": null,
+      "numerator": 0,
+      "denominator": 0,
+      "definition": "unsupported analyses (inconclusive-labelled or with an unverifiable quote) the gate accepted / unsupported analyses"
+    },
+    "workflow_failure_rate": {
+      "value": 0.0,
+      "numerator": 0,
+      "denominator": 10,
+      "definition": "cases ending in workflow status 'failed' (e.g. provider errors) / cases"
+    },
+    "avg_attempts": 2.0,
+    "llm_latency_ms": {
+      "mean": 20942,
+      "p95": 35064,
+      "samples": 20
+    },
+    "case_wall_ms": {
+      "mean": 41891,
+      "p95": 53400
+    },
+    "tokens": {
+      "input": 49500,
+      "output": 33135,
+      "attempts_with_usage": 20
+    },
+    "estimated_cost_usd": null,
+    "calibration": {
+      "model_confidence": {
+        "samples": 10,
+        "brier": 0.2222,
+        "bins": [
+          {
+            "range": "0.50-0.70",
+            "n": 8,
+            "mean_score": 0.606,
+            "accuracy": 0.5
+          },
+          {
+            "range": "0.70-0.85",
+            "n": 2,
+            "mean_score": 0.7,
+            "accuracy": 1.0
+          }
+        ]
+      },
+      "quality_score": {
+        "samples": 10,
+        "brier": 0.4064,
+        "bins": [
+          {
+            "range": "0.50-0.70",
+            "n": 1,
+            "mean_score": 0.53,
+            "accuracy": 1.0
+          },
+          {
+            "range": "0.85-1.00",
+            "n": 9,
+            "mean_score": 0.981,
+            "accuracy": 0.556
+          }
+        ]
+      }
+    },
+    "consistency": {
+      "cases_repeated": 5,
+      "stable_outcome_rate": {
+        "value": 0.8,
+        "numerator": 4,
+        "denominator": 5,
+        "definition": "repeated cases whose outcome never changed / repeated cases"
+      },
+      "per_case": {
+        "caller-passes-none": {
+          "runs": 2,
+          "accepted": 2,
+          "correct_category": 0,
+          "distinct_outcomes": 1
+        },
+        "caller-empty-list": {
+          "runs": 2,
+          "accepted": 2,
+          "correct_category": 2,
+          "distinct_outcomes": 1
+        },
+        "caller-symptomatic-patch": {
+          "runs": 2,
+          "accepted": 2,
+          "correct_category": 0,
+          "distinct_outcomes": 1
+        },
+        "caller-two-levels-up": {
+          "runs": 2,
+          "accepted": 1,
+          "correct_category": 2,
+          "distinct_outcomes": 2
+        },
+        "control-cause-in-trigger": {
+          "runs": 2,
+          "accepted": 2,
+          "correct_category": 2,
+          "distinct_outcomes": 1
+        }
+      }
+    }
+  },
+  "results": [
+    {
+      "case_id": "caller-passes-none",
+      "expected": {
+        "root_cause_category": "null_reference",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/report.py"
+        ]
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.98,
+      "predicted_category": "missing_key",
+      "declared_insufficient": false,
+      "model_confidence": 0.6,
+      "observed_quotes": 2,
+      "grounded_quotes": 2,
+      "affected_files": [
+        "app/money.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 13713,
+          "input_tokens": 2146,
+          "output_tokens": 1745,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": false,
+          "schema_error_fields": [
+            "evidence.1.source:literal_error"
+          ],
+          "gate_score": 0.925,
+          "gate_passed": false,
+          "failed_checks": [
+            "schema",
+            "evidence_grounding",
+            "self_assessment"
+          ],
+          "decision": "retrying with evaluator feedback"
+        },
+        {
+          "iteration": 2,
+          "latency_ms": 35064,
+          "input_tokens": 2783,
+          "output_tokens": 1844,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.98,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/money.py\n+++ b/app/money.py\n@@ -1,2 +1,5 @@\n def format_amount(value):\n-    return f\"{round(value, 2):.2f} EUR\"\n+    if value is None:\n+        value = 0\n+    return f\"{round(value, 2):.2f} EUR\"",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.60 (uncalibrated)"
+      },
+      "wall_ms": 48787,
+      "run": 1
+    },
+    {
+      "case_id": "caller-passes-none",
+      "expected": {
+        "root_cause_category": "null_reference",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/report.py"
+        ]
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.98,
+      "predicted_category": "missing_key",
+      "declared_insufficient": false,
+      "model_confidence": 0.6,
+      "observed_quotes": 2,
+      "grounded_quotes": 2,
+      "affected_files": [
+        "app/money.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 18997,
+          "input_tokens": 2146,
+          "output_tokens": 1671,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": false,
+          "schema_error_fields": [
+            "evidence.1.source:literal_error"
+          ],
+          "gate_score": 0.9,
+          "gate_passed": false,
+          "failed_checks": [
+            "schema",
+            "evidence_grounding",
+            "self_assessment"
+          ],
+          "decision": "retrying with evaluator feedback"
+        },
+        {
+          "iteration": 2,
+          "latency_ms": 34074,
+          "input_tokens": 2763,
+          "output_tokens": 1693,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.98,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/money.py\n+++ b/app/money.py\n@@ -1,2 +1,4 @@\n def format_amount(value):\n-    return f\"{round(value, 2):.2f} EUR\"\n+    if value is None:\n+        return \"0.00 EUR\"\n+    return f\"{round(value, 2):.2f} EUR\"",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.60 (uncalibrated)"
+      },
+      "wall_ms": 53077,
+      "run": 2
+    },
+    {
+      "case_id": "caller-empty-list",
+      "expected": {
+        "root_cause_category": "logic_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/orders.py"
+        ]
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.98,
+      "predicted_category": "logic_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.6,
+      "observed_quotes": 2,
+      "grounded_quotes": 2,
+      "affected_files": [
+        "app/payments.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 18087,
+          "input_tokens": 2138,
+          "output_tokens": 1664,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": false,
+          "schema_error_fields": [
+            "evidence.2.source:literal_error"
+          ],
+          "gate_score": 0.925,
+          "gate_passed": false,
+          "failed_checks": [
+            "schema",
+            "evidence_grounding",
+            "self_assessment"
+          ],
+          "decision": "retrying with evaluator feedback"
+        },
+        {
+          "iteration": 2,
+          "latency_ms": 33817,
+          "input_tokens": 2763,
+          "output_tokens": 1446,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.98,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/payments.py\n+++ b/app/payments.py\n@@ -1,3 +1,5 @@\n def split_payment(total, parts):\n+    if parts == 0:\n+        return []\n     share = total / parts\n     return [share] * parts",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.60 (uncalibrated)"
+      },
+      "wall_ms": 51911,
+      "run": 1
+    },
+    {
+      "case_id": "caller-empty-list",
+      "expected": {
+        "root_cause_category": "logic_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/orders.py"
+        ]
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.9825,
+      "predicted_category": "logic_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.65,
+      "observed_quotes": 2,
+      "grounded_quotes": 2,
+      "affected_files": [
+        "app/payments.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 16509,
+          "input_tokens": 2138,
+          "output_tokens": 1485,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": false,
+          "schema_error_fields": [
+            "evidence.1.source:literal_error"
+          ],
+          "gate_score": 0.93,
+          "gate_passed": false,
+          "failed_checks": [
+            "schema",
+            "evidence_grounding",
+            "self_assessment"
+          ],
+          "decision": "retrying with evaluator feedback"
+        },
+        {
+          "iteration": 2,
+          "latency_ms": 18224,
+          "input_tokens": 2759,
+          "output_tokens": 1695,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.9825,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/payments.py\n+++ b/app/payments.py\n@@ -1,3 +1,5 @@\n def split_payment(total, parts):\n+    if parts == 0:\n+        return []\n     share = total / parts\n     return [share] * parts",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.65 (uncalibrated)"
+      },
+      "wall_ms": 34740,
+      "run": 2
+    },
+    {
+      "case_id": "caller-symptomatic-patch",
+      "expected": {
+        "root_cause_category": "null_reference",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/report.py"
+        ]
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.98,
+      "predicted_category": "missing_key",
+      "declared_insufficient": false,
+      "model_confidence": 0.6,
+      "observed_quotes": 2,
+      "grounded_quotes": 2,
+      "affected_files": [
+        "app/money.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 20250,
+          "input_tokens": 2146,
+          "output_tokens": 1716,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": false,
+          "schema_error_fields": [
+            "evidence.1.source:literal_error"
+          ],
+          "gate_score": 0.925,
+          "gate_passed": false,
+          "failed_checks": [
+            "schema",
+            "evidence_grounding",
+            "self_assessment"
+          ],
+          "decision": "retrying with evaluator feedback"
+        },
+        {
+          "iteration": 2,
+          "latency_ms": 33144,
+          "input_tokens": 2799,
+          "output_tokens": 1532,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.98,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/money.py\n+++ b/app/money.py\n@@ -1,2 +1,4 @@\n def format_amount(value):\n-    return f\"{round(value, 2):.2f} EUR\"\n+    if value is None:\n+        value = 0\n+    return f\"{round(value, 2):.2f} EUR\"",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.60 (uncalibrated)"
+      },
+      "wall_ms": 53400,
+      "run": 1
+    },
+    {
+      "case_id": "caller-symptomatic-patch",
+      "expected": {
+        "root_cause_category": "null_reference",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/report.py"
+        ]
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.98,
+      "predicted_category": "missing_key",
+      "declared_insufficient": false,
+      "model_confidence": 0.6,
+      "observed_quotes": 2,
+      "grounded_quotes": 2,
+      "affected_files": [
+        "app/money.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 4913,
+          "input_tokens": 2146,
+          "output_tokens": 1721,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": false,
+          "schema_error_fields": [
+            "evidence.0.source:literal_error"
+          ],
+          "gate_score": 0.925,
+          "gate_passed": false,
+          "failed_checks": [
+            "schema",
+            "evidence_grounding",
+            "self_assessment"
+          ],
+          "decision": "retrying with evaluator feedback"
+        },
+        {
+          "iteration": 2,
+          "latency_ms": 18095,
+          "input_tokens": 2801,
+          "output_tokens": 2216,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.98,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/money.py\n+++ b/app/money.py\n@@ -1,2 +1,5 @@\n def format_amount(value):\n-    return f\"{round(value, 2):.2f} EUR\"\n+    if value is None:\n+        return \"0.00 EUR\"\n+    return f\"{round(value, 2):.2f} EUR\"",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.60 (uncalibrated)"
+      },
+      "wall_ms": 23016,
+      "run": 2
+    },
+    {
+      "case_id": "caller-two-levels-up",
+      "expected": {
+        "root_cause_category": "type_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/handlers.py"
+        ]
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.98,
+      "predicted_category": "type_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.6,
+      "observed_quotes": 2,
+      "grounded_quotes": 2,
+      "affected_files": [
+        "app/util.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 7962,
+          "input_tokens": 2238,
+          "output_tokens": 1602,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": false,
+          "schema_error_fields": [
+            "evidence.1.source:literal_error"
+          ],
+          "gate_score": 0.925,
+          "gate_passed": false,
+          "failed_checks": [
+            "schema",
+            "evidence_grounding",
+            "self_assessment"
+          ],
+          "decision": "retrying with evaluator feedback"
+        },
+        {
+          "iteration": 2,
+          "latency_ms": 23314,
+          "input_tokens": 2866,
+          "output_tokens": 1750,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.98,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/util.py\n+++ b/app/util.py\n@@ -1,2 +1,2 @@\n def page_offset(page, size):\n-    return (page - 1) * size\n+    return (int(page) - 1) * size",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.60 (uncalibrated)"
+      },
+      "wall_ms": 31284,
+      "run": 1
+    },
+    {
+      "case_id": "caller-two-levels-up",
+      "expected": {
+        "root_cause_category": "type_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/handlers.py"
+        ]
+      },
+      "workflow_status": "needs_review",
+      "error_category": "no_code_fix",
+      "error": null,
+      "gate_passed": false,
+      "quality_score": 0.53,
+      "predicted_category": "type_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.6,
+      "observed_quotes": 2,
+      "grounded_quotes": 2,
+      "affected_files": [
+        "app/util.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 4085,
+          "input_tokens": 2238,
+          "output_tokens": 1760,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.94,
+          "gate_passed": false,
+          "failed_checks": [
+            "fix_location",
+            "self_assessment"
+          ],
+          "decision": "retrying with evaluator feedback"
+        },
+        {
+          "iteration": 2,
+          "latency_ms": 35401,
+          "input_tokens": 2877,
+          "output_tokens": 1715,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.53,
+          "gate_passed": false,
+          "failed_checks": [
+            "self_assessment",
+            "diff_wellformed",
+            "diff_applies",
+            "patch_minimal",
+            "patch_locality",
+            "patch_effective"
+          ],
+          "decision": "grounded analysis without a code patch (operational root cause?)"
+        }
+      ],
+      "patch": null,
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.60 (uncalibrated)",
+        "diff_wellformed": "no patch provided",
+        "diff_applies": "no patch provided",
+        "patch_minimal": "no patch provided",
+        "patch_locality": "no patch provided",
+        "patch_effective": "no patch provided"
+      },
+      "wall_ms": 39492,
+      "run": 2
+    },
+    {
+      "case_id": "control-cause-in-trigger",
+      "expected": {
+        "root_cause_category": "logic_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/stats.py"
+        ]
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.985,
+      "predicted_category": "logic_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.7,
+      "observed_quotes": 2,
+      "grounded_quotes": 2,
+      "affected_files": [
+        "app/stats.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 6090,
+          "input_tokens": 2158,
+          "output_tokens": 1368,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": false,
+          "schema_error_fields": [
+            "evidence.1.source:literal_error"
+          ],
+          "gate_score": 0.905,
+          "gate_passed": false,
+          "failed_checks": [
+            "schema",
+            "evidence_grounding",
+            "self_assessment"
+          ],
+          "decision": "retrying with evaluator feedback"
+        },
+        {
+          "iteration": 2,
+          "latency_ms": 27600,
+          "input_tokens": 2716,
+          "output_tokens": 1448,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.985,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/stats.py\n+++ b/app/stats.py\n@@ -5,2 +5,5 @@\n def safe_mean(values):\n-    return mean(values)\n+    if not values:\n+        return 0\n+    return mean(values)",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.70 (uncalibrated)"
+      },
+      "wall_ms": 33695,
+      "run": 1
+    },
+    {
+      "case_id": "control-cause-in-trigger",
+      "expected": {
+        "root_cause_category": "logic_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/stats.py"
+        ]
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.985,
+      "predicted_category": "logic_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.7,
+      "observed_quotes": 2,
+      "grounded_quotes": 2,
+      "affected_files": [
+        "app/stats.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 20545,
+          "input_tokens": 2158,
+          "output_tokens": 1471,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": false,
+          "schema_error_fields": [
+            "evidence.1.source:literal_error"
+          ],
+          "gate_score": 0.905,
+          "gate_passed": false,
+          "failed_checks": [
+            "schema",
+            "evidence_grounding",
+            "self_assessment"
+          ],
+          "decision": "retrying with evaluator feedback"
+        },
+        {
+          "iteration": 2,
+          "latency_ms": 28953,
+          "input_tokens": 2721,
+          "output_tokens": 1593,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.985,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/stats.py\n+++ b/app/stats.py\n@@ -5,2 +5,4 @@\n def safe_mean(values):\n-    return mean(values)\n+    if not values:\n+        return 0\n+    return mean(values)",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.70 (uncalibrated)"
+      },
+      "wall_ms": 49504,
+      "run": 2
+    }
+  ]
+}

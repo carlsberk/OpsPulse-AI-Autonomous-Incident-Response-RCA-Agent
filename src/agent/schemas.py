@@ -63,10 +63,19 @@ class EvidenceItem(_Model):
 
     @model_validator(mode="before")
     @classmethod
-    def _normalise_unverified_source(cls, data: Any) -> Any:
-        """Inference/hypothesis items are never quote-checked, so an unrecognised `source` there carries no
-        meaning; normalise it to "none". `observed` items keep strict validation (their source is verified)."""
+    def _normalise_source(cls, data: Any) -> Any:
+        """Two tolerated deviations, both seen with live models.
+
+        - The prompt has a <CALLER_CONTEXT> block, and models name the *source* after it. Caller windows are verified
+          as part of `code_context`, so the alias is exact, not a loosening: the quote is still checked verbatim.
+        - Inference/hypothesis items are never quote-checked, so an unrecognised `source` there carries no
+          meaning; it becomes "none". `observed` items keep strict validation (their source is verified).
+        """
         known = ("stack_trace", "code_context", "historical_incidents", "none")
+        if isinstance(data, dict) and isinstance(data.get("source"), str):
+            compact = data["source"].strip().strip("<>").lower().replace("-", "_").replace(" ", "_")
+            if compact in ("caller_context", "caller_code", "caller_frames"):
+                data = {**data, "source": "code_context"}
         if (
             isinstance(data, dict)
             and data.get("kind") in ("inference", "hypothesis")

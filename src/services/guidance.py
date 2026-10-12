@@ -263,7 +263,10 @@ def _parse_time(value: Any) -> datetime | None:
 
 # A "guard or default" patch makes the failing line stop failing without saying why the value was bad. It can be
 # the right fix, but it is also the classic way to hide an upstream problem, so reviewers are told when they see one.
-_GUARD_LINE = re.compile(r"^\s*(if\b.*:|elif\b.*:|else\s*:|return\b.*|continue|pass|raise\b.*)\s*$")
+_GUARD_LINE = re.compile(
+    r"^\s*(if\b.*:|elif\b.*:|else\s*:|return\b.*|continue|pass|raise\b.*|"
+    r"[\w.]+\s*=\s*(0|0\.0|\[\]|\{\}|''|\"\"|None|False|True))\s*$"
+)
 _DEFAULTING = re.compile(
     r"\.get\([^()]*,[^()]*\)|getattr\([^()]*,[^()]*,[^()]*\)|\bor\s+(\[\]|\{\}|0|''|\"\"|None)\b|"
     r"\bif\b.+\belse\b|\bor\s+(\[\]|\{\}|0|''|\"\")"
@@ -272,6 +275,10 @@ _DEFAULTING = re.compile(
 
 def classify_patch(added: list[str], removed: list[str]) -> str | None:
     """`guard_or_default` when the patch only adds an early return / guard / default value, else None."""
+    # A line that is removed and re-added unchanged is a diff artefact (the model re-typed it), not a change.
+    unchanged = {a.strip() for a in added} & {r.strip() for r in removed}
+    added = [a for a in added if a.strip() not in unchanged]
+    removed = [r for r in removed if r.strip() not in unchanged]
     code = [a for a in added if a.strip() and not a.strip().startswith("#")]
     if not code:
         return None
