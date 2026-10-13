@@ -741,8 +741,14 @@ patch, then approve or reject. It uses the same API and the same rules (roles, f
 privileges of its own.
 
 - **Navigation:** every incident has a deep link (`#/incident/<id>`, works with back/forward and in a new tab);
-  search across loaded incidents, optional auto-refresh (15 s), keyboard shortcuts (`/` search, `j`/`k` move,
-  `Enter` open, `r` refresh, `Esc` back).
+  search across loaded incidents, sortable columns (a selector on phones), status chips with counts, optional
+  auto-refresh (15 s), keyboard shortcuts (`/` search, `j`/`k` move, `Enter` open, `r` refresh, `Esc` back).
+  Filter, search and sort live in the URL (`?status=&q=&sort=score:asc&theme=`), validated on read, so a reload
+  or a copied link restores the view.
+- **Robustness:** the latest request wins (a slow response never overwrites a newer view, changing a filter
+  mid-request is no longer dropped, an answer that arrives after you opened another incident is discarded),
+  network failures say so and offer *Retry*, an offline banner appears and the page reconnects by itself,
+  focus moves to the heading on navigation, relative times stay current.
 - **Gate breakdown:** one meter per check, failing checks first, blocking checks labelled, with the check's own
   explanation; the attempt timeline shows each attempt's gate verdict, failed checks, decision, tokens and latency.
 - **Patch:** line numbers from the hunk headers, add/remove colouring, copy and `.patch` download.

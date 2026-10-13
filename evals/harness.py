@@ -10,6 +10,7 @@ from __future__ import annotations
 import difflib
 import time
 import uuid
+from collections.abc import Callable
 from typing import Any, cast
 
 from langchain_core.messages import AIMessage
@@ -29,7 +30,7 @@ from src.retrieval.history import HistoryCandidate, HistoryQuery, rank_lexical, 
 # ------------------------------------------------------------------ local retrieval
 
 
-def local_source_fetcher(case: EvalCase):
+def local_source_fetcher(case: EvalCase) -> Callable[[str, str, int], SourceContext | None]:
     def fetch(repo_name: str, runtime_path: str, failing_line: int) -> SourceContext | None:
         for candidate in path_candidates(runtime_path):
             match = next((p for p in case.files if p == candidate or p.endswith("/" + candidate)), None)
@@ -44,7 +45,7 @@ def local_source_fetcher(case: EvalCase):
     return fetch
 
 
-def local_history(case: EvalCase):
+def local_history(case: EvalCase) -> Callable[[HistoryQuery, str], list[dict[str, Any]]]:
     candidates = [
         HistoryCandidate(
             id=f"{case.id}-h{i}",
@@ -89,7 +90,7 @@ def build_scripted_reply(case: EvalCase, spec: dict[str, Any]) -> str:
     import json
 
     if "raw" in spec:
-        return spec["raw"]
+        return str(spec["raw"])
     frame = get_trigger_frame(case.stack_trace)
     target = normalize_path(frame.path) if frame else None
     trigger = spec.get("trigger") or (f"{target}:{frame.line} -> {frame.function}()" if frame else "unknown")

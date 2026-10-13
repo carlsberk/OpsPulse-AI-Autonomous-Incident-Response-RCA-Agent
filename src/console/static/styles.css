@@ -273,3 +273,23 @@ dialog h2 { font-size: 18px; }
   body { background: #fff; color: #000; }
   .card { box-shadow: none; break-inside: avoid; }
 }
+
+/* ---- sortable headers, status chips, retry and offline banner ---- */
+.th-sort { font: inherit; text-transform: inherit; letter-spacing: inherit; color: inherit; background: none;
+  border: 0; padding: 0; cursor: pointer; display: inline-flex; gap: 4px; align-items: center; }
+.th-sort:hover { color: var(--text); }
+.sort-mark::after { content: ""; display: inline-block; width: 0; height: 0; border-left: 4px solid transparent;
+  border-right: 4px solid transparent; opacity: 0; }
+th[aria-sort="ascending"] .sort-mark::after { border-bottom: 5px solid currentColor; opacity: 1; }
+th[aria-sort="descending"] .sort-mark::after { border-top: 5px solid currentColor; opacity: 1; }
+.message-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.status-chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 12px; }
+.status-chips .chip-btn { font: inherit; font-size: 13px; cursor: pointer; border: 1px solid var(--border);
+  background: var(--panel); color: var(--text); border-radius: 999px; padding: 3px 12px; }
+.status-chips .chip-btn[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent);
+  color: var(--accent); font-weight: 650; }
+.status-chips .count { color: var(--muted); margin-left: 6px; font-variant-numeric: tabular-nums; }
+.net-banner { margin: 0; border-radius: 0; text-align: center; }
+h1:focus { outline: none; }
+.sort-select { display: none; }  /* the column headers sort on wide screens; phones get this selector instead */
+@media (max-width: 760px) { .sort-select { display: block; } }

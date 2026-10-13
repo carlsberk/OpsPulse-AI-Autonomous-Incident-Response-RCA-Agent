@@ -14,10 +14,19 @@ const STATUS_TONE = {
   failed: "s-bad", queued: "s-neutral",
 };
 
+const U = window.OpsUtil; // pure helpers (util.js), unit-tested with Node
 const $ = (id) => document.getElementById(id);
+const DEFAULT_STATUS = "awaiting_approval";
+const SORT_DEFAULT_DIR = { created: "desc", score: "desc", attempts: "desc", status: "asc", repo: "asc" };
 const state = {
-  askFor: null, askHistory: [], cursor: null, items: [], current: null, evidenceFilter: "all", loading: false, focusIndex: -1, memoryKey: "",
+  askFor: null, askHistory: [], cursor: null, items: [], current: null, evidenceFilter: "all", loading: false,
+  focusIndex: -1, memoryKey: "", chip: "", sort: { ...U.DEFAULT_SORT },
 };
+// Latest-request-wins: a slow response for an earlier request must never overwrite a newer view.
+const seq = { list: 0, detail: 0 };
+let listAbort = null;
+let detailAbort = null;
+const isAbort = (error) => Boolean(error) && error.name === "AbortError";
 
 // ------------------------------------------------------------------ small helpers
 
@@ -37,16 +46,10 @@ function el(tag, text, className) {
   return node;
 }
 
-function humanize(value) { return String(value || "").replaceAll("_", " "); }
+const { humanize, toneForScore, plainMarkup } = U;
 
 function badge(status) {
   return el("span", humanize(status), `badge ${STATUS_TONE[status] || "s-neutral"}`);
-}
-
-function toneForScore(score) {
-  if (score >= 0.85) return "ok";
-  if (score >= 0.5) return "warn";
-  return "bad";
 }
 
 function meter(fraction, tone) {
@@ -57,17 +60,7 @@ function meter(fraction, tone) {
   return bar;
 }
 
-function ago(iso) {
-  if (!iso) return "";
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return String(iso);
-  const seconds = (Date.now() - date.getTime()) / 1000;
-  if (seconds < 45) return "just now";
-  if (seconds < 3600) return `${Math.round(seconds / 60)} min ago`;
-  if (seconds < 86400) return `${Math.round(seconds / 3600)} h ago`;
-  if (seconds < 7 * 86400) return `${Math.round(seconds / 86400)} d ago`;
-  return date.toLocaleDateString();
-}
+function ago(iso) { return U.ago(iso); }
 
 function fullDate(iso) {
   const date = new Date(iso);
@@ -103,10 +96,18 @@ function setKey(value) {
 }
 
 async function api(path, options = {}) {
-  const response = await fetch(path, {
-    ...options,
-    headers: { "X-API-Key": apiKey(), "Content-Type": "application/json", ...(options.headers || {}) },
-  });
+  let response;
+  try {
+    response = await fetch(path, {
+      ...options,
+      headers: { "X-API-Key": apiKey(), "Content-Type": "application/json", ...(options.headers || {}) },
+    });
+  } catch (cause) {
+    if (isAbort(cause)) throw cause;
+    const error = new Error("Cannot reach the server. Check the connection; this page retries when you are back online.");
+    error.network = true;
+    throw error;
+  }
   let body = null;
   try { body = await response.json(); } catch { body = null; }
   if (!response.ok) {
@@ -118,7 +119,10 @@ async function api(path, options = {}) {
 }
 
 function failure(error, messageId) {
-  if (error.status === 401) {
+  if (error.network) {
+    setConnection("bad", "Offline");
+    setMessage(messageId, error.message, true);
+  } else if (error.status === 401) {
     setConnection("bad", "Invalid key");
     setMessage(messageId, "Enter a valid API key to continue.", true);
   } else if (error.status === 403) {
@@ -150,10 +154,8 @@ function cycleTheme() {
 // ------------------------------------------------------------------ list
 
 function visibleItems() {
-  const query = $("search").value.trim().toLowerCase();
-  if (!query) return state.items;
-  return state.items.filter((item) => [item.repo_name, item.affected_file, item.submitted_by, item.status,
-    item.incident_id, item.error_category].some((value) => String(value || "").toLowerCase().includes(query)));
+  const filtered = U.filterItems(state.items, { query: $("search").value, chip: state.chip });
+  return U.sortItems(filtered, state.sort);
 }
 
 function skeletonRows() {
@@ -174,8 +176,11 @@ function skeletonRows() {
 }
 
 async function loadList(append = false) {
-  if (state.loading) return;
+  if (listAbort) listAbort.abort(); // a newer request supersedes an older one instead of being dropped
+  listAbort = new AbortController();
+  const mine = ++seq.list;
   state.loading = true;
+  $("list-retry").hidden = true;
   const params = new URLSearchParams({ limit: "20" });
   const status = $("status-filter").value;
   if (status) params.set("status", status);
@@ -183,33 +188,89 @@ async function loadList(append = false) {
   if (!append && state.items.length === 0) skeletonRows();
   setMessage("list-message", "");
   try {
-    const page = await api(`/incidents?${params}`);
+    const page = await api(`/incidents?${params}`, { signal: listAbort.signal });
+    if (mine !== seq.list) return;
     state.items = append ? state.items.concat(page.items) : page.items;
     state.cursor = page.next_cursor;
     $("load-more").hidden = !page.next_cursor;
+    $("net-banner").hidden = true;
     setConnection("on", "Connected");
     renderRows();
   } catch (error) {
+    if (isAbort(error) || mine !== seq.list) return;
     state.items = [];
     $("list-card").hidden = true;
     $("empty").hidden = true;
+    $("status-chips").hidden = true;
     $("load-more").hidden = true;
     $("list-summary").textContent = "";
     failure(error, "list-message");
+    $("list-retry").hidden = error.status === 401;
   } finally {
-    state.loading = false;
+    if (mine === seq.list) state.loading = false;
   }
+}
+
+function renderStatusChips() {
+  const box = $("status-chips");
+  const { counts, order } = U.statusCounts(state.items);
+  if (state.chip && !counts[state.chip]) state.chip = "";
+  box.replaceChildren();
+  box.hidden = order.length < 2; // one status only: a filter would be noise
+  for (const status of order) {
+    const button = el("button", humanize(status), "chip-btn");
+    button.type = "button";
+    button.setAttribute("aria-pressed", String(state.chip === status));
+    button.append(el("span", counts[status], "count"));
+    button.addEventListener("click", () => {
+      state.chip = state.chip === status ? "" : status;
+      renderRows();
+    });
+    box.append(button);
+  }
+}
+
+function applySort(sort) {
+  state.sort = sort;
+  syncUrl();
+  renderRows();
+}
+
+function updateSortHeaders() {
+  const select = $("sort-select");
+  const wanted = `${state.sort.key}:${state.sort.dir}`;
+  select.value = [...select.options].some((option) => option.value === wanted) ? wanted : "";
+  document.querySelectorAll("th .th-sort").forEach((button) => {
+    const active = button.dataset.sort === state.sort.key;
+    button.parentElement.setAttribute("aria-sort", active ? (state.sort.dir === "asc" ? "ascending" : "descending") : "none");
+  });
+}
+
+function syncUrl() {
+  try {
+    const status = $("status-filter").value;
+    const query = U.writeState({
+      status: status === DEFAULT_STATUS ? null : status,
+      query: $("search").value.trim(),
+      sort: state.sort,
+      theme: U.readState(location.search).theme,
+    });
+    history.replaceState(null, "", `${location.pathname}${query}${location.hash}`);
+  } catch { /* history unavailable (sandboxed frame): the view still works, it just is not shareable */ }
 }
 
 function renderRows() {
   const body = $("incident-table").querySelector("tbody");
   body.replaceChildren();
+  renderStatusChips();
+  updateSortHeaders();
   const items = visibleItems();
   state.focusIndex = -1;
   for (const item of items) {
     const row = document.createElement("tr");
     row.tabIndex = 0;
     row.dataset.id = item.incident_id;
+    const target = `#/incident/${encodeURIComponent(item.incident_id)}`;
 
     const statusCell = document.createElement("td");
     statusCell.append(badge(item.status));
@@ -217,7 +278,7 @@ function renderRows() {
 
     const repoCell = document.createElement("td");
     const link = el("a", item.repo_name, "repo repo-link");
-    link.href = `#/incident/${encodeURIComponent(item.incident_id)}`;
+    link.href = target;
     repoCell.append(link, el("span", item.affected_file || "no source file", "file mono"));
 
     const scoreCell = document.createElement("td");
@@ -228,16 +289,17 @@ function renderRows() {
     scoreCell.append(box);
 
     const when = el("td", ago(item.created_at));
+    when.dataset.created = item.created_at || "";
     when.title = fullDate(item.created_at);
     if (item.submitted_by) when.append(el("span", item.submitted_by, "file"));
 
     row.append(statusCell, repoCell, scoreCell, el("td", item.iterations, "num"), when);
     row.addEventListener("click", (event) => {
       if (event.target.closest("a")) return; // the link navigates by itself (middle-click, copy link, ...)
-      location.hash = `#/incident/${encodeURIComponent(item.incident_id)}`;
+      location.hash = target;
     });
     row.addEventListener("keydown", (event) => {
-      if (event.key === "Enter") location.hash = `#/incident/${encodeURIComponent(item.incident_id)}`;
+      if (event.key === "Enter" && event.target === row) location.hash = target;
     });
     body.append(row);
   }
@@ -245,15 +307,15 @@ function renderRows() {
   const total = state.items.length;
   const awaiting = state.items.filter((i) => i.status === "awaiting_approval").length;
   $("list-summary").textContent = total
-    ? `${total} loaded${items.length !== total ? ` (${items.length} match the search)` : ""} · ${awaiting} awaiting approval`
+    ? `${total} loaded${items.length !== total ? ` (${items.length} shown)` : ""} · ${awaiting} awaiting approval`
     : "";
   $("list-card").hidden = items.length === 0;
   $("empty").hidden = items.length !== 0;
   if (items.length === 0) {
-    const searching = total > 0;
-    $("empty-title").textContent = searching ? "No loaded incident matches your search" : "No incidents match this filter";
-    $("empty-text").textContent = searching
-      ? "Clear the search box or load older incidents."
+    const filtering = total > 0;
+    $("empty-title").textContent = filtering ? "No loaded incident matches" : "No incidents match this filter";
+    $("empty-text").textContent = filtering
+      ? "Clear the search box or the status chip, or load older incidents."
       : "Incidents appear here after an application, Sentry or Alertmanager reports a crash.";
   }
 }
@@ -269,33 +331,54 @@ function moveFocus(delta) {
 
 // ------------------------------------------------------------------ detail
 
+function resetDetail() {
+  state.current = null;
+  $("d-title").textContent = "Loading incident…";
+  document.title = "Loading incident - OpsPulse";
+  for (const id of ["guide", "approval", "retry", "d-pr", "d-severity", "d-reason"]) $(id).hidden = true;
+  for (const id of ["d-evidence", "d-checks", "d-attempts", "d-patch", "d-uncertainties", "d-tests"]) {
+    $(id).replaceChildren();
+  }
+}
+
 async function showDetail(incidentId) {
+  if (detailAbort) detailAbort.abort();
+  detailAbort = new AbortController();
+  const mine = ++seq.detail;
   $("list-view").hidden = true;
   $("detail-view").hidden = false;
-  setMessage("a-message", "Loading…");
+  resetDetail();
+  setMessage("a-message", "");
   try {
-    const incident = await api(`/incidents/${encodeURIComponent(incidentId)}`);
+    const incident = await api(`/incidents/${encodeURIComponent(incidentId)}`, { signal: detailAbort.signal });
+    if (mine !== seq.detail) return;
     state.current = incident;
+    $("net-banner").hidden = true;
     setConnection("on", "Connected");
-    setMessage("a-message", "");
     renderDetail(incident);
     window.scrollTo(0, 0);
+    $("d-title").focus({ preventScroll: true });
   } catch (error) {
+    if (isAbort(error) || mine !== seq.detail) return;
     $("d-title").textContent = "Incident could not be loaded";
     failure(error, "a-message");
   }
 }
 
-function showList() {
+function showList(fromDetail = false) {
+  seq.detail += 1; // any detail response still in flight is now stale
+  if (detailAbort) detailAbort.abort();
   document.title = "OpsPulse Console";
   $("detail-view").hidden = true;
   $("list-view").hidden = false;
+  state.current = null;
   loadList();
+  if (fromDetail) $("list-title").focus({ preventScroll: true });
 }
 
 function route() {
   const match = location.hash.match(/^#\/incident\/([0-9A-Fa-f-]{8,64})$/);
-  if (match) showDetail(match[1]); else showList();
+  if (match) showDetail(match[1]); else showList(!$("detail-view").hidden);
 }
 
 function usageSummary(attempts) {
@@ -472,40 +555,14 @@ function renderDiff(patch) {
     view.append(el("div", "No patch proposed.", "empty-note"));
     return;
   }
-  let oldLine = 0;
-  let newLine = 0;
-  for (const text of patch.split("\n")) {
-    const hunk = text.match(/^@@ -(\d+)(?:,\d+)? \+(\d+)/);
-    let kind = "ctx";
-    let left = "";
-    let right = "";
-    if (hunk) {
-      kind = "hunk";
-      oldLine = Number(hunk[1]);
-      newLine = Number(hunk[2]);
-    } else if (text.startsWith("---") || text.startsWith("+++") || text.startsWith("\\")) {
-      kind = "meta";
-    } else if (text.startsWith("+")) {
-      kind = "add";
-      right = String(newLine++);
-    } else if (text.startsWith("-")) {
-      kind = "del";
-      left = String(oldLine++);
-    } else {
-      left = String(oldLine++);
-      right = String(newLine++);
-    }
-    const row = el("div", null, `row ${kind}`);
-    row.append(el("span", left, "ln"), el("span", right, "ln"), el("span", text, "code"));
+  for (const line of U.parseDiff(patch)) {
+    const row = el("div", null, `row ${line.kind}`);
+    row.append(el("span", line.left, "ln"), el("span", line.right, "ln"), el("span", line.text, "code"));
     view.append(row);
   }
 }
 
 // ------------------------------------------------------------------ guidance (what to do now)
-
-function plainMarkup(text) {
-  return String(text || "").replaceAll("**", "").replaceAll("`", "");
-}
 
 async function loadGuidance(incident) {
   try {
@@ -622,6 +679,7 @@ async function ask(question) {
     const result = await api(`/incidents/${encodeURIComponent(incident.incident_id)}/ask`, {
       method: "POST", body: JSON.stringify({ question: text, history: state.askHistory.slice(-6) }),
     });
+    if (!state.current || state.current.incident_id !== incident.incident_id) return; // moved on meanwhile
     renderAnswer(answer, result);
     state.askHistory.push({ role: "user", content: text.slice(0, 1500) },
       { role: "assistant", content: String(result.answer).slice(0, 1500) });
@@ -675,6 +733,7 @@ async function retry() {
   $("retry").disabled = true;
   try {
     const updated = await api(`/incidents/${encodeURIComponent(incident.incident_id)}/retry`, { method: "POST" });
+    if (!state.current || state.current.incident_id !== incident.incident_id) return;
     state.current = updated;
     renderDetail(updated);
     toast("Re-queued: a worker will analyse it again");
@@ -718,8 +777,10 @@ async function decide(decision) {
         note: $("a-note").value || null,
       }),
     });
-    state.current = updated;
-    renderDetail(updated);
+    if (state.current && state.current.incident_id === incident.incident_id) {
+      state.current = updated;
+      renderDetail(updated);
+    }
     setMessage("a-message", "");
     toast(`Decision recorded: ${humanize(updated.status)}`);
   } catch (error) {
@@ -757,17 +818,17 @@ function setAutoRefresh(on) {
   }, REFRESH_MS) : null;
 }
 
-// Deep-link options: /console?theme=dark|light|auto and /console?status=all|needs_review|... (not persisted).
+// Deep-link options, all validated by U.readState: ?theme=dark|light|auto, ?status=all|needs_review|...,
+// ?q=<search>, ?sort=score:asc. The view keeps them in the URL (replaceState), so a reload or a copied link restores it.
 function applyQueryOptions() {
-  const params = new URLSearchParams(location.search);
-  const theme = params.get("theme");
-  if (THEMES.includes(theme)) applyTheme(theme);
-  const wanted = params.get("status");
-  if (wanted !== null) {
-    const value = wanted === "all" ? "" : wanted;
+  const view = U.readState(location.search);
+  if (view.theme) applyTheme(view.theme);
+  if (view.status !== null) {
     const select = $("status-filter");
-    if ([...select.options].some((option) => option.value === value)) select.value = value;
+    if ([...select.options].some((option) => option.value === view.status)) select.value = view.status;
   }
+  $("search").value = view.query;
+  state.sort = view.sort;
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -786,8 +847,35 @@ document.addEventListener("DOMContentLoaded", () => {
     setConnection("off", "Not connected");
     route();
   });
-  $("status-filter").addEventListener("change", () => { state.items = []; loadList(); });
-  $("search").addEventListener("input", renderRows);
+  $("status-filter").addEventListener("change", () => { state.items = []; state.chip = ""; syncUrl(); loadList(); });
+  $("search").addEventListener("input", () => { syncUrl(); renderRows(); });
+  $("list-retry").addEventListener("click", () => loadList());
+  document.querySelectorAll(".th-sort").forEach((button) => {
+    button.addEventListener("click", () => {
+      const key = button.dataset.sort;
+      applySort(state.sort.key === key
+        ? { key, dir: state.sort.dir === "asc" ? "desc" : "asc" }
+        : { key, dir: SORT_DEFAULT_DIR[key] || "desc" });
+    });
+  });
+  $("sort-select").addEventListener("change", (event) => {
+    const [key, dir] = event.target.value.split(":");
+    if (key) applySort({ key, dir: dir === "asc" ? "asc" : "desc" });
+  });
+  // Relative times ("5 min ago") would otherwise go stale on a page that stays open.
+  setInterval(() => {
+    document.querySelectorAll("td[data-created]").forEach((cell) => {
+      if (cell.firstChild) cell.firstChild.nodeValue = ago(cell.dataset.created);
+    });
+  }, 30000);
+  window.addEventListener("offline", () => {
+    $("net-banner").hidden = false;
+    setConnection("bad", "Offline");
+  });
+  window.addEventListener("online", () => {
+    $("net-banner").hidden = true;
+    route();
+  });
   $("refresh").addEventListener("click", () => loadList());
   $("load-more").addEventListener("click", () => loadList(true));
   $("auto-refresh").checked = Boolean(store("local", REFRESH_STORAGE));

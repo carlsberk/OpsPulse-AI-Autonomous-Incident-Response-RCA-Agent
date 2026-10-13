@@ -9,6 +9,8 @@ while `iterations < MAX_ANALYSIS_ITERATIONS`, so at most that many LLM calls are
 
 from __future__ import annotations
 
+from typing import Any
+
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
@@ -39,7 +41,7 @@ def route_after_evaluation(state: IncidentState) -> str:
 
 def build_graph(
     fetch_context: ContextFetcher, find_history: HistoryLookup, model_factory: ModelFactory | None = None
-) -> CompiledStateGraph:
+) -> CompiledStateGraph[Any, Any, Any, Any]:
     graph: StateGraph[IncidentState, None, IncidentState, IncidentState] = StateGraph(IncidentState)
     # (langgraph's add_node overloads cannot infer the state type of the factory-built closures, hence the ignores)
     graph.add_node("normalize_incident", normalize_incident)

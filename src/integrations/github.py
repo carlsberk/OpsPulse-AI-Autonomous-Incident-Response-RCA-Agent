@@ -11,6 +11,7 @@ import logging
 import re
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import requests
 from github import Auth, Github, GithubException, RateLimitExceededException
@@ -136,10 +137,10 @@ def resolve_repo_path(repo: Repository, runtime_path: str, ref: str) -> str | No
     return None
 
 
-def _read_text(content_file) -> str:
+def _read_text(content_file: Any) -> str:
     if (content_file.size or 0) > MAX_FILE_BYTES:
         raise GitHubError(f"file is larger than {MAX_FILE_BYTES} bytes")
-    return content_file.decoded_content.decode("utf-8", errors="replace")
+    return str(content_file.decoded_content.decode("utf-8", errors="replace"))
 
 
 def _recent_commits(repo: Repository, path: str, limit: int = 5) -> list[str]:

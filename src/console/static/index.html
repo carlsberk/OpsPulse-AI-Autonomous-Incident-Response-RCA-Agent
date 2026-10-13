@@ -5,7 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
   <title>OpsPulse Console</title>
+  <link rel="icon" type="image/svg+xml" href="/console/static/favicon.svg">
   <link rel="stylesheet" href="/console/static/styles.css">
+  <script src="/console/static/util.js" defer></script>
   <script src="/console/static/app.js" defer></script>
 </head>
 <body>
@@ -28,11 +30,13 @@
     </div>
   </header>
 
+  <p id="net-banner" class="banner bad net-banner" role="alert" hidden>You are offline. The console will reconnect automatically.</p>
+
   <main id="main" tabindex="-1">
     <section id="list-view" aria-labelledby="list-title">
       <div class="view-head">
         <div>
-          <h1 id="list-title">Incidents</h1>
+          <h1 id="list-title" tabindex="-1">Incidents</h1>
           <p id="list-summary" class="muted small"></p>
         </div>
         <div class="toolbar">
@@ -54,22 +58,38 @@
               <option value="processing">Processing</option>
             </select>
           </label>
+          <label class="field sort-select">
+            <span class="sr-only">Sort by</span>
+            <select id="sort-select">
+              <option value="created:desc">Newest first</option>
+              <option value="created:asc">Oldest first</option>
+              <option value="score:asc">Lowest gate score first</option>
+              <option value="score:desc">Highest gate score first</option>
+              <option value="attempts:desc">Most attempts first</option>
+              <option value="repo:asc">Repository A-Z</option>
+              <option value="status:asc">Status A-Z</option>
+            </select>
+          </label>
           <label class="check"><input id="auto-refresh" type="checkbox"> Auto-refresh</label>
           <button type="button" id="refresh" class="btn ghost" title="Refresh (r)">Refresh</button>
         </div>
       </div>
 
-      <p id="list-message" class="message" role="status"></p>
+      <div class="message-row">
+        <p id="list-message" class="message" role="status"></p>
+        <button type="button" id="list-retry" class="btn tiny" hidden>Retry</button>
+      </div>
+      <div id="status-chips" class="status-chips" role="group" aria-label="Filter loaded incidents by status" hidden></div>
 
       <div id="list-card" class="card flush" hidden>
         <table id="incident-table" class="incidents">
           <thead>
             <tr>
-              <th scope="col">Status</th>
-              <th scope="col">Repository</th>
-              <th scope="col">Gate score</th>
-              <th scope="col" class="num">Attempts</th>
-              <th scope="col">Submitted</th>
+              <th scope="col" aria-sort="none"><button type="button" class="th-sort" data-sort="status">Status<span class="sort-mark" aria-hidden="true"></span></button></th>
+              <th scope="col" aria-sort="none"><button type="button" class="th-sort" data-sort="repo">Repository<span class="sort-mark" aria-hidden="true"></span></button></th>
+              <th scope="col" aria-sort="none"><button type="button" class="th-sort" data-sort="score">Gate score<span class="sort-mark" aria-hidden="true"></span></button></th>
+              <th scope="col" class="num" aria-sort="none"><button type="button" class="th-sort" data-sort="attempts">Attempts<span class="sort-mark" aria-hidden="true"></span></button></th>
+              <th scope="col" aria-sort="none"><button type="button" class="th-sort" data-sort="created">Submitted<span class="sort-mark" aria-hidden="true"></span></button></th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -92,7 +112,7 @@
 
       <div class="detail-head">
         <div class="detail-title">
-          <h1 id="d-title"></h1>
+          <h1 id="d-title" tabindex="-1"></h1>
           <div class="detail-sub">
             <span id="d-status" class="badge"></span>
             <span id="d-severity" class="chip" hidden></span>

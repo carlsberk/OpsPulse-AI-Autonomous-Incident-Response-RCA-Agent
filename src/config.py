@@ -48,7 +48,7 @@ def _number(names: tuple[str, ...], default: float, cast: type, low: float, high
     if raw == "":
         return default
     try:
-        value = cast(raw)
+        value: float = cast(raw)
     except ValueError as exc:
         raise ConfigError(f"{names[0]} must be a {cast.__name__}") from exc
     if not low <= value <= high:

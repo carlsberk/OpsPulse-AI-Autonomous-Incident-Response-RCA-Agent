@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import os
 import uuid
+from typing import cast
 
 # Demo defaults; explicit environment variables still win.
 os.environ.setdefault("ENABLE_GITHUB_REMEDIATION", "true")
@@ -23,6 +24,7 @@ from evals.dataset import load_rca_dataset
 from evals.harness import ScriptedModel, local_history, local_source_fetcher
 from src.agent.graph import build_graph
 from src.config import settings
+from src.integrations.llm import ModelFactory
 from src.services import incident_service
 
 DEMO_CASES = (
@@ -39,9 +41,9 @@ DEMO_CASES = (
 )
 
 
-def _scripted(model: ScriptedModel):
+def _scripted(model: ScriptedModel) -> ModelFactory:
     """A model factory that always returns the scripted model (the temperature is irrelevant)."""
-    return lambda temperature: model
+    return cast(ModelFactory, lambda temperature: model)  # the scripted model is a duck-typed chat model
 
 
 def main() -> int:

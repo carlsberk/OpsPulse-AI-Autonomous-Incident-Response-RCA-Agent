@@ -30,7 +30,7 @@ class LLMError(RuntimeError):
 
 
 @lru_cache(maxsize=4)
-def get_chat_model(temperature: float) -> Runnable:
+def get_chat_model(temperature: float) -> Runnable[Any, Any]:
     """ChatGroq in JSON mode. The SDK retries transient errors at most `LLM_MAX_RETRIES` times."""
     if not settings.groq_api_key:
         raise LLMError("not_configured", "GROQ_API_KEY is not set")
@@ -86,7 +86,7 @@ class LLMReply:
     truncated: bool = False  # the reply stopped at the output-token limit (finish_reason == "length")
 
 
-ModelFactory = Callable[[float], Runnable]  # temperature -> chat model
+ModelFactory = Callable[[float], Runnable[Any, Any]]  # temperature -> chat model
 
 
 def invoke_json_model(

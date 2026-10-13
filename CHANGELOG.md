@@ -15,6 +15,12 @@ All notable changes are listed here. Versions of behaviour-critical components a
   Motivated by `ho-off-by-one` (right diagnosis, three diffs that never applied). Not yet measured live.
 
 ### Changed
+- Console hardening and features: latest-request-wins (the status filter changed mid-request used to be silently
+  ignored, and a slow detail response could overwrite a newer one), answers arriving after navigation are dropped,
+  network errors and an offline banner with *Retry*, focus management, sortable columns (selector on phones),
+  status chips with counts, view state in the URL (validated), relative times refresh, own favicon (also served at
+  `/favicon.ico`). Pure helpers moved to `util.js` and unit-tested with Node (`tests/js`, run by pytest and CI).
+- `mypy --strict` is now the project setting (13 missing annotations fixed; no behaviour change).
 - `rca-callers-v3`: `caller-passes-none` and `caller-symptomatic-patch` use an unambiguous `None` (an explicit
   `return None` from a lookup, dereferenced in the callee) instead of `row.get("amount")`, which also reads as a
   missing key. The other three cases are unchanged; the mock baseline is refreshed.
@@ -22,6 +28,10 @@ All notable changes are listed here. Versions of behaviour-critical components a
   console and named in the guidance card, because the check has measured false positives.
 
 ### Fixed
+- Static file paths the operating system cannot stat (for example `<` on Windows) answered HTTP 500; they are 404.
+  Found by a new API fuzz test (`tests/unit/test_api_fuzz.py`: no request may produce a 5xx).
+- Console: a function name was declared twice in `app.js` (the second silently replaced the first) - caught in a real
+  browser; a test now forbids duplicate top-level function names.
 - Evidence `source: "caller_context"` (the model naming the source after our `<CALLER_CONTEXT>` block) failed schema
   validation and cost an attempt in 9 of 10 live runs; it is now an exact alias of `code_context` (`rca-prompt-v5.1`;
   quotes are still verified verbatim). The guard-or-default label also handles a line that is removed and re-typed

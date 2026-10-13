@@ -31,10 +31,11 @@ def test_console_has_no_inline_script_or_unsafe_dom_sinks():
     assert not re.search(r"<script(?![^>]*\bsrc=)[^>]*>", html), "inline <script> would violate the CSP"
     assert not re.search(r"\sstyle\s*=", html), "inline styles would violate the CSP"
     assert not re.search(r"\son[a-z]+\s*=", html), "inline event handlers would violate the CSP"
-    source = pathlib.Path(STATIC_DIR / "app.js").read_text(encoding="utf-8")
-    js = "\n".join(line for line in source.splitlines() if not line.strip().startswith("//"))  # ignore comments
-    for sink in ("innerHTML", "outerHTML", "insertAdjacentHTML", "document.write", "eval("):
-        assert sink not in js, f"{sink} must not be used with untrusted data"
+    for name in ("app.js", "util.js"):
+        source = pathlib.Path(STATIC_DIR / name).read_text(encoding="utf-8")
+        js = "\n".join(line for line in source.splitlines() if not line.strip().startswith("//"))  # ignore comments
+        for sink in ("innerHTML", "outerHTML", "insertAdjacentHTML", "document.write", "eval(", "new Function"):
+            assert sink not in js, f"{name}: {sink} must not be used with untrusted data"
 
 
 def test_console_can_be_disabled(monkeypatch):
@@ -104,5 +105,34 @@ def test_demo_key_is_embedded_only_when_explicitly_configured(client, set_settin
 
 def test_console_supports_theme_and_status_query_options():
     js = (STATIC_DIR / "app.js").read_text(encoding="utf-8")
-    assert 'params.get("theme")' in js and 'params.get("status")' in js
+    util = (STATIC_DIR / "util.js").read_text(encoding="utf-8")
+    assert "U.readState(location.search)" in js and 'params.get("theme")' in util and 'params.get("status")' in util
     assert 'meta[name="opspulse-demo-key"]' in js
+    assert 'src="/console/static/util.js"' in (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+
+
+def test_paths_the_filesystem_cannot_stat_are_not_found_rather_than_server_errors(client):
+    for name in ("<", "a%00b", "con:", "x" * 5000, "..%5c..%5cwindows", "%2e%2e/%2e%2e/secret"):
+        assert client.get(f"/console/static/{name}").status_code in (400, 404), name
+
+
+def test_console_script_declares_no_function_twice():
+    """In a classic script a second declaration silently replaces the first (a real bug once: two renderChips)."""
+    import collections
+
+    source = (STATIC_DIR / "app.js").read_text(encoding="utf-8")
+    names = re.findall(r"^(?:async )?function (\w+)\(", source, re.MULTILINE)
+    duplicates = [name for name, count in collections.Counter(names).items() if count > 1]
+    assert not duplicates, duplicates
+
+
+def test_console_ships_its_own_favicon_so_the_browser_does_not_request_a_missing_one(client):
+    html = client.get("/console").text
+    assert 'rel="icon"' in html and "/console/static/favicon.svg" in html
+    response = client.get("/console/static/favicon.svg")
+    assert response.status_code == 200 and "svg" in response.headers["content-type"]
+
+
+def test_favicon_ico_is_served_so_browsers_do_not_log_a_404(client):
+    response = client.get("/favicon.ico")
+    assert response.status_code == 200 and "svg" in response.headers["content-type"]

@@ -62,7 +62,7 @@ class IncidentNotFoundError(LookupError):
 
 
 @lru_cache(maxsize=1)
-def get_graph() -> CompiledStateGraph:
+def get_graph() -> CompiledStateGraph[Any, Any, Any, Any]:
     return build_graph(github.fetch_source_context, repositories.find_similar_incidents)
 
 
@@ -158,7 +158,7 @@ def run_incident_pipeline(
     repo_name: str,
     error_message: str,
     stack_trace: str,
-    graph: CompiledStateGraph | None = None,
+    graph: CompiledStateGraph[Any, Any, Any, Any] | None = None,
     claim_token: str | None = None,
 ) -> dict[str, Any]:
     """Run the graph, persist the outcome, optionally propose/open a PR. Returns the stored incident.
@@ -202,7 +202,7 @@ def _run(
     error_message: str,
     stack_trace: str,
     fingerprint: str,
-    graph: CompiledStateGraph,
+    graph: CompiledStateGraph[Any, Any, Any, Any],
     claim_token: str | None = None,
 ) -> dict[str, Any]:
     state = initial_state(str(incident_id), error_message, stack_trace, repo_name)
