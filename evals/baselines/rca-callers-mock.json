@@ -1,11 +1,11 @@
 {
   "mode": "mock",
-  "started_at": "2026-10-10T12:57:34.606365+00:00",
-  "dataset_version": "rca-callers-v2",
+  "started_at": "2026-10-13T10:35:22.727830+00:00",
+  "dataset_version": "rca-callers-v3",
   "run_metadata": {
-    "agent_version": "1.1.0-opspulse",
-    "prompt_version": "rca-prompt-v5",
-    "evaluator_version": "quality-gate-v6",
+    "agent_version": "1.2.0-opspulse",
+    "prompt_version": "rca-prompt-v5.1",
+    "evaluator_version": "quality-gate-v7",
     "retrieval_strategy": "lexical-v1",
     "model": "openai/gpt-oss-120b",
     "quality_threshold": 0.85,
@@ -95,7 +95,7 @@
     },
     "case_wall_ms": {
       "mean": 4,
-      "p95": 7
+      "p95": 8
     },
     "tokens": {
       "input": null,
@@ -134,7 +134,8 @@
           }
         ]
       }
-    }
+    },
+    "consistency": null
   },
   "results": [
     {
@@ -143,7 +144,7 @@
         "root_cause_category": "null_reference",
         "inconclusive": false,
         "relevant_files": [
-          "app/report.py"
+          "app/mailer.py"
         ]
       },
       "workflow_status": "needs_review",
@@ -157,7 +158,7 @@
       "observed_quotes": 2,
       "grounded_quotes": 2,
       "affected_files": [
-        "app/money.py"
+        "app/greeting.py"
       ],
       "grounded_files": 1,
       "attempts": [
@@ -183,7 +184,17 @@
           "decision": "grounded analysis without a code patch (operational root cause?)"
         }
       ],
-      "wall_ms": 7
+      "patch": null,
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.75 (uncalibrated)",
+        "diff_wellformed": "no patch provided",
+        "diff_applies": "no patch provided",
+        "patch_minimal": "no patch provided",
+        "patch_locality": "no patch provided",
+        "patch_effective": "no patch provided"
+      },
+      "wall_ms": 8,
+      "run": 1
     },
     {
       "case_id": "caller-empty-list",
@@ -231,7 +242,17 @@
           "decision": "grounded analysis without a code patch (operational root cause?)"
         }
       ],
-      "wall_ms": 2
+      "patch": null,
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.75 (uncalibrated)",
+        "diff_wellformed": "no patch provided",
+        "diff_applies": "no patch provided",
+        "patch_minimal": "no patch provided",
+        "patch_locality": "no patch provided",
+        "patch_effective": "no patch provided"
+      },
+      "wall_ms": 3,
+      "run": 1
     },
     {
       "case_id": "caller-symptomatic-patch",
@@ -239,7 +260,7 @@
         "root_cause_category": "null_reference",
         "inconclusive": false,
         "relevant_files": [
-          "app/report.py"
+          "app/mailer.py"
         ]
       },
       "workflow_status": "needs_review",
@@ -253,7 +274,7 @@
       "observed_quotes": 2,
       "grounded_quotes": 2,
       "affected_files": [
-        "app/money.py"
+        "app/greeting.py"
       ],
       "grounded_files": 1,
       "attempts": [
@@ -296,7 +317,17 @@
           "decision": "grounded analysis without a code patch (operational root cause?)"
         }
       ],
-      "wall_ms": 4
+      "patch": null,
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.75 (uncalibrated)",
+        "diff_wellformed": "no patch provided",
+        "diff_applies": "no patch provided",
+        "patch_minimal": "no patch provided",
+        "patch_locality": "no patch provided",
+        "patch_effective": "no patch provided"
+      },
+      "wall_ms": 5,
+      "run": 1
     },
     {
       "case_id": "caller-two-levels-up",
@@ -344,7 +375,17 @@
           "decision": "grounded analysis without a code patch (operational root cause?)"
         }
       ],
-      "wall_ms": 3
+      "patch": null,
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.75 (uncalibrated)",
+        "diff_wellformed": "no patch provided",
+        "diff_applies": "no patch provided",
+        "patch_minimal": "no patch provided",
+        "patch_locality": "no patch provided",
+        "patch_effective": "no patch provided"
+      },
+      "wall_ms": 2,
+      "run": 1
     },
     {
       "case_id": "control-cause-in-trigger",
@@ -387,7 +428,12 @@
           "decision": "quality gate passed"
         }
       ],
-      "wall_ms": 3
+      "patch": "--- a/app/stats.py\n+++ b/app/stats.py\n@@ -3,4 +3,4 @@\n \n \n def safe_mean(values):\n-    return mean(values)\n+    return mean(values) if values else 0.0",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.75 (uncalibrated)"
+      },
+      "wall_ms": 2,
+      "run": 1
     }
   ]
 }

@@ -39,26 +39,38 @@ def case(case_id, scenario, files, frames, final, expected, replies) -> None:
     )
 
 
-MONEY = """def format_amount(value):
-    return f"{round(value, 2):.2f} EUR"
+GREETING = """def greeting(customer):
+    return f"Hello, {customer.name}!"
 """
-REPORT = """from app.money import format_amount
+CUSTOMERS = """def find_customer(customers, customer_id):
+    for customer in customers:
+        if customer.id == customer_id:
+            return customer
+    return None
+"""
+MAILER = """from app.customers import find_customer
+from app.greeting import greeting
 
 
-def render_rows(rows):
-    out = []
-    for row in rows:
-        out.append(format_amount(row.get("amount")))
-    return out
+def welcome_email(customers, customer_id):
+    customer = find_customer(customers, customer_id)
+    return greeting(customer)
 """
+CUSTOMER_FILES = {"app/greeting.py": GREETING, "app/customers.py": CUSTOMERS, "app/mailer.py": MAILER}
+CUSTOMER_FRAMES = [
+    ("app/mailer.py", "welcome_email", "return greeting(customer)"),
+    ("app/greeting.py", "greeting", "customer.name"),
+]
+CUSTOMER_ERROR = "AttributeError: 'NoneType' object has no attribute 'name'"
+CALLER_QUOTE = "customer = find_customer(customers, customer_id)"
 case(
     "caller-passes-none",
-    "A report passes a missing amount (None) to a formatter that expects a number",
-    {"app/money.py": MONEY, "app/report.py": REPORT},
-    [("app/report.py", "render_rows", "format_amount(row.get"), ("app/money.py", "format_amount", "round(value")],
-    "TypeError: type NoneType doesn't define __round__ method",
-    {"root_cause_category": "null_reference", "relevant_files": ["app/report.py"]},
-    [reply("null_reference", quote='format_amount(row.get("amount"))', fix=None)],
+    "A lookup that returns None for an unknown id is passed on to a function that reads an attribute of it",
+    CUSTOMER_FILES,
+    CUSTOMER_FRAMES,
+    CUSTOMER_ERROR,
+    {"root_cause_category": "null_reference", "relevant_files": ["app/mailer.py"]},
+    [reply("null_reference", quote=CALLER_QUOTE, fix=None)],
 )
 
 PAYMENTS = """def split_payment(total, parts):
@@ -86,20 +98,20 @@ case(
 case(
     "caller-symptomatic-patch",
     "The model quotes the calling code but patches the callee; the gate must ask where the fix belongs",
-    {"app/money.py": MONEY, "app/report.py": REPORT},
-    [("app/report.py", "render_rows", "format_amount(row.get"), ("app/money.py", "format_amount", "round(value")],
-    "TypeError: type NoneType doesn't define __round__ method",
-    {"root_cause_category": "null_reference", "relevant_files": ["app/report.py"]},
+    CUSTOMER_FILES,
+    CUSTOMER_FRAMES,
+    CUSTOMER_ERROR,
+    {"root_cause_category": "null_reference", "relevant_files": ["app/mailer.py"]},
     [
         reply(
             "null_reference",
-            quote='format_amount(row.get("amount"))',
+            quote=CALLER_QUOTE,
             fix={
-                "old": '    return f"{round(value, 2):.2f} EUR"\n',
-                "new": '    if value is None:\n        return "n/a"\n    return f"{round(value, 2):.2f} EUR"\n',
+                "old": '    return f"Hello, {customer.name}!"\n',
+                "new": '    if customer is None:\n        return "Hello!"\n    return f"Hello, {customer.name}!"\n',
             },
         ),
-        reply("null_reference", quote='format_amount(row.get("amount"))', fix=None),
+        reply("null_reference", quote=CALLER_QUOTE, fix=None),
     ],
 )
 
@@ -170,7 +182,7 @@ case(
 
 
 def main() -> None:
-    OUT.write_text(json.dumps({"version": "rca-callers-v2", "cases": CASES}, indent=2) + "\n", encoding="utf-8")
+    OUT.write_text(json.dumps({"version": "rca-callers-v3", "cases": CASES}, indent=2) + "\n", encoding="utf-8")
     print(f"wrote {len(CASES)} caller cases to {OUT}")
 
 

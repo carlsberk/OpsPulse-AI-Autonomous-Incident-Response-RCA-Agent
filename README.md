@@ -409,7 +409,7 @@ cases were accepted and the control case ended correctly after 3 attempts. But t
 *failing* function defensively instead of naming the caller (`caller-passes-none`, also with the wrong category,
 and `caller-two-levels-up`): the `quality-gate-v5` that ran checked grounding and applicability, not whether the fix is in the right place,
 and the patch policy only allows the failing file. `quality-gate-v6` (`fix_location`) now rejects a patch whose
-diagnosis cites caller-only code (mock case `caller-symptomatic-patch`; dataset `rca-callers-v2`); it has **not**
+diagnosis cites caller-only code (mock case `caller-symptomatic-patch`; dataset `rca-callers-v3`); it has **not**
 been run live yet. The comparison run without caller context stopped after one case
 on the provider's daily token limit, so **there is no live evidence yet that caller context improves accuracy** -
 only the mock comparison with scripted replies (grounded quotes 8/8 and 1 attempt per case with callers,
@@ -506,6 +506,35 @@ single sample is not the whole story:
   `caller_context` as `code_context` (`prompt v5.1`; the quote is still verified verbatim against the trigger and
   caller windows). **Not yet measured live.**
 - **Deploy drift handled 2/2**; the assistant's quote validator held up (grounded answers 4/4, see above).
+
+**Sixth live session: `rca-callers-v3` with the alias fix** (2026-10-13, `prompt v5.1` + `quality-gate-v7`,
+`gpt-oss-120b`, 5 cases x 2 runs; [report](evals/results/rca-callers-v3-live-2026-10-13-prompt-v5.1-gate-v7-repeat2.md)).
+v3 replaces the two ambiguous v2 cases (`row.get("amount")` also reads as a missing key) with an unambiguous
+`None` from a lookup that explicitly returns `None`; the other three cases are unchanged. The label change was made
+because the case was ambiguous, not to match the model.
+
+| | Result (10 runs) |
+|---|---|
+| Category = label | **10/10** (was 6/10 on v2) |
+| Schema failure on attempt 1 | **0/10** (was 9/10): the `caller_context` alias works |
+| Accepted | 3/10 |
+| `fix_location` fired | 7/10 |
+| Stable outcome per case | 4/5 cases |
+
+- **`fix_location` did what it was written for on the blame cases.** `caller-passes-none` and
+  `caller-symptomatic-patch`: in all four runs the first attempt patched the failing function while quoting the
+  caller, the gate refused it on that check alone (score 0.935), and the retry left no patch with the right category.
+  No callee guard was accepted this session.
+- **It also produced false positives.** `control-cause-in-trigger` is the case where the *failing function* really is
+  at fault and the caller is innocent; in 2 of 2 runs the model quoted the caller's filter line to say so, patched
+  the failing function (the right fix) and was refused. Nothing deterministic that was available separated these
+  from the blame cases (`affected_files` and the patch kind are the same). Precision on this set: 5 of 7 firings
+  were the intended catch.
+- **What the change costs, and what was done about it.** A refused patch used to be lost when the retry dropped
+  it. It is now kept with the attempt (`withheld_patch`), never proposed as a pull request, shown in the console as
+  "Withheld patch (not proposed)" and named in the guidance card - with the caveat that this check can be wrong
+  when the model quotes a caller only to rule it out. The gate is deliberately conservative here: every outcome
+  still ends with a human, and the diagnosis is kept.
 
 What the first live run showed, and what changed:
 

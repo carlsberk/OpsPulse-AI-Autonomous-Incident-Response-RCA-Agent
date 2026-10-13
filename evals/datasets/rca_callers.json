@@ -1,28 +1,29 @@
 {
-  "version": "rca-callers-v2",
+  "version": "rca-callers-v3",
   "cases": [
     {
       "id": "caller-passes-none",
-      "scenario": "A report passes a missing amount (None) to a formatter that expects a number",
+      "scenario": "A lookup that returns None for an unknown id is passed on to a function that reads an attribute of it",
       "repo_name": "eval/callers",
-      "error_message": "TypeError: type NoneType doesn't define __round__ method",
-      "stack_trace": "Traceback (most recent call last):\n  File \"/app/app/report.py\", line 7, in render_rows\n    out.append(format_amount(row.get(\"amount\")))\n  File \"/app/app/money.py\", line 2, in format_amount\n    return f\"{round(value, 2):.2f} EUR\"\nTypeError: type NoneType doesn't define __round__ method",
+      "error_message": "AttributeError: 'NoneType' object has no attribute 'name'",
+      "stack_trace": "Traceback (most recent call last):\n  File \"/app/app/mailer.py\", line 7, in welcome_email\n    return greeting(customer)\n  File \"/app/app/greeting.py\", line 2, in greeting\n    return f\"Hello, {customer.name}!\"\nAttributeError: 'NoneType' object has no attribute 'name'",
       "files": {
-        "app/money.py": "def format_amount(value):\n    return f\"{round(value, 2):.2f} EUR\"\n",
-        "app/report.py": "from app.money import format_amount\n\n\ndef render_rows(rows):\n    out = []\n    for row in rows:\n        out.append(format_amount(row.get(\"amount\")))\n    return out\n"
+        "app/greeting.py": "def greeting(customer):\n    return f\"Hello, {customer.name}!\"\n",
+        "app/customers.py": "def find_customer(customers, customer_id):\n    for customer in customers:\n        if customer.id == customer_id:\n            return customer\n    return None\n",
+        "app/mailer.py": "from app.customers import find_customer\nfrom app.greeting import greeting\n\n\ndef welcome_email(customers, customer_id):\n    customer = find_customer(customers, customer_id)\n    return greeting(customer)\n"
       },
       "history": [],
       "expected": {
         "inconclusive": false,
         "relevant_files": [
-          "app/report.py"
+          "app/mailer.py"
         ],
         "root_cause_category": "null_reference"
       },
       "mock_replies": [
         {
           "category": "null_reference",
-          "quote": "format_amount(row.get(\"amount\"))",
+          "quote": "customer = find_customer(customers, customer_id)",
           "fix": null
         }
       ]
@@ -57,32 +58,33 @@
       "id": "caller-symptomatic-patch",
       "scenario": "The model quotes the calling code but patches the callee; the gate must ask where the fix belongs",
       "repo_name": "eval/callers",
-      "error_message": "TypeError: type NoneType doesn't define __round__ method",
-      "stack_trace": "Traceback (most recent call last):\n  File \"/app/app/report.py\", line 7, in render_rows\n    out.append(format_amount(row.get(\"amount\")))\n  File \"/app/app/money.py\", line 2, in format_amount\n    return f\"{round(value, 2):.2f} EUR\"\nTypeError: type NoneType doesn't define __round__ method",
+      "error_message": "AttributeError: 'NoneType' object has no attribute 'name'",
+      "stack_trace": "Traceback (most recent call last):\n  File \"/app/app/mailer.py\", line 7, in welcome_email\n    return greeting(customer)\n  File \"/app/app/greeting.py\", line 2, in greeting\n    return f\"Hello, {customer.name}!\"\nAttributeError: 'NoneType' object has no attribute 'name'",
       "files": {
-        "app/money.py": "def format_amount(value):\n    return f\"{round(value, 2):.2f} EUR\"\n",
-        "app/report.py": "from app.money import format_amount\n\n\ndef render_rows(rows):\n    out = []\n    for row in rows:\n        out.append(format_amount(row.get(\"amount\")))\n    return out\n"
+        "app/greeting.py": "def greeting(customer):\n    return f\"Hello, {customer.name}!\"\n",
+        "app/customers.py": "def find_customer(customers, customer_id):\n    for customer in customers:\n        if customer.id == customer_id:\n            return customer\n    return None\n",
+        "app/mailer.py": "from app.customers import find_customer\nfrom app.greeting import greeting\n\n\ndef welcome_email(customers, customer_id):\n    customer = find_customer(customers, customer_id)\n    return greeting(customer)\n"
       },
       "history": [],
       "expected": {
         "inconclusive": false,
         "relevant_files": [
-          "app/report.py"
+          "app/mailer.py"
         ],
         "root_cause_category": "null_reference"
       },
       "mock_replies": [
         {
           "category": "null_reference",
-          "quote": "format_amount(row.get(\"amount\"))",
+          "quote": "customer = find_customer(customers, customer_id)",
           "fix": {
-            "old": "    return f\"{round(value, 2):.2f} EUR\"\n",
-            "new": "    if value is None:\n        return \"n/a\"\n    return f\"{round(value, 2):.2f} EUR\"\n"
+            "old": "    return f\"Hello, {customer.name}!\"\n",
+            "new": "    if customer is None:\n        return \"Hello!\"\n    return f\"Hello, {customer.name}!\"\n"
           }
         },
         {
           "category": "null_reference",
-          "quote": "format_amount(row.get(\"amount\"))",
+          "quote": "customer = find_customer(customers, customer_id)",
           "fix": null
         }
       ]

@@ -14,6 +14,13 @@ All notable changes are listed here. Versions of behaviour-critical components a
   line numbers and indentation. Matching is unchanged (still strict); only the explanation is more precise.
   Motivated by `ho-off-by-one` (right diagnosis, three diffs that never applied). Not yet measured live.
 
+### Changed
+- `rca-callers-v3`: `caller-passes-none` and `caller-symptomatic-patch` use an unambiguous `None` (an explicit
+  `return None` from a lookup, dereferenced in the callee) instead of `row.get("amount")`, which also reads as a
+  missing key. The other three cases are unchanged; the mock baseline is refreshed.
+- A patch refused by `fix_location` is kept with the attempt (`withheld_patch`, never proposed as a PR), shown in the
+  console and named in the guidance card, because the check has measured false positives.
+
 ### Fixed
 - Evidence `source: "caller_context"` (the model naming the source after our `<CALLER_CONTEXT>` block) failed schema
   validation and cost an attempt in 9 of 10 live runs; it is now an exact alias of `code_context` (`rca-prompt-v5.1`;
@@ -31,6 +38,8 @@ All notable changes are listed here. Versions of behaviour-critical components a
   `"` were flagged as not in the record; verification now uses the record's decoded strings.
 
 ### Added
+- Sixth live session (`rca-callers-v3` x2): category 10/10, no schema failures (alias fix confirmed), `fix_location`
+  fired 7/10 (5 intended catches, 2 false positives on the control case), accepted 3/10.
 - Fifth live session with repeats (callers x2, `ho-off-by-one` x3, `ho-drift-attribute` x2, assistant): outcome of the
   same case varies between runs; every accepted caller-set patch was made in the failing function; deploy drift
   handled 2/2; the fixed quote validator held up live.

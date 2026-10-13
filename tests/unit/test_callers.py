@@ -42,7 +42,7 @@ def test_caller_fetch_failure_keeps_the_trigger_context():
     local = local_source_fetcher(case)
 
     def flaky(repo, path, line):
-        if path.endswith("report.py"):
+        if path.endswith("mailer.py"):
             raise GitHubError("rate limited", "github_rate_limited")
         return local(repo, path, line)
 
@@ -90,3 +90,25 @@ def test_fix_location_does_not_fire_for_quotes_from_the_failing_window():
         CASES["control-cause-in-trigger"], lambda temperature: ScriptedModel(CASES["control-cause-in-trigger"])
     )
     assert result["gate_passed"] is True and "fix_location" not in result["attempts"][0]["failed_checks"]
+
+
+def test_a_patch_refused_by_fix_location_is_kept_with_the_attempt_for_the_reviewer():
+    from src.services.guidance import build_guidance
+
+    case = CASES["caller-symptomatic-patch"]
+    model = ScriptedModel(case)
+    result = run_case(case, lambda temperature: model)
+    first, second = result["attempts"]
+    assert "customer is None" in first["withheld_patch"] and "withheld_patch" not in second
+    assert result["patch"] is None  # nothing is proposed as a pull request
+
+    incident = {
+        "status": "needs_review",
+        "error_category": "no_code_fix",
+        "quality_score": 0.5,
+        "iterations": 2,
+        "suggested_patch": None,
+        "analysis": {"attempts": result["attempts"]},
+    }
+    steps = [s["text"] for s in build_guidance(incident)["next_steps"]]
+    assert any("withheld" in text and "look at the caller first" in text for text in steps)
