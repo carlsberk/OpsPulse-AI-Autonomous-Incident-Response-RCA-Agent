@@ -82,3 +82,25 @@ def test_unapplied_hunk_names_the_closest_real_lines_without_loosening_the_match
         diff.replace("      result = 0", "     result = 0").replace("      for item", "     for item")
     )
     assert apply_hunks(source, ok.hunks)[3] == "        result += item.price * item.qty"
+
+
+def test_a_hunk_that_miscounts_blank_lines_is_reported_at_the_line_that_differs():
+    source = ["from dateutil import parser", "", "", "def parse_due(text):", "    return parser.isoparse(text)"]
+    diff = (
+        "--- a/m.py\n+++ b/m.py\n@@ -1,5 +1,5 @@\n"
+        "-from dateutil import parser\n"
+        "-\n"
+        "-\n"
+        "-\n"  # the file has two blank lines, not three
+        "-def parse_due(text):\n"
+        "+import dateutil.parser as parser\n"
+        " \n"
+        "     return parser.isoparse(text)\n"
+    )
+    parsed = parse_unified_diff(diff)
+    with pytest.raises(PatchError) as info:
+        apply_hunks(source, parsed.hunks)
+    message = str(info.value)
+    assert "hunk 1: context/removed lines were not found" in message
+    assert "matches the file from line 1 for 3 line(s)" in message
+    assert "hunk line 4 ('')" in message and "'def parse_due(text):'" in message  # what differs, and what is there

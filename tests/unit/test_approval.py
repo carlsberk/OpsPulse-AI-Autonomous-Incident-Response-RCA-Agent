@@ -129,3 +129,34 @@ def test_reviewer_identity_is_recorded_from_the_key(client, proposal):
     decide(client, incident, "reject")
     approval = repositories.get_approval(uuid.UUID(incident["pending_approval"]["approval_id"]))
     assert approval["reviewer"] == "bob" and approval["status"] == "rejected"
+
+
+def test_simultaneous_approvals_open_exactly_one_pull_request(client, proposal):
+    """Eight reviewers press 'approve' at the same moment: the compare-and-set claim lets exactly one through."""
+    import threading
+
+    from fastapi.testclient import TestClient
+
+    from src.main import app
+
+    incident, created = proposal
+    barrier = threading.Barrier(8)
+    statuses: list[int] = []
+    lock = threading.Lock()
+
+    def approve() -> None:
+        local = TestClient(app)
+        barrier.wait(timeout=10)
+        code = decide(local, incident).status_code
+        with lock:
+            statuses.append(code)
+
+    threads = [threading.Thread(target=approve) for _ in range(8)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=60)
+
+    assert sorted(statuses).count(200) == 1, statuses  # one winner
+    assert all(code in (200, 409) for code in statuses), statuses  # everyone else gets a conflict, never a 5xx
+    assert len(created) == 1  # and exactly one GitHub write

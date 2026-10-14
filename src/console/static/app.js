@@ -443,10 +443,7 @@ function renderDetail(incident) {
   fillList("d-tests", analysis.tests_to_run);
   renderChecks(evaluation);
   renderAttempts(attempts);
-  const withheld = [...attempts].reverse().find((a) => a.withheld_patch);
-  const showWithheld = !incident.suggested_patch && withheld;
-  $("d-patch-title").textContent = showWithheld ? "Withheld patch (not proposed)" : "Proposed patch";
-  renderDiff(incident.suggested_patch || (withheld ? withheld.withheld_patch : null));
+  renderDiff(incident.suggested_patch);
   $("d-error").textContent = incident.error_message || "";
 
   $("retry").hidden = incident.status !== "failed";

@@ -97,7 +97,7 @@ case(
 
 case(
     "caller-symptomatic-patch",
-    "The model quotes the calling code but patches the callee; the gate must ask where the fix belongs",
+    "The model quotes the calling code but patches the callee; the gate flags it for the reviewer (a warning)",
     CUSTOMER_FILES,
     CUSTOMER_FRAMES,
     CUSTOMER_ERROR,

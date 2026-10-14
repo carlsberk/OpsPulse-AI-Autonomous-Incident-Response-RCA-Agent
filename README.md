@@ -211,7 +211,7 @@ the total, and the total must reach `QUALITY_THRESHOLD` (default 0.85).
 | `affected_files_grounding` | 0.05 | | listed files appear in the trace or are the retrieved file |
 | `diff_wellformed` | 0.10 | yes | parseable single-file diff whose header is the affected file |
 | `diff_applies` | 0.20 | yes | the diff applies to the retrieved source window |
-| `fix_location` | 0.05 | yes | a patch to the failing function is not accepted when an *observed* quote occurs only in a caller window: the diagnosis rests on what a caller passed, so a callee guard may only hide the symptom. The analysis must report the caller and leave the diff empty; it then goes to a human |
+| `fix_location` | 0.05 | no (since v8) | *warning*: the patch changes the failing function while an *observed* quote occurs only in a caller window - the diagnosis rests on what a caller passed, so a callee guard may only hide the symptom. Shown to the reviewer; it was a blocking check in v6/v7 and was demoted after it removed the patch from 14 of 15 live runs (see below) |
 | `patch_minimal` | 0.05 | | changed lines within `MAX_PATCH_CHANGED_LINES` |
 | `patch_locality` | 0.05 | | a hunk lands within 30 lines of the failing line |
 | `trace_code_consistency` | 0.05 | yes | the key/attribute named by the error appears on the retrieved failing line (not applicable to dynamic or unparsable lines) |
@@ -535,6 +535,34 @@ because the case was ambiguous, not to match the model.
   "Withheld patch (not proposed)" and named in the guidance card - with the caveat that this check can be wrong
   when the model quotes a caller only to rule it out. The gate is deliberately conservative here: every outcome
   still ends with a human, and the diagnosis is kept.
+
+**Seventh live session: `fix_location` as a veto did not survive its own measurement** (2026-10-14,
+`quality-gate-v7`, `gpt-oss-120b`, `rca-callers-v3`, 5 cases x 3 runs;
+[report](evals/results/rca-callers-v3-live-2026-10-14-gate-v7-repeat3.md)):
+
+| | Result (15 runs) |
+|---|---|
+| Category = label | 15/15 |
+| `fix_location` fired | **13/15** |
+| Accepted | **1/15** (the 14 others ended `needs_review` with no patch) |
+| Control case (the failing function really is at fault) | refused 3/3 - **3 false positives** |
+
+Earlier sessions (7/10 fired, 3/10 accepted) hinted at this; with more runs it is unambiguous: whenever caller
+windows are retrieved the model quotes them, and the veto then removes the patch almost every time - including the
+correct one. Nothing deterministic separated the real blame cases from the control (`affected_files`, patch kind and
+the quoted line type are the same). Because every proposal still ends with a reviewer, a heuristic that withholds the
+patch in 14 of 15 runs costs more than it protects. **`quality-gate-v8` makes `fix_location` a warning**: the patch
+is kept and accepted by the gate as before, and the reviewer is told - in the guidance card ("the patch changes the
+failing function, but the evidence quotes a caller: check where the bad value comes from"), in the gate breakdown,
+and by the guard-or-default label. The `withheld_patch` mechanism of v7 was removed with it (there is nothing left
+to withhold). Whether reviewers actually act on the warning is not something this repository can measure.
+
+**After the change** ([report](evals/results/rca-callers-v3-live-2026-10-14-gate-v8-repeat2.md), same set, 5 cases x 2):
+10/10 accepted on the first attempt (one control run needed 3), category 10/10, stable outcome for all 5 cases, 1.2
+attempts per case. 8 of the 10 accepted patches carry the `fix_location` warning and the same 8 are labelled
+guard-or-default: all six runs of the three blame cases are flagged, and the control case is flagged in 1 of 2 runs
+(a remaining false positive, now harmless to the patch). Every accepted patch on this set is a guard or a coercion
+in the failing function - which is exactly what the warning is for, and exactly why a person must read it.
 
 What the first live run showed, and what changed:
 
@@ -985,7 +1013,15 @@ One run of one bug - it shows the loop works end to end, not that it generalises
 - Role-based API keys stored as SHA-256 digests (fail-closed, constant-time compare), four-eyes approval,
   per-identity rate limit; Sentry webhooks authenticated by HMAC; repository allow-list checked at the API and
   again in the GitHub client; repository names with `.`/`..` segments rejected.
-- Console served with a strict CSP; every response carries `nosniff`, `no-referrer` and `X-Frame-Options: DENY`.
+- Console served with a strict CSP; every response carries `nosniff`, `no-referrer`, `X-Frame-Options: DENY`,
+  a `Permissions-Policy` that disables camera, microphone, geolocation, payment and USB, and
+  `Cross-Origin-Opener-Policy` / `Cross-Origin-Resource-Policy: same-origin`; HSTS is sent only over TLS
+  (directly or behind a proxy that sets `X-Forwarded-Proto: https`).
+- Every response carries an `X-Request-ID` (a caller-supplied value is used only if it is a plain 8-64 character
+  token, otherwise a fresh one is generated, so it can never inject header or log syntax) and every log line
+  carries the same `request_id`, so one user report can be traced through the logs.
+- Console colours meet WCAG AA contrast in both themes (a test reads the palette from the stylesheet);
+  eight simultaneous approvals open exactly one pull request (a threaded test; the claim is a compare-and-set).
 - No secrets in code; `.env` is git-ignored; config errors name the variable, never the value; JSON logs redact
   GitHub/Groq/Langfuse tokens, bearer tokens and connection-string passwords; third-party HTTP loggers are quieted.
 - GitHub errors are reduced to a category and a short message (no response bodies).
@@ -1010,8 +1046,10 @@ One run of one bug - it shows the loop works end to end, not that it generalises
   retrieved; causes further away (e.g. where a bad value was created, not where it was passed) are not visible.
   Patches are limited to the failing file even when the fix belongs in a caller. The first live caller run
   (`quality-gate-v5`, below) showed the model patching the failing function for a caller's bad argument and the
-  gate accepting it; `quality-gate-v6` adds `fix_location` for the case where the diagnosis *quotes* the caller.
-  A symptomatic patch whose diagnosis never mentions the caller is still undetectable.
+  gate accepting it. `fix_location` (v6) tried to refuse such patches when the diagnosis *quotes* the caller; live
+  it removed the patch from 14 of 15 runs, so since v8 it only **warns** the reviewer. There is no automatic
+  defence against a symptomatic patch: the guard-or-default label and that warning are the safeguards, and a
+  human decides. A symptomatic patch whose diagnosis never mentions the caller carries no warning at all.
 - The remediation branch name is deterministic per failure; a stale branch from an earlier, closed PR blocks a
   new PR until it is deleted (enable "automatically delete head branches" on the repository).
 - Evaluation labels and the retrieval dataset were authored by one person; metrics are indicative, not benchmarks.

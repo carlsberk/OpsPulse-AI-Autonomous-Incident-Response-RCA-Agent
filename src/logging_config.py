@@ -9,6 +9,7 @@ from contextvars import ContextVar
 from datetime import UTC, datetime
 
 incident_id_var: ContextVar[str | None] = ContextVar("incident_id", default=None)
+request_id_var: ContextVar[str | None] = ContextVar("request_id", default=None)
 
 _SECRET_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"\b(gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})"), "[REDACTED_GITHUB_TOKEN]"),
@@ -40,6 +41,9 @@ class JsonFormatter(logging.Formatter):
         incident_id = incident_id_var.get()
         if incident_id:
             payload["incident_id"] = incident_id
+        request_id = request_id_var.get()
+        if request_id:
+            payload["request_id"] = request_id
         if record.exc_info:
             payload["exception"] = redact(self.formatException(record.exc_info))
         return json.dumps(payload, ensure_ascii=False)

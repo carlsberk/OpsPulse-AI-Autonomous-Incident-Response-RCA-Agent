@@ -7,6 +7,8 @@ no inline scripts or styles, no third-party origins. API keys stay in the browse
 from __future__ import annotations
 
 import pathlib
+import re
+import uuid
 from collections.abc import Awaitable, Callable
 from html import escape as html_escape
 
@@ -21,11 +23,34 @@ CONSOLE_CSP = (
 )
 
 
+_REQUEST_ID = re.compile(r"^[A-Za-z0-9._-]{8,64}$")
+
+
 async def security_headers(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
-    response = await call_next(request)
+    """Per-request correlation id and response hardening headers.
+
+    A caller-supplied `X-Request-ID` is used only when it is a plain token (so it can never inject header or log
+    syntax); otherwise a fresh one is generated. It is echoed in the response and attached to every log line.
+    """
+    from src.logging_config import request_id_var
+
+    supplied = request.headers.get("x-request-id", "")
+    request_id = supplied if _REQUEST_ID.match(supplied) else uuid.uuid4().hex
+    token = request_id_var.set(request_id)
+    try:
+        response = await call_next(request)
+    finally:
+        request_id_var.reset(token)
+    response.headers["X-Request-ID"] = request_id
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("Referrer-Policy", "no-referrer")
     response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=()")
+    response.headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
+    response.headers.setdefault("Cross-Origin-Resource-Policy", "same-origin")
+    forwarded = request.headers.get("x-forwarded-proto", "").split(",")[0].strip().lower()
+    if request.url.scheme == "https" or forwarded == "https":  # only meaningful (and only sent) over TLS
+        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
     if request.url.path.startswith("/console"):
         response.headers["Content-Security-Policy"] = CONSOLE_CSP
         response.headers["Cache-Control"] = "no-store"

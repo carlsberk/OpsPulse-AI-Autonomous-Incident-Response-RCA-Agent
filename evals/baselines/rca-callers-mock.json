@@ -1,11 +1,11 @@
 {
   "mode": "mock",
-  "started_at": "2026-10-13T10:35:22.727830+00:00",
+  "started_at": "2026-10-14T09:38:52.548890+00:00",
   "dataset_version": "rca-callers-v3",
   "run_metadata": {
     "agent_version": "1.2.0-opspulse",
     "prompt_version": "rca-prompt-v5.1",
-    "evaluator_version": "quality-gate-v7",
+    "evaluator_version": "quality-gate-v8",
     "retrieval_strategy": "lexical-v1",
     "model": "openai/gpt-oss-120b",
     "quality_threshold": 0.85,
@@ -17,8 +17,8 @@
     "cases_not_evaluated": [],
     "structured_output_validity": {
       "value": 1.0,
-      "numerator": 6,
-      "denominator": 6,
+      "numerator": 5,
+      "denominator": 5,
       "definition": "LLM attempts whose reply validated against RCAOutput / LLM attempts (provider errors excluded)"
     },
     "category_accuracy": {
@@ -58,15 +58,15 @@
       "definition": "conclusive-labelled cases where the model abstained / conclusive-labelled cases"
     },
     "gate_acceptance_rate": {
-      "value": 0.2,
-      "numerator": 1,
+      "value": 0.4,
+      "numerator": 2,
       "denominator": 5,
       "definition": "cases accepted by the quality gate / evaluated cases"
     },
     "false_acceptance_rate": {
       "value": 0.0,
       "numerator": 0,
-      "denominator": 1,
+      "denominator": 2,
       "definition": "accepted cases that are inconclusive-labelled or have the wrong category / accepted cases"
     },
     "relevant_file_hit_rate": {
@@ -87,15 +87,15 @@
       "denominator": 5,
       "definition": "cases ending in workflow status 'failed' (e.g. provider errors) / cases"
     },
-    "avg_attempts": 1.2,
+    "avg_attempts": 1.0,
     "llm_latency_ms": {
       "mean": 0,
       "p95": 0,
-      "samples": 6
+      "samples": 5
     },
     "case_wall_ms": {
       "mean": 4,
-      "p95": 8
+      "p95": 7
     },
     "tokens": {
       "input": null,
@@ -118,18 +118,18 @@
       },
       "quality_score": {
         "samples": 5,
-        "brier": 0.1712,
+        "brier": 0.1292,
         "bins": [
           {
             "range": "0.50-0.70",
-            "n": 4,
+            "n": 3,
             "mean_score": 0.537,
             "accuracy": 1.0
           },
           {
             "range": "0.85-1.00",
-            "n": 1,
-            "mean_score": 0.988,
+            "n": 2,
+            "mean_score": 0.963,
             "accuracy": 1.0
           }
         ]
@@ -193,7 +193,7 @@
         "patch_locality": "no patch provided",
         "patch_effective": "no patch provided"
       },
-      "wall_ms": 8,
+      "wall_ms": 7,
       "run": 1
     },
     {
@@ -263,11 +263,11 @@
           "app/mailer.py"
         ]
       },
-      "workflow_status": "needs_review",
-      "error_category": "no_code_fix",
+      "workflow_status": "accepted",
+      "error_category": null,
       "error": null,
-      "gate_passed": false,
-      "quality_score": 0.5375,
+      "gate_passed": true,
+      "quality_score": 0.9375,
       "predicted_category": "null_reference",
       "declared_insufficient": false,
       "model_confidence": 0.75,
@@ -288,45 +288,20 @@
           "schema_valid": true,
           "schema_error_fields": [],
           "gate_score": 0.9375,
-          "gate_passed": false,
+          "gate_passed": true,
           "failed_checks": [
             "fix_location",
             "self_assessment"
           ],
-          "decision": "retrying with evaluator feedback"
-        },
-        {
-          "iteration": 2,
-          "latency_ms": 0,
-          "input_tokens": null,
-          "output_tokens": null,
-          "truncated": false,
-          "valid_json": true,
-          "schema_valid": true,
-          "schema_error_fields": [],
-          "gate_score": 0.5375,
-          "gate_passed": false,
-          "failed_checks": [
-            "self_assessment",
-            "diff_wellformed",
-            "diff_applies",
-            "patch_minimal",
-            "patch_locality",
-            "patch_effective"
-          ],
-          "decision": "grounded analysis without a code patch (operational root cause?)"
+          "decision": "quality gate passed"
         }
       ],
-      "patch": null,
+      "patch": "--- a/app/greeting.py\n+++ b/app/greeting.py\n@@ -1,2 +1,4 @@\n def greeting(customer):\n+    if customer is None:\n+        return \"Hello!\"\n     return f\"Hello, {customer.name}!\"",
       "failed_check_details": {
-        "self_assessment": "model self-assessed 0.75 (uncalibrated)",
-        "diff_wellformed": "no patch provided",
-        "diff_applies": "no patch provided",
-        "patch_minimal": "no patch provided",
-        "patch_locality": "no patch provided",
-        "patch_effective": "no patch provided"
+        "fix_location": "the evidence cites code that only occurs in a caller ('customer = find_customer(customers, customer_id)') but the patch changes the failing function, which may only hide the symptom. If the cause is in the caller, say so in uncertainties and leave unified_diff empty",
+        "self_assessment": "model self-assessed 0.75 (uncalibrated)"
       },
-      "wall_ms": 5,
+      "wall_ms": 3,
       "run": 1
     },
     {
@@ -384,7 +359,7 @@
         "patch_locality": "no patch provided",
         "patch_effective": "no patch provided"
       },
-      "wall_ms": 2,
+      "wall_ms": 3,
       "run": 1
     },
     {
@@ -432,7 +407,7 @@
       "failed_check_details": {
         "self_assessment": "model self-assessed 0.75 (uncalibrated)"
       },
-      "wall_ms": 2,
+      "wall_ms": 3,
       "run": 1
     }
   ]

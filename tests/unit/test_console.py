@@ -136,3 +136,40 @@ def test_console_ships_its_own_favicon_so_the_browser_does_not_request_a_missing
 def test_favicon_ico_is_served_so_browsers_do_not_log_a_404(client):
     response = client.get("/favicon.ico")
     assert response.status_code == 200 and "svg" in response.headers["content-type"]
+
+
+def test_hardening_headers_are_sent_and_hsts_only_over_tls(client):
+    plain = client.get("/healthz").headers
+    assert plain["permissions-policy"].startswith("camera=()")
+    assert (
+        plain["cross-origin-opener-policy"] == "same-origin" and plain["cross-origin-resource-policy"] == "same-origin"
+    )
+    assert "strict-transport-security" not in plain  # HSTS over plain HTTP would be meaningless
+    behind_proxy = client.get("/healthz", headers={"X-Forwarded-Proto": "https"}).headers
+    assert behind_proxy["strict-transport-security"].startswith("max-age=31536000")
+
+
+def test_request_id_is_echoed_when_valid_and_regenerated_when_not(client):
+    assert client.get("/healthz", headers={"X-Request-ID": "trace-abc_123.xyz"}).headers["x-request-id"] == (
+        "trace-abc_123.xyz"
+    )
+    generated = client.get("/healthz").headers["x-request-id"]
+    assert re.fullmatch(r"[0-9a-f]{32}", generated)
+    for bad in ("short", "has space in it 123456", "a" * 200, "new\nline-123456"):
+        replaced = client.get("/healthz", headers={"X-Request-ID": bad}).headers["x-request-id"]
+        assert replaced != bad and re.fullmatch(r"[0-9a-f]{32}", replaced), bad  # never reflected
+
+
+def test_log_lines_carry_the_request_id():
+    import json
+    import logging
+
+    from src.logging_config import JsonFormatter, request_id_var
+
+    record = logging.LogRecord("t", logging.INFO, __file__, 1, "hello", None, None)
+    token = request_id_var.set("req-0123456789")
+    try:
+        assert json.loads(JsonFormatter().format(record))["request_id"] == "req-0123456789"
+    finally:
+        request_id_var.reset(token)
+    assert "request_id" not in json.loads(JsonFormatter().format(record))

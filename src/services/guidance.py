@@ -386,15 +386,15 @@ def build_guidance(incident: dict[str, Any], now: datetime | None = None) -> dic
             "See the runbook section 'PR creation fails' (existing branch, stale patch, token scope).",
         )
 
-    withheld = next((a["withheld_patch"] for a in reversed(attempts) if a.get("withheld_patch")), None)
-    if withheld and not incident.get("suggested_patch"):
+    fix_location = ((analysis.get("evaluation") or {}).get("checks") or {}).get("fix_location") or {}
+    if incident.get("suggested_patch") and (fix_location.get("score") or 0) < (fix_location.get("max") or 0):
         add(
             "check",
             "reviewer",
-            "An earlier attempt proposed a patch to the failing function while its evidence quoted a caller (gate "
-            "check fix_location), so it was withheld. It is kept with that attempt and never became a pull request: "
-            "read it as a hint, and look at the caller first - the cause is probably there. (This check can be wrong "
-            "when the model quotes a caller only to rule it out.)",
+            "The patch changes the failing function, but the evidence quotes code from a caller (gate check "
+            "fix_location). Check where the bad value comes from before accepting a fix here: if a caller creates "
+            "or passes it, the real fix belongs there. (This is a heuristic; it also fires when the model quotes a "
+            "caller only to rule it out.)",
         )
     patch = patch_facts(incident.get("suggested_patch"))
     if patch and patch.get("pattern") == "guard_or_default":

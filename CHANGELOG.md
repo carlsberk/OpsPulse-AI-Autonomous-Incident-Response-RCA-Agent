@@ -24,10 +24,21 @@ All notable changes are listed here. Versions of behaviour-critical components a
 - `rca-callers-v3`: `caller-passes-none` and `caller-symptomatic-patch` use an unambiguous `None` (an explicit
   `return None` from a lookup, dereferenced in the callee) instead of `row.get("amount")`, which also reads as a
   missing key. The other three cases are unchanged; the mock baseline is refreshed.
-- A patch refused by `fix_location` is kept with the attempt (`withheld_patch`, never proposed as a PR), shown in the
-  console and named in the guidance card, because the check has measured false positives.
+- `quality-gate-v8`: `fix_location` is a **warning**, not a blocking check. Measured live over 15 runs it fired 13
+  times and left 14 without a patch, with 3/3 false positives on the control case; nothing deterministic separated
+  the real blame cases. The patch is kept, the reviewer is told (guidance card, gate breakdown, guard label).
+  The v7 `withheld_patch` mechanism was removed with it.
+
+### Added
+- `X-Request-ID` on every response and `request_id` on every log line (validated, never reflected raw).
+- Hardening headers: `Permissions-Policy`, `Cross-Origin-Opener-Policy`, `Cross-Origin-Resource-Policy`, and HSTS
+  over TLS only.
+- Tests: WCAG AA contrast of both themes from the real stylesheet; eight simultaneous approvals open one PR.
+- Patch feedback names the *line of the hunk* that stops matching the file (models usually copy the first lines
+  right and miscount blank lines; "first line not found" was misleading because that line is in the file).
 
 ### Fixed
+- Light-theme success colour was 4.44:1 on its soft background (AA needs 4.5); darkened.
 - Static file paths the operating system cannot stat (for example `<` on Windows) answered HTTP 500; they are 404.
   Found by a new API fuzz test (`tests/unit/test_api_fuzz.py`: no request may produce a 5xx).
 - Console: a function name was declared twice in `app.js` (the second silently replaced the first) - caught in a real

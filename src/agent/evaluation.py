@@ -40,7 +40,6 @@ BLOCKING_CHECKS = frozenset(
         "trigger_grounding",
         "evidence_grounding",
         "trace_code_consistency",
-        "fix_location",
         "diff_wellformed",
         "diff_applies",
         "patch_effective",
@@ -290,13 +289,15 @@ def _window_text(block: str | None) -> str:
 
 
 def check_fix_location(inp: EvaluationInput) -> CheckResult:
-    """A patch to the failing function must not sit next to a diagnosis that rests on caller code.
+    """Warn when a patch to the failing function sits next to a diagnosis that rests on caller code.
 
     When an 'observed' quote occurs only in the caller windows (not in the failing file's window), the model is
-    reasoning about what a caller passed. A guard in the callee can then merely hide the symptom, and callers may
-    not be patched. The analysis has to report the caller and leave the diff empty; the incident then goes to a
-    human reviewer instead of becoming a pull request. A callee guard can be right, but a deterministic gate cannot
-    tell, so it does not accept it.
+    reasoning about what a caller passed, and a guard in the callee can merely hide the symptom. This is a
+    *warning*, not a veto (quality-gate-v8). It was blocking in v6/v7 and was measured live: in 15 runs it fired 13
+    times and left 14 runs without a patch, including 3 of 3 runs of the control case where the failing function
+    really was at fault and the model quoted the caller only to clear it. Nothing deterministic separated those
+    from the real blame cases, and every proposal ends with a human anyway, so the reviewer is told (guidance card,
+    gate breakdown, patch label) instead of being denied the patch.
     """
     if not inp.patch or not inp.caller_context:
         return CheckResult(1.0, "ok")
@@ -313,8 +314,8 @@ def check_fix_location(inp: EvaluationInput) -> CheckResult:
     return CheckResult(
         0.0,
         "the evidence cites code that only occurs in a caller (" + "; ".join(repr(q) for q in cited[:2]) + ") but the "
-        "patch changes the failing function, which may only hide the symptom. If the fix belongs in the caller, "
-        "report that in uncertainties and leave unified_diff empty (the incident then goes to a human)",
+        "patch changes the failing function, which may only hide the symptom. If the cause is in the caller, "
+        "say so in uncertainties and leave unified_diff empty",
     )
 
 

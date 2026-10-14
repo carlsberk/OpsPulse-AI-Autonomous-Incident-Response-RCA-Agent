@@ -1,0 +1,724 @@
+{
+  "mode": "live",
+  "started_at": "2026-10-14T09:40:17.443541+00:00",
+  "dataset_version": "rca-callers-v3",
+  "run_metadata": {
+    "agent_version": "1.2.0-opspulse",
+    "prompt_version": "rca-prompt-v5.1",
+    "evaluator_version": "quality-gate-v8",
+    "retrieval_strategy": "lexical-v1",
+    "model": "openai/gpt-oss-120b",
+    "quality_threshold": 0.85,
+    "max_analysis_iterations": 3,
+    "max_output_tokens": 4096
+  },
+  "metrics": {
+    "cases": 10,
+    "cases_not_evaluated": [],
+    "structured_output_validity": {
+      "value": 0.8333,
+      "numerator": 10,
+      "denominator": 12,
+      "definition": "LLM attempts whose reply validated against RCAOutput / LLM attempts (provider errors excluded)"
+    },
+    "category_accuracy": {
+      "value": 1.0,
+      "numerator": 10,
+      "denominator": 10,
+      "definition": "final category == labelled category / cases labelled conclusive"
+    },
+    "evidence_grounding_accuracy": {
+      "value": 1.0,
+      "numerator": 27,
+      "denominator": 27,
+      "definition": "'observed' quotes found verbatim in their cited source / all 'observed' quotes (final analyses)"
+    },
+    "unsupported_claim_rate": {
+      "value": 0.0,
+      "numerator": 0,
+      "denominator": 37,
+      "definition": "(unverifiable 'observed' quotes + affected files absent from trace/retrieved file) / (all quotes + all affected files)"
+    },
+    "abstention_recall": {
+      "value": null,
+      "numerator": 0,
+      "denominator": 0,
+      "definition": "inconclusive-labelled cases where the model declared insufficient evidence or category 'unknown' / inconclusive-labelled cases"
+    },
+    "inconclusive_not_accepted_rate": {
+      "value": null,
+      "numerator": 0,
+      "denominator": 0,
+      "definition": "inconclusive-labelled cases the quality gate did NOT accept / inconclusive-labelled cases"
+    },
+    "false_abstention_rate": {
+      "value": 0.0,
+      "numerator": 0,
+      "denominator": 10,
+      "definition": "conclusive-labelled cases where the model abstained / conclusive-labelled cases"
+    },
+    "gate_acceptance_rate": {
+      "value": 1.0,
+      "numerator": 10,
+      "denominator": 10,
+      "definition": "cases accepted by the quality gate / evaluated cases"
+    },
+    "false_acceptance_rate": {
+      "value": 0.0,
+      "numerator": 0,
+      "denominator": 10,
+      "definition": "accepted cases that are inconclusive-labelled or have the wrong category / accepted cases"
+    },
+    "relevant_file_hit_rate": {
+      "value": 0.2,
+      "numerator": 2,
+      "denominator": 10,
+      "definition": "cases whose affected_files contain a labelled relevant file / cases with labelled files"
+    },
+    "unsupported_acceptance_rate": {
+      "value": null,
+      "numerator": 0,
+      "denominator": 0,
+      "definition": "unsupported analyses (inconclusive-labelled or with an unverifiable quote) the gate accepted / unsupported analyses"
+    },
+    "workflow_failure_rate": {
+      "value": 0.0,
+      "numerator": 0,
+      "denominator": 10,
+      "definition": "cases ending in workflow status 'failed' (e.g. provider errors) / cases"
+    },
+    "avg_attempts": 1.2,
+    "llm_latency_ms": {
+      "mean": 2122450,
+      "p95": 25361838,
+      "samples": 12
+    },
+    "case_wall_ms": {
+      "mean": 2546974,
+      "p95": 25375650
+    },
+    "tokens": {
+      "input": 27408,
+      "output": 18267,
+      "attempts_with_usage": 12
+    },
+    "estimated_cost_usd": null,
+    "calibration": {
+      "model_confidence": {
+        "samples": 10,
+        "brier": 0.075,
+        "bins": [
+          {
+            "range": "0.70-0.85",
+            "n": 10,
+            "mean_score": 0.73,
+            "accuracy": 1.0
+          }
+        ]
+      },
+      "quality_score": {
+        "samples": 10,
+        "brier": 0.0033,
+        "bins": [
+          {
+            "range": "0.85-1.00",
+            "n": 10,
+            "mean_score": 0.947,
+            "accuracy": 1.0
+          }
+        ]
+      }
+    },
+    "consistency": {
+      "cases_repeated": 5,
+      "stable_outcome_rate": {
+        "value": 1.0,
+        "numerator": 5,
+        "denominator": 5,
+        "definition": "repeated cases whose outcome never changed / repeated cases"
+      },
+      "per_case": {
+        "caller-passes-none": {
+          "runs": 2,
+          "accepted": 2,
+          "correct_category": 2,
+          "distinct_outcomes": 1
+        },
+        "caller-empty-list": {
+          "runs": 2,
+          "accepted": 2,
+          "correct_category": 2,
+          "distinct_outcomes": 1
+        },
+        "caller-symptomatic-patch": {
+          "runs": 2,
+          "accepted": 2,
+          "correct_category": 2,
+          "distinct_outcomes": 1
+        },
+        "caller-two-levels-up": {
+          "runs": 2,
+          "accepted": 2,
+          "correct_category": 2,
+          "distinct_outcomes": 1
+        },
+        "control-cause-in-trigger": {
+          "runs": 2,
+          "accepted": 2,
+          "correct_category": 2,
+          "distinct_outcomes": 1
+        }
+      }
+    }
+  },
+  "results": [
+    {
+      "case_id": "caller-passes-none",
+      "expected": {
+        "root_cause_category": "null_reference",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/mailer.py"
+        ]
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.935,
+      "predicted_category": "null_reference",
+      "declared_insufficient": false,
+      "model_confidence": 0.7,
+      "observed_quotes": 3,
+      "grounded_quotes": 3,
+      "affected_files": [
+        "app/greeting.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 3971,
+          "input_tokens": 2133,
+          "output_tokens": 1355,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.935,
+          "gate_passed": true,
+          "failed_checks": [
+            "fix_location",
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/greeting.py\n+++ b/app/greeting.py\n@@ -1,2 +1,4 @@\n def greeting(customer):\n+    if customer is None:\n+        raise ValueError(\"customer must not be None\")\n     return f\"Hello, {customer.name}!\"",
+      "failed_check_details": {
+        "fix_location": "the evidence cites code that only occurs in a caller ('customer = find_customer(customers, customer_id)') but the patch changes the failing function, which may only hide the symptom. If the cause is in the caller, say so in uncertainties and leave unified_diff empty",
+        "self_assessment": "model self-assessed 0.70 (uncalibrated)"
+      },
+      "wall_ms": 3981,
+      "run": 1
+    },
+    {
+      "case_id": "caller-passes-none",
+      "expected": {
+        "root_cause_category": "null_reference",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/mailer.py"
+        ]
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.935,
+      "predicted_category": "null_reference",
+      "declared_insufficient": false,
+      "model_confidence": 0.7,
+      "observed_quotes": 2,
+      "grounded_quotes": 2,
+      "affected_files": [
+        "app/greeting.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 3728,
+          "input_tokens": 2133,
+          "output_tokens": 1595,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.935,
+          "gate_passed": true,
+          "failed_checks": [
+            "fix_location",
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/greeting.py\n+++ b/app/greeting.py\n@@ -1,2 +1,4 @@\n def greeting(customer):\n+    if customer is None:\n+        raise ValueError(\"customer must not be None\")\n     return f\"Hello, {customer.name}!\"",
+      "failed_check_details": {
+        "fix_location": "the evidence cites code that only occurs in a caller ('customer = find_customer(customers, customer_id)') but the patch changes the failing function, which may only hide the symptom. If the cause is in the caller, say so in uncertainties and leave unified_diff empty",
+        "self_assessment": "model self-assessed 0.70 (uncalibrated)"
+      },
+      "wall_ms": 3734,
+      "run": 2
+    },
+    {
+      "case_id": "caller-empty-list",
+      "expected": {
+        "root_cause_category": "logic_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/orders.py"
+        ]
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.935,
+      "predicted_category": "logic_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.7,
+      "observed_quotes": 3,
+      "grounded_quotes": 3,
+      "affected_files": [
+        "app/payments.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 6853,
+          "input_tokens": 2138,
+          "output_tokens": 1723,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.935,
+          "gate_passed": true,
+          "failed_checks": [
+            "fix_location",
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/payments.py\n+++ b/app/payments.py\n@@ -1,3 +1,5 @@\n def split_payment(total, parts):\n+    if parts == 0:\n+        return []\n     share = total / parts\n     return [share] * parts",
+      "failed_check_details": {
+        "fix_location": "the evidence cites code that only occurs in a caller ('shares = split_payment(order[\"total\"], len(payers)'; 'payers = order.get(\"payers\", [])') but the patch changes the failing function, which may only hide the symptom. If the cause is in the caller, say so in uncertainties and leave unified_diff empty",
+        "self_assessment": "model self-assessed 0.70 (uncalibrated)"
+      },
+      "wall_ms": 6858,
+      "run": 1
+    },
+    {
+      "case_id": "caller-empty-list",
+      "expected": {
+        "root_cause_category": "logic_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/orders.py"
+        ]
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.935,
+      "predicted_category": "logic_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.7,
+      "observed_quotes": 3,
+      "grounded_quotes": 3,
+      "affected_files": [
+        "app/payments.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 20806,
+          "input_tokens": 2138,
+          "output_tokens": 1396,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.935,
+          "gate_passed": true,
+          "failed_checks": [
+            "fix_location",
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/payments.py\n+++ b/app/payments.py\n@@ -1,3 +1,5 @@\n def split_payment(total, parts):\n+    if parts == 0:\n+        return []\n     share = total / parts\n     return [share] * parts",
+      "failed_check_details": {
+        "fix_location": "the evidence cites code that only occurs in a caller ('shares = split_payment(order[\"total\"], len(payers)'; 'payers = order.get(\"payers\", [])') but the patch changes the failing function, which may only hide the symptom. If the cause is in the caller, say so in uncertainties and leave unified_diff empty",
+        "self_assessment": "model self-assessed 0.70 (uncalibrated)"
+      },
+      "wall_ms": 20811,
+      "run": 2
+    },
+    {
+      "case_id": "caller-symptomatic-patch",
+      "expected": {
+        "root_cause_category": "null_reference",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/mailer.py"
+        ]
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.935,
+      "predicted_category": "null_reference",
+      "declared_insufficient": false,
+      "model_confidence": 0.7,
+      "observed_quotes": 3,
+      "grounded_quotes": 3,
+      "affected_files": [
+        "app/greeting.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 4363,
+          "input_tokens": 2133,
+          "output_tokens": 1544,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.935,
+          "gate_passed": true,
+          "failed_checks": [
+            "fix_location",
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/greeting.py\n+++ b/app/greeting.py\n@@ -1,2 +1,4 @@\n def greeting(customer):\n-    return f\"Hello, {customer.name}!\"\n+    if customer is None:\n+        raise ValueError(\"customer must not be None\")\n+    return f\"Hello, {customer.name}!\"",
+      "failed_check_details": {
+        "fix_location": "the evidence cites code that only occurs in a caller ('customer = find_customer(customers, customer_id)') but the patch changes the failing function, which may only hide the symptom. If the cause is in the caller, say so in uncertainties and leave unified_diff empty",
+        "self_assessment": "model self-assessed 0.70 (uncalibrated)"
+      },
+      "wall_ms": 4368,
+      "run": 1
+    },
+    {
+      "case_id": "caller-symptomatic-patch",
+      "expected": {
+        "root_cause_category": "null_reference",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/mailer.py"
+        ]
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.935,
+      "predicted_category": "null_reference",
+      "declared_insufficient": false,
+      "model_confidence": 0.7,
+      "observed_quotes": 3,
+      "grounded_quotes": 3,
+      "affected_files": [
+        "app/greeting.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 4365,
+          "input_tokens": 2133,
+          "output_tokens": 1404,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.935,
+          "gate_passed": true,
+          "failed_checks": [
+            "fix_location",
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/greeting.py\n+++ b/app/greeting.py\n@@ -1,2 +1,4 @@\n def greeting(customer):\n-    return f\"Hello, {customer.name}!\"\n+    if customer is None:\n+        # Return a generic greeting when customer data is missing\n+        return \"Hello!\"\n+    return f\"Hello, {customer.name}!\"",
+      "failed_check_details": {
+        "fix_location": "the evidence cites code that only occurs in a caller ('customer = find_customer(customers, customer_id)') but the patch changes the failing function, which may only hide the symptom. If the cause is in the caller, say so in uncertainties and leave unified_diff empty",
+        "self_assessment": "model self-assessed 0.70 (uncalibrated)"
+      },
+      "wall_ms": 4370,
+      "run": 2
+    },
+    {
+      "case_id": "caller-two-levels-up",
+      "expected": {
+        "root_cause_category": "type_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/handlers.py"
+        ]
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.94,
+      "predicted_category": "type_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.8,
+      "observed_quotes": 3,
+      "grounded_quotes": 3,
+      "affected_files": [
+        "app/util.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 18287,
+          "input_tokens": 2238,
+          "output_tokens": 1274,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.94,
+          "gate_passed": true,
+          "failed_checks": [
+            "fix_location",
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/util.py\n+++ b/app/util.py\n@@ -1,2 +1,2 @@\n def page_offset(page, size):\n-    return (page - 1) * size\n+    return (int(page) - 1) * size",
+      "failed_check_details": {
+        "fix_location": "the evidence cites code that only occurs in a caller ('page = request.query.get(\"page\", \"1\")') but the patch changes the failing function, which may only hide the symptom. If the cause is in the caller, say so in uncertainties and leave unified_diff empty",
+        "self_assessment": "model self-assessed 0.80 (uncalibrated)"
+      },
+      "wall_ms": 18292,
+      "run": 1
+    },
+    {
+      "case_id": "caller-two-levels-up",
+      "expected": {
+        "root_cause_category": "type_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/handlers.py"
+        ]
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.99,
+      "predicted_category": "type_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.8,
+      "observed_quotes": 2,
+      "grounded_quotes": 2,
+      "affected_files": [
+        "app/util.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 16296,
+          "input_tokens": 2238,
+          "output_tokens": 1556,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.99,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/util.py\n+++ b/app/util.py\n@@ -1,2 +1,2 @@\n def page_offset(page, size):\n-    return (page - 1) * size\n+    return (int(page) - 1) * size",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.80 (uncalibrated)"
+      },
+      "wall_ms": 16303,
+      "run": 2
+    },
+    {
+      "case_id": "control-cause-in-trigger",
+      "expected": {
+        "root_cause_category": "logic_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/stats.py"
+        ]
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.985,
+      "predicted_category": "logic_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.7,
+      "observed_quotes": 2,
+      "grounded_quotes": 2,
+      "affected_files": [
+        "app/stats.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 9749,
+          "input_tokens": 2158,
+          "output_tokens": 1528,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": false,
+          "schema_error_fields": [
+            "patch_remediation:missing",
+            "uncertainties:missing",
+            "tests_to_run:missing",
+            "control_flow:missing"
+          ],
+          "gate_score": 0.46,
+          "gate_passed": false,
+          "failed_checks": [
+            "schema",
+            "self_assessment",
+            "diff_wellformed",
+            "diff_applies",
+            "patch_minimal",
+            "patch_locality",
+            "patch_effective"
+          ],
+          "decision": "retrying with evaluator feedback"
+        },
+        {
+          "iteration": 2,
+          "latency_ms": 25361838,
+          "input_tokens": 2944,
+          "output_tokens": 1648,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": false,
+          "schema_error_fields": [
+            "patch_remediation:missing",
+            "uncertainties:missing"
+          ],
+          "gate_score": 0.515,
+          "gate_passed": false,
+          "failed_checks": [
+            "schema",
+            "self_assessment",
+            "diff_wellformed",
+            "diff_applies",
+            "patch_minimal",
+            "patch_locality",
+            "patch_effective"
+          ],
+          "decision": "retrying with evaluator feedback"
+        },
+        {
+          "iteration": 3,
+          "latency_ms": 3778,
+          "input_tokens": 2864,
+          "output_tokens": 1564,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.985,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/stats.py\n+++ b/app/stats.py\n@@ -5,2 +5,5 @@\n def safe_mean(values):\n-    return mean(values)\n+    # Return 0 for empty input to avoid division by zero\n+    if not values:\n+        return 0\n+    return mean(values)",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.70 (uncalibrated)"
+      },
+      "wall_ms": 25375650,
+      "run": 1
+    },
+    {
+      "case_id": "control-cause-in-trigger",
+      "expected": {
+        "root_cause_category": "logic_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/stats.py"
+        ]
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.94,
+      "predicted_category": "logic_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.8,
+      "observed_quotes": 3,
+      "grounded_quotes": 3,
+      "affected_files": [
+        "app/stats.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 15360,
+          "input_tokens": 2158,
+          "output_tokens": 1680,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.94,
+          "gate_passed": true,
+          "failed_checks": [
+            "fix_location",
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/stats.py\n+++ b/app/stats.py\n@@ -1,6 +1,8 @@\n def mean(values):\n     return sum(values) / len(values)\n \n \n-def safe_mean(values):\n-    return mean(values)\n+def safe_mean(values):\n+    if not values:\n+        return 0\n+    return mean(values)",
+      "failed_check_details": {
+        "fix_location": "the evidence cites code that only occurs in a caller ('values = [m[\"value\"] for m in metrics if m[\"value\"') but the patch changes the failing function, which may only hide the symptom. If the cause is in the caller, say so in uncertainties and leave unified_diff empty",
+        "self_assessment": "model self-assessed 0.80 (uncalibrated)"
+      },
+      "wall_ms": 15374,
+      "run": 2
+    }
+  ]
+}

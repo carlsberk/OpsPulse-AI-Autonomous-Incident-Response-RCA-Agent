@@ -74,15 +74,29 @@ def test_quotes_from_a_caller_are_grounded_only_with_caller_context(set_settings
     assert without["grounded_quotes"] < without["observed_quotes"]
 
 
-def test_patch_next_to_a_diagnosis_citing_caller_code_is_rejected_then_routed_to_a_human():
+def test_patch_next_to_a_diagnosis_citing_caller_code_is_accepted_but_flagged_for_the_reviewer():
+    """Measured live: as a veto this check fired in 13 of 15 runs and removed the patch from 14, with 3 of 3 false
+    positives on the control case. It is a warning now (quality-gate-v8): the patch survives, the reviewer is told."""
+    from src.agent.evaluation import BLOCKING_CHECKS
+    from src.services.guidance import build_guidance
+
+    assert "fix_location" not in BLOCKING_CHECKS
     case = CASES["caller-symptomatic-patch"]
     model = ScriptedModel(case)
     result = run_case(case, lambda temperature: model)
-    first, second = result["attempts"]
-    assert first["gate_passed"] is False and "fix_location" in first["failed_checks"]
-    assert "caller" in first["decision"] or first["decision"] == "retrying with evaluator feedback"
-    assert second["gate_passed"] is False  # no patch left: grounded analysis, nothing to propose
-    assert result["workflow_status"] == "needs_review" and result["predicted_category"] == "null_reference"
+    (attempt,) = result["attempts"]
+    assert attempt["gate_passed"] is True and "fix_location" in attempt["failed_checks"]
+    assert result["workflow_status"] == "accepted" and "customer is None" in result["patch"]
+
+    incident = {
+        "status": "analysis_ready",
+        "quality_score": result["quality_score"],
+        "iterations": 1,
+        "suggested_patch": result["patch"],
+        "analysis": {"evaluation": {"checks": {"fix_location": {"score": 0.0, "max": 0.05, "blocking": False}}}},
+    }
+    steps = [s["text"] for s in build_guidance(incident)["next_steps"]]
+    assert any("fix_location" in text and "where the bad value comes from" in text for text in steps)
 
 
 def test_fix_location_does_not_fire_for_quotes_from_the_failing_window():
@@ -90,25 +104,3 @@ def test_fix_location_does_not_fire_for_quotes_from_the_failing_window():
         CASES["control-cause-in-trigger"], lambda temperature: ScriptedModel(CASES["control-cause-in-trigger"])
     )
     assert result["gate_passed"] is True and "fix_location" not in result["attempts"][0]["failed_checks"]
-
-
-def test_a_patch_refused_by_fix_location_is_kept_with_the_attempt_for_the_reviewer():
-    from src.services.guidance import build_guidance
-
-    case = CASES["caller-symptomatic-patch"]
-    model = ScriptedModel(case)
-    result = run_case(case, lambda temperature: model)
-    first, second = result["attempts"]
-    assert "customer is None" in first["withheld_patch"] and "withheld_patch" not in second
-    assert result["patch"] is None  # nothing is proposed as a pull request
-
-    incident = {
-        "status": "needs_review",
-        "error_category": "no_code_fix",
-        "quality_score": 0.5,
-        "iterations": 2,
-        "suggested_patch": None,
-        "analysis": {"attempts": result["attempts"]},
-    }
-    steps = [s["text"] for s in build_guidance(incident)["next_steps"]]
-    assert any("withheld" in text and "look at the caller first" in text for text in steps)

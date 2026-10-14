@@ -308,11 +308,6 @@ def evaluate_analysis(state: IncidentState) -> Update:
             "failed_checks": failed,
             "decision": reason,
         }
-        # `fix_location` is a heuristic with known false positives (a model that quotes a caller only to clear it).
-        # When it is the reason a patch is refused, keep the patch with the attempt - it is never proposed as a pull
-        # request, but a reviewer can still read it instead of losing it when the retry drops it.
-        if "fix_location" in failed and state["suggested_patch"]:
-            record["withheld_patch"] = state["suggested_patch"][:20_000]
         attempts[-1] = record
     logger.info(
         "evaluation attempt %d: score=%.4f passed=%s -> %s", state["iterations"], result.score, result.passed, status

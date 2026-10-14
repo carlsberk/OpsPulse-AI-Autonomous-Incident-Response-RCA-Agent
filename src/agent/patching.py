@@ -140,6 +140,29 @@ def _find(lines: list[str], block: list[str], start: int, expected: int) -> int 
     return min(hits, key=lambda i: abs(i - expected))
 
 
+def _first_mismatch(lines: list[str], block: list[str], first_number: int) -> str:
+    """Where does the hunk stop matching the file?
+
+    The model usually copies the first lines right and then miscounts (typically blank lines). "first line not
+    found" is the wrong thing to report then, because the first line *is* in the file. This finds the position
+    where the longest leading part of the hunk matches and names the first line that differs.
+    """
+    best_start, best_run = 0, -1
+    for start in range(len(lines)):
+        run = 0
+        while start + run < len(lines) and run < len(block) and _eq(lines[start + run], block[run]):
+            run += 1
+        if run > best_run:
+            best_start, best_run = start, run
+    if best_run <= 0 or best_run >= len(block):
+        return ""
+    found = lines[best_start + best_run] if best_start + best_run < len(lines) else "<end of the retrieved window>"
+    return (
+        f" The hunk matches the file from line {first_number + best_start} for {best_run} line(s); hunk line "
+        f"{best_run + 1} ({block[best_run][:60]!r}) differs from the file's {found[:60]!r}."
+    )
+
+
 def _closest_lines(lines: list[str], block: list[str], first_number: int) -> str:
     """The window of `lines` most similar to the hunk's expected lines, quoted with real line numbers.
 
@@ -183,6 +206,7 @@ def apply_hunks(
         if idx is None:
             raise PatchError(
                 f"hunk {number}: context/removed lines were not found in the source (first line: {old[0][:70]!r})."
+                + _first_mismatch(work, old, line_offset + 1 - delta)
                 + _closest_lines(work, old, line_offset + 1 - delta)
             )
         if positions is not None:

@@ -56,7 +56,7 @@
     },
     {
       "id": "caller-symptomatic-patch",
-      "scenario": "The model quotes the calling code but patches the callee; the gate must ask where the fix belongs",
+      "scenario": "The model quotes the calling code but patches the callee; the gate flags it for the reviewer (a warning)",
       "repo_name": "eval/callers",
       "error_message": "AttributeError: 'NoneType' object has no attribute 'name'",
       "stack_trace": "Traceback (most recent call last):\n  File \"/app/app/mailer.py\", line 7, in welcome_email\n    return greeting(customer)\n  File \"/app/app/greeting.py\", line 2, in greeting\n    return f\"Hello, {customer.name}!\"\nAttributeError: 'NoneType' object has no attribute 'name'",
