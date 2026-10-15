@@ -6,6 +6,13 @@ All notable changes are listed here. Versions of behaviour-critical components a
 ## [Unreleased]
 
 ### Changed
+- Prompt `rca-prompt-v6`: the model is told to decide *where* the fault is (failing function vs. a caller) and to leave
+  `unified_diff` empty when a caller is at fault. Live, `rca-callers-v3` x3 (15 runs): category 15/15, control case
+  accepted 3/3 with its patch, the three blame cases routed to review 9/9 (no callee patch); but `caller-empty-list`
+  (label: caller) was still patched in the callee and accepted 3/3, and `relevant_file_hit_rate` is 5/15 because the
+  caller file is named in the explanation rather than `affected_files`. Small n; see the report in `evals/results/`.
+
+### Changed
 - Review console redesign: deep links and back/forward navigation, search, auto-refresh, keyboard shortcuts,
   gate-check meters (failures first), attempt timeline, patch view with line numbers, copy/download, confirmation
   dialog with the approval-bound SHA-256, theme switch, mobile layout, toasts, empty and loading states. Same CSP
