@@ -16,6 +16,7 @@ from src.api.schemas import (
     AskRequest,
     AskResponse,
     ErrorResponse,
+    EvidenceGraphResponse,
     GuidanceResponse,
     HealthResponse,
     IncidentAccepted,
@@ -30,7 +31,7 @@ from src.api.schemas import (
 from src.config import settings
 from src.db.client import ping_database
 from src.db.repositories import InvalidCursorError
-from src.services import ask_service, guidance, incident_service, trace
+from src.services import ask_service, evidence_graph, guidance, incident_service, trace
 from src.services.incident_service import DatabaseUnavailableError, IncidentConflictError, IncidentNotFoundError
 from src.services.remediation_service import ApprovalError
 
@@ -268,6 +269,25 @@ def incident_trace(incident_id: uuid.UUID) -> TraceResponse:
     if row is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "incident not found")
     return TraceResponse(**trace.build_trace(row))
+
+
+@router.get(
+    "/incidents/{incident_id}/evidence-graph",
+    response_model=EvidenceGraphResponse,
+    dependencies=[Depends(authenticate)],
+    tags=["incidents"],
+    responses={**_ERRORS, 404: {"model": ErrorResponse}},
+)
+def incident_evidence_graph(incident_id: uuid.UUID) -> EvidenceGraphResponse:
+    """Claim -> evidence -> patch -> file links with a verification status on each piece of evidence and explicit
+    flags for missing, unverified or conflicting evidence. Derived from the stored record; no LLM."""
+    try:
+        row = incident_service.get_incident_with_approval(incident_id)
+    except DatabaseUnavailableError as exc:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "database unavailable") from exc
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "incident not found")
+    return EvidenceGraphResponse(**evidence_graph.build_evidence_graph(row))
 
 
 @router.get(

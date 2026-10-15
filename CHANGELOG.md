@@ -6,6 +6,10 @@ All notable changes are listed here. Versions of behaviour-critical components a
 ## [Unreleased]
 
 ### Added
+- `GET /incidents/{id}/evidence-graph` and an "Evidence trail" card in the console: claim -> evidence -> patch ->
+  file, each observed quote labelled `verified_in_record` (re-checked against the stored trace), `verified_by_gate`
+  (source text not stored; rests on the gate), `unverified` or `not_checked` (inference), plus explicit flags for
+  missing, unverified or patch-without-anchor evidence.
 - `GET /incidents/{id}/trace`: model/prompt/gate versions, per-attempt latency, tokens and gate verdict, totals and
   the submitting `request_id` (when the analysis ran in the submitting process). Cost is `null`: no prices are configured.
 - `python -m evals.reliability_report CANDIDATE.json [--baseline BASELINE.json]`: per-case-class table

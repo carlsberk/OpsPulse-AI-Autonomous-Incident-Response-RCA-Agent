@@ -191,6 +191,16 @@ class TraceResponse(BaseModel):
     final_quality_score: float | None = None
 
 
+class EvidenceGraphResponse(BaseModel):
+    incident_id: str | None = None
+    nodes: list[dict[str, Any]] = Field(
+        description="incident, claim, evidence (with verification status), patch, files"
+    )
+    edges: list[dict[str, Any]] = Field(description="from/to/relation: diagnosed_as, supports, suggests, anchors, ...")
+    flags: list[str] = Field(description="Missing, unverified or conflicting evidence, stated plainly")
+    summary: dict[str, int]
+
+
 class ErrorBody(BaseModel):
     code: str
     message: str

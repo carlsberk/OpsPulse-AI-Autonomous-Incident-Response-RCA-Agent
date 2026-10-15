@@ -153,6 +153,26 @@ Versions, per-attempt latency/tokens and gate verdicts of one incident's run, fr
 | 404 | Not Found |
 | 422 | Validation Error |
 
+### `GET /incidents/{incident_id}/evidence-graph`
+
+Claim -> evidence -> patch -> file links with a verification status on each piece of evidence and explicit
+flags for missing, unverified or conflicting evidence. Derived from the stored record; no LLM.
+
+**Auth:** API key or Bearer token
+
+| Parameter | In | Type | Required | Description |
+|---|---|---|---|---|
+| `incident_id` | path | string | yes |  |
+
+| Status | Meaning |
+|---|---|
+| 200 | Successful Response |
+| 401 | Missing or invalid API key |
+| 403 | Role not allowed, repository not allowed, or self-approval |
+| 503 | Database unavailable or authentication not configured |
+| 404 | Not Found |
+| 422 | Validation Error |
+
 ### `GET /incidents/{incident_id}/guidance`
 
 What state the incident is in, why, and what a person can do next - derived deterministically from the

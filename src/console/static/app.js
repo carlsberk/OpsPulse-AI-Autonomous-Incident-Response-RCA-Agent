@@ -449,6 +449,7 @@ function renderDetail(incident) {
   $("retry").hidden = incident.status !== "failed";
   renderAsk(incident);
   loadGuidance(incident);
+  loadTrail(incident);
   const pending = incident.pending_approval;
   $("approval").hidden = !pending;
   if (pending) $("a-sha").textContent = pending.patch_sha256;
@@ -591,6 +592,42 @@ function renderGuidance(guide) {
   const facts = $("guide-facts");
   facts.replaceChildren();
   for (const fact of guide.facts || []) facts.append(el("li", fact));
+}
+
+// ------------------------------------------------------------------ evidence trail
+
+async function loadTrail(incident) {
+  try {
+    const graph = await api(`/incidents/${encodeURIComponent(incident.incident_id)}/evidence-graph`);
+    if (!state.current || state.current.incident_id !== incident.incident_id) return;
+    renderTrail(graph);
+  } catch {
+    $("trail").hidden = true; // an extra view; the page works without it
+  }
+}
+
+function renderTrail(graph) {
+  $("trail").hidden = false;
+  const summary = graph.summary || {};
+  $("trail-summary").textContent = `${summary.observed_verified || 0}/${summary.observed || 0} observed verified`;
+  const flags = $("trail-flags");
+  flags.replaceChildren();
+  for (const flag of graph.flags || []) flags.append(el("li", flag, "trail-flag"));
+  const anchors = new Set((graph.edges || []).filter((e) => e.relation === "anchors").map((e) => e.from));
+  const items = $("trail-items");
+  items.replaceChildren();
+  const tone = { verified_in_record: "s-ok", verified_by_gate: "s-ok", unverified: "s-bad", not_checked: "s-neutral" };
+  for (const node of (graph.nodes || []).filter((n) => n.type === "evidence")) {
+    const li = el("li");
+    li.append(el("span", humanize(node.status), `chip ${tone[node.status] || "s-neutral"}`));
+    const body = el("span");
+    body.append(el("span", `${node.kind} \u00b7 ${node.source}: ${node.claim}`));
+    if (node.quote) body.append(el("code", node.quote, "trail-quote"));
+    if (anchors.has(node.id)) body.append(el("span", "touches the patched code", "muted small"));
+    li.append(body);
+    items.append(li);
+  }
+  if (!items.children.length) items.append(el("li", "No evidence recorded.", "muted"));
 }
 
 // ------------------------------------------------------------------ ask about this incident
