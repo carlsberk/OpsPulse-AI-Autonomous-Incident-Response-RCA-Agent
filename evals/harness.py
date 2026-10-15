@@ -30,6 +30,7 @@ from src.retrieval.history import HistoryCandidate, HistoryQuery, rank_lexical, 
 # ------------------------------------------------------------------ local retrieval
 
 
+
 def local_source_fetcher(case: EvalCase) -> Callable[[str, str, int], SourceContext | None]:
     def fetch(repo_name: str, runtime_path: str, failing_line: int) -> SourceContext | None:
         for candidate in path_candidates(runtime_path):
