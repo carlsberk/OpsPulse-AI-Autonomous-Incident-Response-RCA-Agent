@@ -281,6 +281,19 @@ def get_incident_with_approval(incident_id: uuid.UUID) -> dict[str, Any] | None:
         raise DatabaseUnavailableError("database unavailable") from exc
 
 
+def get_audit(incident_id: uuid.UUID) -> dict[str, Any] | None:
+    """The review timeline of one incident, or None if it does not exist."""
+    from src.services.audit import build_audit
+
+    try:
+        row = repositories.get_incident(incident_id)
+        if row is None:
+            return None
+        return build_audit(row, repositories.list_approvals(incident_id))
+    except SQLAlchemyError as exc:
+        raise DatabaseUnavailableError("database unavailable") from exc
+
+
 def decide_remediation(
     incident_id: uuid.UUID, approval_id: uuid.UUID, patch_sha256: str, approve: bool, reviewer: str, note: str | None
 ) -> dict[str, Any]:

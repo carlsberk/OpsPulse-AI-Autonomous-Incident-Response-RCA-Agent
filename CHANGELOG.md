@@ -6,6 +6,14 @@ All notable changes are listed here. Versions of behaviour-critical components a
 ## [Unreleased]
 
 ### Added
+- `GET /incidents/{id}/audit` and a "Review history" card: submission, analysis versions and gate score, every proposal
+  (including superseded and expired), who decided it and why, and the resulting draft PR. Derived from stored rows;
+  it is a report, not a tamper-evident log. Merging is never done by this service.
+- `Dockerfile.demo`: offline demo image (`docker build -f Dockerfile.demo -t opspulse-demo .`).
+
+### Changed (console)
+- Calmer redesign: one accent, hairline borders, a reading column with a sticky decision sidebar, the API-key form
+  only while disconnected, the quality gate collapsed by default. Same element ids, same CSP, WCAG AA contrast kept.
 - `GET /incidents/{id}/evidence-graph` and an "Evidence trail" card in the console: claim -> evidence -> patch ->
   file, each observed quote labelled `verified_in_record` (re-checked against the stored trace), `verified_by_gate`
   (source text not stored; rests on the gate), `unverified` or `not_checked` (inference), plus explicit flags for

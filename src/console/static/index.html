@@ -16,16 +16,16 @@
   <header class="topbar">
     <a class="brand" href="#/" aria-label="OpsPulse, all incidents">
       <span class="logo" aria-hidden="true"></span>
-      <span>OpsPulse</span><span class="muted brand-sub">review console</span>
+      <span>OpsPulse</span>
     </a>
     <div class="topbar-right">
-      <span id="conn" class="conn conn-off" role="status">Not connected</span>
       <form id="key-form" class="key-form" autocomplete="off">
         <label for="api-key" class="sr-only">API key</label>
         <input id="api-key" type="password" placeholder="API key (kept in this tab only)" required>
         <button type="submit" class="btn primary">Connect</button>
-        <button type="button" id="forget-key" class="btn ghost" hidden>Forget key</button>
       </form>
+      <button type="button" id="forget-key" class="btn ghost small-btn" hidden>Forget key</button>
+      <span id="conn" class="conn conn-off" role="status">Not connected</span>
       <button type="button" id="theme" class="btn ghost icon-btn" aria-label="Colour theme: automatic" title="Colour theme"></button>
     </div>
   </header>
@@ -42,7 +42,7 @@
         <div class="toolbar">
           <label class="field">
             <span class="sr-only">Search loaded incidents</span>
-            <input id="search" type="search" placeholder="Search repository, file, submitter ( / )" autocomplete="off">
+            <input id="search" type="search" placeholder="Search incidents" autocomplete="off">
           </label>
           <label class="field">
             <span class="sr-only">Status</span>
@@ -70,7 +70,7 @@
               <option value="status:asc">Status A-Z</option>
             </select>
           </label>
-          <label class="check"><input id="auto-refresh" type="checkbox"> Auto-refresh</label>
+          <label class="check"><input id="auto-refresh" type="checkbox"> Live</label>
           <button type="button" id="refresh" class="btn ghost" title="Refresh (r)">Refresh</button>
         </div>
       </div>
@@ -111,137 +111,139 @@
       <a href="#/" id="back" class="back">&larr; All incidents</a>
 
       <div class="detail-head">
-        <div class="detail-title">
-          <h1 id="d-title" tabindex="-1"></h1>
-          <div class="detail-sub">
-            <span id="d-status" class="badge"></span>
-            <span id="d-severity" class="chip" hidden></span>
-            <code id="d-id" class="mono id"></code>
-            <button type="button" id="copy-id" class="btn ghost tiny">Copy id</button>
-            <a id="d-pr" class="btn ghost tiny" href="#/" target="_blank" rel="noopener noreferrer" hidden>Open pull request</a>
-          </div>
+        <h1 id="d-title" tabindex="-1"></h1>
+        <div class="detail-sub">
+          <span id="d-status" class="badge"></span>
+          <span id="d-severity" class="chip" hidden></span>
+          <code id="d-id" class="mono id"></code>
+          <button type="button" id="copy-id" class="btn ghost tiny">Copy id</button>
+          <a id="d-pr" class="btn ghost tiny" href="#/" target="_blank" rel="noopener noreferrer" hidden>Open pull request</a>
         </div>
       </div>
 
       <p id="d-reason" class="banner" hidden></p>
       <p id="a-message" class="message" role="status"></p>
 
-      <dl class="facts card">
-        <div><dt>Repository</dt><dd id="d-repo"></dd></div>
-        <div><dt>Affected file</dt><dd id="d-file" class="mono"></dd></div>
-        <div><dt>Category</dt><dd id="d-category"></dd></div>
-        <div><dt>Gate score</dt><dd id="d-score" title="Deterministic rubric score, not a probability of being correct"></dd></div>
-        <div><dt>Model confidence</dt><dd id="d-confidence" title="The model's own estimate. Uncalibrated."></dd></div>
-        <div><dt>Submitted by</dt><dd id="d-submitter"></dd></div>
-        <div><dt>LLM usage</dt><dd id="d-usage" title="Provider-reported tokens across all attempts"></dd></div>
-        <div><dt>Versions</dt><dd id="d-versions" class="mono small"></dd></div>
-      </dl>
-
-      <article id="guide" class="card guide" hidden aria-labelledby="guide-title">
-        <div class="section-head">
-          <h2 id="guide-title">What to do now</h2>
-          <span id="guide-state" class="badge"></span>
-        </div>
-        <p id="guide-headline" class="guide-headline"></p>
-        <p id="guide-explanation" class="muted"></p>
-        <ol id="guide-steps" class="guide-steps"></ol>
-        <ul id="guide-facts" class="plain small muted"></ul>
-        <p class="muted small">Derived from the stored record and the runbook, without a language model.
-          It never claims a fix is correct.</p>
-      </article>
-
-      <article id="trail" class="card" hidden aria-labelledby="trail-title">
-        <div class="section-head">
-          <h2 id="trail-title">Evidence trail</h2>
-          <span id="trail-summary" class="badge s-neutral"></span>
-        </div>
-        <ul id="trail-flags" class="plain small"></ul>
-        <ol id="trail-items" class="guide-steps"></ol>
-        <p class="muted small">Claim &rarr; evidence &rarr; patch, from the stored record. &ldquo;verified by
-          gate&rdquo; means the gate matched the quote in code that is not stored here.</p>
-      </article>
-
-      <button type="button" id="retry" class="btn" hidden>Retry analysis</button>
-
-      <div class="grid">
-        <article class="card">
-          <h2>Root cause <span class="muted">(model hypothesis)</span></h2>
-          <p id="d-root" class="prose"></p>
-          <div class="section-head">
-            <h3>Evidence</h3>
-            <div class="seg" role="group" aria-label="Filter evidence">
-              <button type="button" class="seg-btn" data-kind="all" aria-pressed="true">All</button>
-              <button type="button" class="seg-btn" data-kind="observed" aria-pressed="false">Observed</button>
-              <button type="button" class="seg-btn" data-kind="unverified" aria-pressed="false">Inferred</button>
+      <div class="detail-layout">
+        <div class="col-main">
+          <article id="guide" class="card guide" hidden aria-labelledby="guide-title">
+            <div class="section-head">
+              <h2 id="guide-title">What to do now</h2>
+              <span id="guide-state" class="badge"></span>
             </div>
-          </div>
-          <ul id="d-evidence" class="evidence"></ul>
-          <h3>Uncertainties</h3>
-          <ul id="d-uncertainties" class="plain"></ul>
-          <h3>Suggested tests <span class="muted">(not run)</span></h3>
-          <ul id="d-tests" class="plain"></ul>
-        </article>
+            <p id="guide-headline" class="guide-headline"></p>
+            <p id="guide-explanation" class="muted"></p>
+            <ol id="guide-steps" class="guide-steps"></ol>
+            <ul id="guide-facts" class="plain small muted"></ul>
+          </article>
 
-        <article class="card">
-          <div class="section-head">
-            <h2>Quality gate</h2>
-            <span id="d-gate" class="badge"></span>
-          </div>
-          <ul id="d-checks" class="checks"></ul>
-          <h3>Attempts</h3>
-          <ol id="d-attempts" class="timeline"></ol>
-        </article>
+          <button type="button" id="retry" class="btn" hidden>Retry analysis</button>
+
+          <article class="card">
+            <h2>Root cause <span class="muted">model hypothesis</span></h2>
+            <p id="d-root" class="prose"></p>
+            <div class="section-head">
+              <h3>Evidence</h3>
+              <div class="seg" role="group" aria-label="Filter evidence">
+                <button type="button" class="seg-btn" data-kind="all" aria-pressed="true">All</button>
+                <button type="button" class="seg-btn" data-kind="observed" aria-pressed="false">Observed</button>
+                <button type="button" class="seg-btn" data-kind="unverified" aria-pressed="false">Inferred</button>
+              </div>
+            </div>
+            <ul id="d-evidence" class="evidence"></ul>
+            <h3>Uncertainties</h3>
+            <ul id="d-uncertainties" class="plain"></ul>
+            <h3>Suggested tests <span class="muted">not run</span></h3>
+            <ul id="d-tests" class="plain"></ul>
+          </article>
+
+          <article class="card">
+            <div class="section-head">
+              <h2>Proposed patch</h2>
+              <div class="btn-row">
+                <button type="button" id="copy-patch" class="btn ghost tiny" hidden>Copy</button>
+                <button type="button" id="download-patch" class="btn ghost tiny" hidden>Download .patch</button>
+              </div>
+            </div>
+            <div id="d-patch" class="diff" role="region" aria-label="Proposed patch" tabindex="0"></div>
+          </article>
+
+          <article id="trail" class="card" hidden aria-labelledby="trail-title">
+            <div class="section-head">
+              <h2 id="trail-title">Evidence trail</h2>
+              <span id="trail-summary" class="badge s-neutral"></span>
+            </div>
+            <ul id="trail-flags" class="plain small"></ul>
+            <ol id="trail-items" class="guide-steps"></ol>
+            <p class="muted small">&ldquo;Verified by gate&rdquo; means the gate matched the quote in code that is not
+              stored here.</p>
+          </article>
+
+          <details class="card gate">
+            <summary><h2>Quality gate</h2><span id="d-gate" class="badge"></span></summary>
+            <ul id="d-checks" class="checks"></ul>
+            <h3>Attempts</h3>
+            <ol id="d-attempts" class="timeline"></ol>
+          </details>
+
+          <article id="ask" class="card ask" aria-labelledby="ask-title">
+            <div class="section-head">
+              <h2 id="ask-title">Ask about this incident</h2>
+              <div class="btn-row">
+                <span class="chip">grounded &middot; read-only</span>
+                <button type="button" id="ask-clear" class="btn ghost tiny" hidden>Clear</button>
+              </div>
+            </div>
+            <p class="muted small">Common questions are answered instantly from the record; others go to the model,
+              which must cite the record. It can never approve or change anything.</p>
+            <div id="ask-chips" class="chips"></div>
+            <form id="ask-form" class="ask-form" autocomplete="off">
+              <label for="ask-input" class="sr-only">Question</label>
+              <input id="ask-input" type="text" minlength="3" maxlength="500" required
+                placeholder="Ask about the evidence, the gate result or the patch">
+              <button type="submit" id="ask-send" class="btn primary">Ask</button>
+            </form>
+            <ol id="ask-log" class="ask-log" aria-live="polite"></ol>
+          </article>
+        </div>
+
+        <aside class="col-side" aria-label="Decision and details">
+          <article id="approval" class="card approval" hidden>
+            <h2>Decision</h2>
+            <p class="muted small">Approving opens a <strong>draft pull request</strong> on a separate branch. Nothing is
+              merged. You cannot decide on incidents you submitted.</p>
+            <p class="small">Patch SHA-256 <code id="a-sha" class="mono"></code></p>
+            <label for="a-note" class="small">Note (optional)</label>
+            <textarea id="a-note" maxlength="2000" rows="2"></textarea>
+            <div class="actions">
+              <button type="button" id="approve" class="btn primary">Approve and open draft PR</button>
+              <button type="button" id="reject" class="btn danger-ghost">Reject</button>
+            </div>
+          </article>
+
+          <dl class="facts card">
+            <div><dt>Repository</dt><dd id="d-repo"></dd></div>
+            <div><dt>Affected file</dt><dd id="d-file" class="mono"></dd></div>
+            <div><dt>Category</dt><dd id="d-category"></dd></div>
+            <div><dt>Gate score</dt><dd id="d-score" title="Deterministic rubric score, not a probability of being correct"></dd></div>
+            <div><dt>Model confidence</dt><dd id="d-confidence" title="The model's own estimate. Uncalibrated."></dd></div>
+            <div><dt>Submitted by</dt><dd id="d-submitter"></dd></div>
+            <div><dt>LLM usage</dt><dd id="d-usage" title="Provider-reported tokens across all attempts"></dd></div>
+            <div><dt>Versions</dt><dd id="d-versions" class="mono small"></dd></div>
+          </dl>
+
+          <article id="audit" class="card" hidden aria-labelledby="audit-title">
+            <h2 id="audit-title">Review history</h2>
+            <ol id="audit-list" class="timeline"></ol>
+            <p class="muted small">Merging is never done by this service.</p>
+          </article>
+
+          <details class="card reported">
+            <summary>Reported error <span class="muted">untrusted, plain text</span></summary>
+            <pre id="d-error" class="raw"></pre>
+          </details>
+        </aside>
       </div>
-
-      <article class="card">
-        <div class="section-head">
-          <h2>Proposed patch</h2>
-          <div class="btn-row">
-            <button type="button" id="copy-patch" class="btn ghost tiny" hidden>Copy</button>
-            <button type="button" id="download-patch" class="btn ghost tiny" hidden>Download .patch</button>
-          </div>
-        </div>
-        <div id="d-patch" class="diff" role="region" aria-label="Proposed patch" tabindex="0"></div>
-      </article>
-
-      <article id="ask" class="card ask" aria-labelledby="ask-title">
-        <div class="section-head">
-          <h2 id="ask-title">Ask about this incident</h2>
-          <div class="btn-row">
-            <span class="chip">grounded &middot; read-only</span>
-            <button type="button" id="ask-clear" class="btn ghost tiny" hidden>Clear conversation</button>
-          </div>
-        </div>
-        <p class="muted small">Common questions are answered instantly from the record without a model; others go to
-          the model, which must cite the record, and its quotes are checked. Nothing here is executed or verified, and
-          it can never approve or change anything. Follow-up questions use this page's conversation only.</p>
-        <div id="ask-chips" class="chips"></div>
-        <form id="ask-form" class="ask-form" autocomplete="off">
-          <label for="ask-input" class="sr-only">Question</label>
-          <input id="ask-input" type="text" minlength="3" maxlength="500" required
-            placeholder="Ask about the evidence, the gate result or the patch">
-          <button type="submit" id="ask-send" class="btn primary">Ask</button>
-        </form>
-        <ol id="ask-log" class="ask-log" aria-live="polite"></ol>
-      </article>
-
-      <details class="card reported">
-        <summary>Reported error <span class="muted">(untrusted input, shown as plain text)</span></summary>
-        <pre id="d-error" class="raw"></pre>
-      </details>
-
-      <article id="approval" class="card approval" hidden>
-        <h2>Decision</h2>
-        <p class="muted">Approving opens a <strong>draft pull request</strong> for human review. Nothing is merged. You cannot
-          decide on incidents you submitted.</p>
-        <p class="small">Patch SHA-256 <code id="a-sha" class="mono"></code></p>
-        <label for="a-note" class="small">Note (optional)</label>
-        <textarea id="a-note" maxlength="2000" rows="2"></textarea>
-        <div class="actions">
-          <button type="button" id="approve" class="btn primary">Approve and open draft PR</button>
-          <button type="button" id="reject" class="btn danger">Reject</button>
-        </div>
-      </article>
     </section>
   </main>
 

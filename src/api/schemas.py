@@ -201,6 +201,12 @@ class EvidenceGraphResponse(BaseModel):
     summary: dict[str, int]
 
 
+class AuditResponse(BaseModel):
+    incident_id: str | None = None
+    events: list[dict[str, Any]] = Field(description="Ordered review timeline: who did what, when, and why")
+    merge_policy: str = Field(description="Merging is never done by this service")
+
+
 class ErrorBody(BaseModel):
     code: str
     message: str

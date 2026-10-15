@@ -335,7 +335,7 @@ function resetDetail() {
   state.current = null;
   $("d-title").textContent = "Loading incident…";
   document.title = "Loading incident - OpsPulse";
-  for (const id of ["guide", "approval", "retry", "d-pr", "d-severity", "d-reason"]) $(id).hidden = true;
+  for (const id of ["guide", "trail", "audit", "approval", "retry", "d-pr", "d-severity", "d-reason"]) $(id).hidden = true;
   for (const id of ["d-evidence", "d-checks", "d-attempts", "d-patch", "d-uncertainties", "d-tests"]) {
     $(id).replaceChildren();
   }
@@ -450,6 +450,7 @@ function renderDetail(incident) {
   renderAsk(incident);
   loadGuidance(incident);
   loadTrail(incident);
+  loadAudit(incident);
   const pending = incident.pending_approval;
   $("approval").hidden = !pending;
   if (pending) $("a-sha").textContent = pending.patch_sha256;
@@ -628,6 +629,36 @@ function renderTrail(graph) {
     items.append(li);
   }
   if (!items.children.length) items.append(el("li", "No evidence recorded.", "muted"));
+}
+
+// ------------------------------------------------------------------ review history
+
+const AUDIT_TONE = { approved: "ok", pr_opened: "ok", rejected: "bad", pr_failed: "bad", expired: "warn" };
+
+async function loadAudit(incident) {
+  try {
+    const audit = await api(`/incidents/${encodeURIComponent(incident.incident_id)}/audit`);
+    if (!state.current || state.current.incident_id !== incident.incident_id) return;
+    renderAudit(audit);
+  } catch {
+    $("audit").hidden = true; // an extra view; the page works without it
+  }
+}
+
+function renderAudit(audit) {
+  const list = $("audit-list");
+  list.replaceChildren();
+  for (const event of audit.events || []) {
+    const li = el("li", null, AUDIT_TONE[event.event] || "");
+    const head = el("div", null, "tl-head");
+    head.append(el("span", humanize(event.event)));
+    if (event.actor) head.append(el("span", event.actor, "chip"));
+    li.append(head);
+    const when = event.at ? new Date(event.at).toLocaleString() : "";
+    li.append(el("div", [when, event.detail].filter(Boolean).join(" \u00b7 "), "tl-body"));
+    list.append(li);
+  }
+  $("audit").hidden = !list.children.length;
 }
 
 // ------------------------------------------------------------------ ask about this incident

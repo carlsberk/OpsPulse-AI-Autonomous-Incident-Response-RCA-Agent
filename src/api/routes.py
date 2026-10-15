@@ -15,6 +15,7 @@ from src.api.auth import Principal, authenticate, rate_limited_asker, rate_limit
 from src.api.schemas import (
     AskRequest,
     AskResponse,
+    AuditResponse,
     ErrorResponse,
     EvidenceGraphResponse,
     GuidanceResponse,
@@ -288,6 +289,25 @@ def incident_evidence_graph(incident_id: uuid.UUID) -> EvidenceGraphResponse:
     if row is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "incident not found")
     return EvidenceGraphResponse(**evidence_graph.build_evidence_graph(row))
+
+
+@router.get(
+    "/incidents/{incident_id}/audit",
+    response_model=AuditResponse,
+    dependencies=[Depends(authenticate)],
+    tags=["incidents"],
+    responses={**_ERRORS, 404: {"model": ErrorResponse}},
+)
+def incident_audit(incident_id: uuid.UUID) -> AuditResponse:
+    """Review timeline: submission, analysis versions, every proposal and who decided it (with the note), and the
+    resulting pull request. Derived from stored rows; merging is never done by this service."""
+    try:
+        audit = incident_service.get_audit(incident_id)
+    except DatabaseUnavailableError as exc:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "database unavailable") from exc
+    if audit is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "incident not found")
+    return AuditResponse(**audit)
 
 
 @router.get(
