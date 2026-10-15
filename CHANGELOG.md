@@ -5,6 +5,11 @@ All notable changes are listed here. Versions of behaviour-critical components a
 
 ## [Unreleased]
 
+### Added
+- `python -m evals.reliability_report CANDIDATE.json [--baseline BASELINE.json]`: per-case-class table
+  (accepted, correct category, patch kept, false acceptance, stability, latency, tokens) and a list of the cases that
+  moved against a baseline. First report: `evals/results/RELIABILITY-callers-v3-prompt-v6.md`.
+
 ### Changed
 - Prompt `rca-prompt-v6`: the model is told to decide *where* the fault is (failing function vs. a caller) and to leave
   `unified_diff` empty when a caller is at fault. Live, `rca-callers-v3` x3 (15 runs): category 15/15, control case
