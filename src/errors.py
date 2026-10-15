@@ -10,7 +10,6 @@ from __future__ import annotations
 from enum import StrEnum
 
 
-
 class ErrorCategory(StrEnum):
     # workflow failures (no usable analysis)
     LLM_NOT_CONFIGURED = "llm_not_configured"

@@ -38,7 +38,6 @@ _HTTP_CODES = {
 }
 
 
-
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     # A missing DATABASE_URL is a configuration error -> fail fast (ConfigError propagates).
