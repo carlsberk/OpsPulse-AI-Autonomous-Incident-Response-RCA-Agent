@@ -18,7 +18,31 @@ _SECRET_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"(?i)\b(bearer|token)\s+[A-Za-z0-9._~+/=-]{16,}"), r"\1 [REDACTED]"),
     # user:password@ in connection strings -> user:[REDACTED]@
     (re.compile(r"(\b[a-z][a-z0-9+.-]*://[^:/\s@]+:)[^@\s]+@"), r"\1[REDACTED]@"),
+    (re.compile(r"\b(AKIA|ASIA)[A-Z0-9]{16}\b"), "[REDACTED_AWS_KEY_ID]"),
+    (re.compile(r"\bxox[abprs]-[A-Za-z0-9-]{10,}"), "[REDACTED_SLACK_TOKEN]"),
+    (re.compile(r"\beyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}"), "[REDACTED_JWT]"),
+    (
+        re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*?(-----END [A-Z ]*PRIVATE KEY-----|\Z)", re.DOTALL),
+        "[REDACTED_PRIVATE_KEY]",
+    ),
 )
+
+# What a *patch* must never add: the shapes above plus a credential-looking assignment. Names only, never values.
+_ASSIGNED_SECRET = re.compile(
+    r"""(?ix)\b(password|passwd|secret|api[_-]?key|access[_-]?key|auth[_-]?token|private[_-]?key)\w*\s*[:=]\s*
+    ["'][^"'\s]{8,}["']"""
+)
+
+
+def find_secrets(text: str) -> list[str]:
+    """Kinds of credential-shaped things in `text` (never the values), for rejecting a patch that adds them."""
+    names = []
+    for pattern, label in _SECRET_PATTERNS:
+        if pattern.search(text):
+            names.append(label.strip("[]").removeprefix("REDACTED_").lower() if label.startswith("[") else "credential")
+    if _ASSIGNED_SECRET.search(text):
+        names.append("credential_assignment")
+    return names
 
 
 def redact(text: str) -> str:

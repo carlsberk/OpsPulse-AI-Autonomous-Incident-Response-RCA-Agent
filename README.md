@@ -1006,6 +1006,16 @@ One run of one bug - it shows the loop works end to end, not that it generalises
 
 ## Security model
 
+**Agent boundaries, enforced by tests** (`tests/unit/test_agent_security.py`):
+
+- The only code that can write to GitHub is the adapter in `src/integrations/github.py`, reachable only from the
+  approval-gated remediation service; no code path merges or deletes anything (checked by scanning the source tree).
+- The model client is created without tools: the model returns text, it cannot call anything.
+- A patch that *adds* a credential-shaped string (GitHub/AWS/Slack tokens, JWTs, private keys, `password = "..."`) is
+  rejected by the remediation policy; the message names the kind, never the value. Removing a leaked secret is allowed.
+- Credentials in reported errors are masked before they are stored, sent to the model or put in a PR body.
+  Pattern-based, so it reduces leak risk rather than eliminating it.
+
 - Logs, traces, source files, history and model output are untrusted data. They are wrapped in delimiter tags
   that untrusted text cannot close (`[filtered-tag]`), and the system prompt says they are data. **Authorization
   never depends on the prompt:** repository access, allowed paths, patch shape, approval and duplicate checks are

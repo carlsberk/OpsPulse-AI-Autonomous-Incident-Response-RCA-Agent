@@ -27,6 +27,7 @@ from src.db import repositories
 from src.errors import ErrorCategory
 from src.integrations.github import FORBIDDEN_PATH_PREFIXES, GitHubError, create_fix_pull_request
 from src.integrations.observability import observe
+from src.logging_config import find_secrets, redact
 
 logger = logging.getLogger(__name__)
 
@@ -98,11 +99,15 @@ def validate_patch_for_pr(patch: str | None, target_file: str | None, max_change
         raise PatchRejectedError("target file is in a protected path")
     if parsed.changed_lines > max_changed_lines:
         raise PatchRejectedError(f"diff changes {parsed.changed_lines} lines (limit {max_changed_lines})")
+    added = "\n".join(line[1:] for line in patch.splitlines() if line.startswith("+") and not line.startswith("+++"))
+    if secrets := find_secrets(added):
+        raise PatchRejectedError("patch adds what looks like a credential: " + ", ".join(secrets))
 
 
 def _untrusted(text: Any, limit: int = 2000) -> str:
     """LLM text for Markdown: no accidental @-mentions, bounded length."""
     value = str(text or "n/a").replace("@", "@​")
+    value = redact(value)
     return value if len(value) <= limit else value[:limit] + " ..."
 
 

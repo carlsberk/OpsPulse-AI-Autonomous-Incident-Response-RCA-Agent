@@ -6,6 +6,9 @@ All notable changes are listed here. Versions of behaviour-critical components a
 ## [Unreleased]
 
 ### Added
+- Agent security: patches that add credentials are rejected by the remediation policy; reported errors and PR text
+  are redacted (AWS/Slack/JWT/private-key shapes added); tests prove GitHub writes are reachable only from the
+  approval-gated service and that the model has no tools.
 - `GET /incidents/{id}/audit` and a "Review history" card: submission, analysis versions and gate score, every proposal
   (including superseded and expired), who decided it and why, and the resulting draft PR. Derived from stored rows;
   it is a report, not a tamper-evident log. Merging is never done by this service.
