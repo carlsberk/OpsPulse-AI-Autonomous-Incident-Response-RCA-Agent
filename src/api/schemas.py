@@ -180,6 +180,17 @@ class IncidentResult(BaseModel):
     updated_at: str | None = None
 
 
+class TraceResponse(BaseModel):
+    incident_id: str | None = None
+    request_id: str | None = Field(None, description="Request that submitted the incident, when recorded")
+    status: str | None = None
+    error_category: str | None = None
+    versions: dict[str, Any] = Field(description="Model, prompt, quality-gate and retrieval versions of the run")
+    attempts: list[dict[str, Any]] = Field(description="Per LLM attempt: latency, tokens, gate verdict and decision")
+    totals: dict[str, Any] = Field(description="Sums over attempts; estimated_cost_usd is null (no prices configured)")
+    final_quality_score: float | None = None
+
+
 class ErrorBody(BaseModel):
     code: str
     message: str

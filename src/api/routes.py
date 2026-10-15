@@ -25,11 +25,12 @@ from src.api.schemas import (
     IncidentStatus,
     IncidentSummary,
     RemediationDecision,
+    TraceResponse,
 )
 from src.config import settings
 from src.db.client import ping_database
 from src.db.repositories import InvalidCursorError
-from src.services import ask_service, guidance, incident_service
+from src.services import ask_service, guidance, incident_service, trace
 from src.services.incident_service import DatabaseUnavailableError, IncidentConflictError, IncidentNotFoundError
 from src.services.remediation_service import ApprovalError
 
@@ -249,6 +250,24 @@ def ask_about_incident(
         raise HTTPException(exc.status, str(exc)) from exc
     logger.info("question answered for %s by %s", incident_id, principal.name)
     return AskResponse(**result)
+
+
+@router.get(
+    "/incidents/{incident_id}/trace",
+    response_model=TraceResponse,
+    dependencies=[Depends(authenticate)],
+    tags=["incidents"],
+    responses={**_ERRORS, 404: {"model": ErrorResponse}},
+)
+def incident_trace(incident_id: uuid.UUID) -> TraceResponse:
+    """Versions, per-attempt latency/tokens and gate verdicts of one incident's run, from the stored record."""
+    try:
+        row = incident_service.get_incident_with_approval(incident_id)
+    except DatabaseUnavailableError as exc:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "database unavailable") from exc
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "incident not found")
+    return TraceResponse(**trace.build_trace(row))
 
 
 @router.get(

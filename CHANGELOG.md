@@ -6,6 +6,8 @@ All notable changes are listed here. Versions of behaviour-critical components a
 ## [Unreleased]
 
 ### Added
+- `GET /incidents/{id}/trace`: model/prompt/gate versions, per-attempt latency, tokens and gate verdict, totals and
+  the submitting `request_id` (when the analysis ran in the submitting process). Cost is `null`: no prices are configured.
 - `python -m evals.reliability_report CANDIDATE.json [--baseline BASELINE.json]`: per-case-class table
   (accepted, correct category, patch kept, false acceptance, stability, latency, tokens) and a list of the cases that
   moved against a baseline. First report: `evals/results/RELIABILITY-callers-v3-prompt-v6.md`.

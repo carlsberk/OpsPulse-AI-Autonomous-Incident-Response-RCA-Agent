@@ -42,7 +42,7 @@ from src.errors import TRANSIENT_CATEGORIES, ErrorCategory
 from src.integrations import github
 from src.integrations.notify import notify_incident
 from src.integrations.observability import build_run_config, flush_traces, incident_trace
-from src.logging_config import incident_id_var, redact
+from src.logging_config import incident_id_var, redact, request_id_var
 from src.services import remediation_service
 from src.services.remediation_service import ApprovalForbiddenError, ProposedFix, RemediationOutcome
 
@@ -227,7 +227,11 @@ def _run(
         error_message=final["error_message"],
         stack_trace=final["stack_trace"],
         affected_file=final["affected_file"],
-        root_cause_analysis={**(final["root_cause_analysis"] or {}), "attempts": final["attempts"]},
+        root_cause_analysis={
+            **(final["root_cause_analysis"] or {}),
+            "attempts": final["attempts"],
+            "trace_request_id": request_id_var.get(),
+        },
         suggested_patch=final["suggested_patch"],
         quality_score=final["quality_score"],
         iterations=final["iterations"],
