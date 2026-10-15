@@ -28,6 +28,11 @@ All notable changes are listed here. Versions of behaviour-critical components a
   moved against a baseline. First report: `evals/results/RELIABILITY-callers-v3-prompt-v6.md`.
 
 ### Changed
+- Live check of `rca-prompt-v6` on the other datasets (single run each, `gpt-oss-120b`, 2026-10-15): holdout
+  category 9/10, 1 provider rate-limit failure (`ho-drift-attribute`, not evaluated), one false acceptance
+  (`ho-pool-timeout`, the known label ambiguity); adversarial category 5/5, 0 false acceptances, 2/3 abstentions
+  (`adv-deploy-drift` abstained, `adv-guess-without-source` did not). Reports and a per-case comparison are in
+  `evals/results/`. One run per case: indicative, not statistical.
 - Prompt `rca-prompt-v6`: the model is told to decide *where* the fault is (failing function vs. a caller) and to leave
   `unified_diff` empty when a caller is at fault. Live, `rca-callers-v3` x3 (15 runs): category 15/15, control case
   accepted 3/3 with its patch, the three blame cases routed to review 9/9 (no callee patch); but `caller-empty-list`
