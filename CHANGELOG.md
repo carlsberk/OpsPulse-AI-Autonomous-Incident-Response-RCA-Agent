@@ -5,6 +5,28 @@ All notable changes are listed here. Versions of behaviour-critical components a
 
 ## [Unreleased]
 
+### Added
+- Agent security: patches that add credentials are rejected by the remediation policy; reported errors and PR text
+  are redacted (AWS/Slack/JWT/private-key shapes added); tests prove GitHub writes are reachable only from the
+  approval-gated service and that the model has no tools.
+- `GET /incidents/{id}/audit` and a "Review history" card: submission, analysis versions and gate score, every proposal
+  (including superseded and expired), who decided it and why, and the resulting draft PR. Derived from stored rows;
+  it is a report, not a tamper-evident log. Merging is never done by this service.
+- `Dockerfile.demo`: offline demo image (`docker build -f Dockerfile.demo -t opspulse-demo .`).
+
+### Changed (console)
+- Calmer redesign: one accent, hairline borders, a reading column with a sticky decision sidebar, the API-key form
+  only while disconnected, the quality gate collapsed by default. Same element ids, same CSP, WCAG AA contrast kept.
+- `GET /incidents/{id}/evidence-graph` and an "Evidence trail" card in the console: claim -> evidence -> patch ->
+  file, each observed quote labelled `verified_in_record` (re-checked against the stored trace), `verified_by_gate`
+  (source text not stored; rests on the gate), `unverified` or `not_checked` (inference), plus explicit flags for
+  missing, unverified or patch-without-anchor evidence.
+- `GET /incidents/{id}/trace`: model/prompt/gate versions, per-attempt latency, tokens and gate verdict, totals and
+  the submitting `request_id` (when the analysis ran in the submitting process). Cost is `null`: no prices are configured.
+- `python -m evals.reliability_report CANDIDATE.json [--baseline BASELINE.json]`: per-case-class table
+  (accepted, correct category, patch kept, false acceptance, stability, latency, tokens) and a list of the cases that
+  moved against a baseline. First report: `evals/results/RELIABILITY-callers-v3-prompt-v6.md`.
+
 ### Changed
 - Prompt `rca-prompt-v6`: the model is told to decide *where* the fault is (failing function vs. a caller) and to leave
   `unified_diff` empty when a caller is at fault. Live, `rca-callers-v3` x3 (15 runs): category 15/15, control case

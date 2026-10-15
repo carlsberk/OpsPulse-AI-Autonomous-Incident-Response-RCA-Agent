@@ -180,6 +180,33 @@ class IncidentResult(BaseModel):
     updated_at: str | None = None
 
 
+class TraceResponse(BaseModel):
+    incident_id: str | None = None
+    request_id: str | None = Field(None, description="Request that submitted the incident, when recorded")
+    status: str | None = None
+    error_category: str | None = None
+    versions: dict[str, Any] = Field(description="Model, prompt, quality-gate and retrieval versions of the run")
+    attempts: list[dict[str, Any]] = Field(description="Per LLM attempt: latency, tokens, gate verdict and decision")
+    totals: dict[str, Any] = Field(description="Sums over attempts; estimated_cost_usd is null (no prices configured)")
+    final_quality_score: float | None = None
+
+
+class EvidenceGraphResponse(BaseModel):
+    incident_id: str | None = None
+    nodes: list[dict[str, Any]] = Field(
+        description="incident, claim, evidence (with verification status), patch, files"
+    )
+    edges: list[dict[str, Any]] = Field(description="from/to/relation: diagnosed_as, supports, suggests, anchors, ...")
+    flags: list[str] = Field(description="Missing, unverified or conflicting evidence, stated plainly")
+    summary: dict[str, int]
+
+
+class AuditResponse(BaseModel):
+    incident_id: str | None = None
+    events: list[dict[str, Any]] = Field(description="Ordered review timeline: who did what, when, and why")
+    merge_policy: str = Field(description="Merging is never done by this service")
+
+
 class ErrorBody(BaseModel):
     code: str
     message: str

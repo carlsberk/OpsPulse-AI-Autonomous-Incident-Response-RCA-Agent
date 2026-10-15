@@ -42,7 +42,7 @@ from src.errors import TRANSIENT_CATEGORIES, ErrorCategory
 from src.integrations import github
 from src.integrations.notify import notify_incident
 from src.integrations.observability import build_run_config, flush_traces, incident_trace
-from src.logging_config import incident_id_var, redact
+from src.logging_config import incident_id_var, redact, request_id_var
 from src.services import remediation_service
 from src.services.remediation_service import ApprovalForbiddenError, ProposedFix, RemediationOutcome
 
@@ -227,7 +227,11 @@ def _run(
         error_message=final["error_message"],
         stack_trace=final["stack_trace"],
         affected_file=final["affected_file"],
-        root_cause_analysis={**(final["root_cause_analysis"] or {}), "attempts": final["attempts"]},
+        root_cause_analysis={
+            **(final["root_cause_analysis"] or {}),
+            "attempts": final["attempts"],
+            "trace_request_id": request_id_var.get(),
+        },
         suggested_patch=final["suggested_patch"],
         quality_score=final["quality_score"],
         iterations=final["iterations"],
@@ -273,6 +277,19 @@ def get_incident_with_approval(incident_id: uuid.UUID) -> dict[str, Any] | None:
             return None
         row["pending_approval"] = repositories.get_pending_approval(incident_id)
         return row
+    except SQLAlchemyError as exc:
+        raise DatabaseUnavailableError("database unavailable") from exc
+
+
+def get_audit(incident_id: uuid.UUID) -> dict[str, Any] | None:
+    """The review timeline of one incident, or None if it does not exist."""
+    from src.services.audit import build_audit
+
+    try:
+        row = repositories.get_incident(incident_id)
+        if row is None:
+            return None
+        return build_audit(row, repositories.list_approvals(incident_id))
     except SQLAlchemyError as exc:
         raise DatabaseUnavailableError("database unavailable") from exc
 

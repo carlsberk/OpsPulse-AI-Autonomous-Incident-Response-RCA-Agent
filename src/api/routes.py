@@ -15,7 +15,9 @@ from src.api.auth import Principal, authenticate, rate_limited_asker, rate_limit
 from src.api.schemas import (
     AskRequest,
     AskResponse,
+    AuditResponse,
     ErrorResponse,
+    EvidenceGraphResponse,
     GuidanceResponse,
     HealthResponse,
     IncidentAccepted,
@@ -25,11 +27,12 @@ from src.api.schemas import (
     IncidentStatus,
     IncidentSummary,
     RemediationDecision,
+    TraceResponse,
 )
 from src.config import settings
 from src.db.client import ping_database
 from src.db.repositories import InvalidCursorError
-from src.services import ask_service, guidance, incident_service
+from src.services import ask_service, evidence_graph, guidance, incident_service, trace
 from src.services.incident_service import DatabaseUnavailableError, IncidentConflictError, IncidentNotFoundError
 from src.services.remediation_service import ApprovalError
 
@@ -249,6 +252,62 @@ def ask_about_incident(
         raise HTTPException(exc.status, str(exc)) from exc
     logger.info("question answered for %s by %s", incident_id, principal.name)
     return AskResponse(**result)
+
+
+@router.get(
+    "/incidents/{incident_id}/trace",
+    response_model=TraceResponse,
+    dependencies=[Depends(authenticate)],
+    tags=["incidents"],
+    responses={**_ERRORS, 404: {"model": ErrorResponse}},
+)
+def incident_trace(incident_id: uuid.UUID) -> TraceResponse:
+    """Versions, per-attempt latency/tokens and gate verdicts of one incident's run, from the stored record."""
+    try:
+        row = incident_service.get_incident_with_approval(incident_id)
+    except DatabaseUnavailableError as exc:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "database unavailable") from exc
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "incident not found")
+    return TraceResponse(**trace.build_trace(row))
+
+
+@router.get(
+    "/incidents/{incident_id}/evidence-graph",
+    response_model=EvidenceGraphResponse,
+    dependencies=[Depends(authenticate)],
+    tags=["incidents"],
+    responses={**_ERRORS, 404: {"model": ErrorResponse}},
+)
+def incident_evidence_graph(incident_id: uuid.UUID) -> EvidenceGraphResponse:
+    """Claim -> evidence -> patch -> file links with a verification status on each piece of evidence and explicit
+    flags for missing, unverified or conflicting evidence. Derived from the stored record; no LLM."""
+    try:
+        row = incident_service.get_incident_with_approval(incident_id)
+    except DatabaseUnavailableError as exc:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "database unavailable") from exc
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "incident not found")
+    return EvidenceGraphResponse(**evidence_graph.build_evidence_graph(row))
+
+
+@router.get(
+    "/incidents/{incident_id}/audit",
+    response_model=AuditResponse,
+    dependencies=[Depends(authenticate)],
+    tags=["incidents"],
+    responses={**_ERRORS, 404: {"model": ErrorResponse}},
+)
+def incident_audit(incident_id: uuid.UUID) -> AuditResponse:
+    """Review timeline: submission, analysis versions, every proposal and who decided it (with the note), and the
+    resulting pull request. Derived from stored rows; merging is never done by this service."""
+    try:
+        audit = incident_service.get_audit(incident_id)
+    except DatabaseUnavailableError as exc:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "database unavailable") from exc
+    if audit is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "incident not found")
+    return AuditResponse(**audit)
 
 
 @router.get(

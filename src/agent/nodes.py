@@ -35,6 +35,7 @@ from src.errors import LLM_CATEGORY, ErrorCategory
 from src.integrations.github import TRANSPORT_ERRORS, GitHubError, SourceContext
 from src.integrations.llm import LLMError, ModelFactory, invoke_json_model
 from src.integrations.observability import observe
+from src.logging_config import redact
 from src.retrieval.history import HistoryQuery
 from src.versions import run_metadata
 
@@ -52,7 +53,11 @@ Update = dict[str, Any]
 def normalize_incident(state: IncidentState) -> Update:
     """Strip ANSI/NUL characters, cap sizes, and separate a traceback embedded in the message."""
     message, trace = split_embedded_trace(state["error_message"] or "", state["stack_trace"] or "")
-    return {"error_message": clean_text(message, 10_000) or "unknown error", "stack_trace": clean_text(trace, 60_000)}
+    # Credentials in reported errors are masked before they are stored, sent to the model or quoted anywhere.
+    return {
+        "error_message": redact(clean_text(message, 10_000)) or "unknown error",
+        "stack_trace": redact(clean_text(trace, 60_000)),
+    }
 
 
 def extract_stack_trace_context(state: IncidentState) -> Update:

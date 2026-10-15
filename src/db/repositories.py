@@ -443,6 +443,17 @@ def get_approval(approval_id: uuid.UUID) -> dict[str, Any] | None:
         return approval_to_dict(row) if row else None
 
 
+def list_approvals(incident_id: uuid.UUID) -> list[dict[str, Any]]:
+    """Every approval of an incident (pending, decided, expired, superseded), oldest first."""
+    stmt = (
+        select(RemediationApproval)
+        .where(RemediationApproval.incident_id == incident_id)
+        .order_by(RemediationApproval.created_at)
+    )
+    with session_scope() as session:
+        return [approval_to_dict(row) for row in session.scalars(stmt)]
+
+
 def get_pending_approval(incident_id: uuid.UUID) -> dict[str, Any] | None:
     stmt = select(RemediationApproval).where(
         RemediationApproval.incident_id == incident_id, RemediationApproval.status == "pending"
