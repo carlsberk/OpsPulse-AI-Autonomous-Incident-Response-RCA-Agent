@@ -5,6 +5,8 @@ All notable changes are listed here. Versions of behaviour-critical components a
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-16
+
 ### Added
 - Agent security: patches that add credentials are rejected by the remediation policy; reported errors and PR text
   are redacted (AWS/Slack/JWT/private-key shapes added); tests prove GitHub writes are reachable only from the
@@ -28,6 +30,9 @@ All notable changes are listed here. Versions of behaviour-critical components a
   moved against a baseline. First report: `evals/results/RELIABILITY-callers-v3-prompt-v6.md`.
 
 ### Changed
+- `ho-off-by-one` x3 on `rca-prompt-v6` (live, 2026-10-16): accepted 3/3 on the first attempt, so the single-run miss on
+  2026-10-15 was variance, not a v6 regression. `ho-drift-attribute` x3: 2 runs ended `failed` (provider-side, run
+  did not complete: not evaluated), 1 abstained to `unknown` as labelled. Three runs per case: indicative only.
 - Live check of `rca-prompt-v6` on the other datasets (single run each, `gpt-oss-120b`, 2026-10-15): holdout
   category 9/10, 1 provider rate-limit failure (`ho-drift-attribute`, not evaluated), one false acceptance
   (`ho-pool-timeout`, the known label ambiguity); adversarial category 5/5, 0 false acceptances, 2/3 abstentions

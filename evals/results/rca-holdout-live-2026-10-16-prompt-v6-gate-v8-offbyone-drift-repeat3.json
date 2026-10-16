@@ -1,0 +1,506 @@
+{
+  "mode": "live",
+  "started_at": "2026-10-16T12:04:52.060853+00:00",
+  "dataset_version": "rca-holdout-v1",
+  "run_metadata": {
+    "agent_version": "1.2.0-opspulse",
+    "prompt_version": "rca-prompt-v6",
+    "evaluator_version": "quality-gate-v8",
+    "retrieval_strategy": "lexical-v1",
+    "model": "openai/gpt-oss-120b",
+    "quality_threshold": 0.85,
+    "max_analysis_iterations": 3,
+    "max_output_tokens": 4096
+  },
+  "metrics": {
+    "cases": 6,
+    "cases_not_evaluated": [
+      "ho-drift-attribute",
+      "ho-drift-attribute"
+    ],
+    "structured_output_validity": {
+      "value": 0.7143,
+      "numerator": 5,
+      "denominator": 7,
+      "definition": "LLM attempts whose reply validated against RCAOutput / LLM attempts (provider errors excluded)"
+    },
+    "category_accuracy": {
+      "value": 1.0,
+      "numerator": 3,
+      "denominator": 3,
+      "definition": "final category == labelled category / cases labelled conclusive"
+    },
+    "evidence_grounding_accuracy": {
+      "value": 1.0,
+      "numerator": 11,
+      "denominator": 11,
+      "definition": "'observed' quotes found verbatim in their cited source / all 'observed' quotes (final analyses)"
+    },
+    "unsupported_claim_rate": {
+      "value": 0.0,
+      "numerator": 0,
+      "denominator": 15,
+      "definition": "(unverifiable 'observed' quotes + affected files absent from trace/retrieved file) / (all quotes + all affected files)"
+    },
+    "abstention_recall": {
+      "value": 1.0,
+      "numerator": 1,
+      "denominator": 1,
+      "definition": "inconclusive-labelled cases where the model declared insufficient evidence or category 'unknown' / inconclusive-labelled cases"
+    },
+    "inconclusive_not_accepted_rate": {
+      "value": 1.0,
+      "numerator": 1,
+      "denominator": 1,
+      "definition": "inconclusive-labelled cases the quality gate did NOT accept / inconclusive-labelled cases"
+    },
+    "false_abstention_rate": {
+      "value": 0.0,
+      "numerator": 0,
+      "denominator": 3,
+      "definition": "conclusive-labelled cases where the model abstained / conclusive-labelled cases"
+    },
+    "gate_acceptance_rate": {
+      "value": 0.75,
+      "numerator": 3,
+      "denominator": 4,
+      "definition": "cases accepted by the quality gate / evaluated cases"
+    },
+    "false_acceptance_rate": {
+      "value": 0.0,
+      "numerator": 0,
+      "denominator": 3,
+      "definition": "accepted cases that are inconclusive-labelled or have the wrong category / accepted cases"
+    },
+    "relevant_file_hit_rate": {
+      "value": 1.0,
+      "numerator": 4,
+      "denominator": 4,
+      "definition": "cases whose affected_files contain a labelled relevant file / cases with labelled files"
+    },
+    "unsupported_acceptance_rate": {
+      "value": 0.0,
+      "numerator": 0,
+      "denominator": 1,
+      "definition": "unsupported analyses (inconclusive-labelled or with an unverifiable quote) the gate accepted / unsupported analyses"
+    },
+    "workflow_failure_rate": {
+      "value": 0.3333,
+      "numerator": 2,
+      "denominator": 6,
+      "definition": "cases ending in workflow status 'failed' (e.g. provider errors) / cases"
+    },
+    "avg_attempts": 1.5,
+    "llm_latency_ms": {
+      "mean": 7545,
+      "p95": 17216,
+      "samples": 7
+    },
+    "case_wall_ms": {
+      "mean": 15803,
+      "p95": 46913
+    },
+    "tokens": {
+      "input": 15429,
+      "output": 10823,
+      "attempts_with_usage": 7
+    },
+    "estimated_cost_usd": null,
+    "calibration": {
+      "model_confidence": {
+        "samples": 4,
+        "brier": 0.105,
+        "bins": [
+          {
+            "range": "0.50-0.70",
+            "n": 1,
+            "mean_score": 0.5,
+            "accuracy": 0.0
+          },
+          {
+            "range": "0.70-0.85",
+            "n": 3,
+            "mean_score": 0.767,
+            "accuracy": 1.0
+          }
+        ]
+      },
+      "quality_score": {
+        "samples": 4,
+        "brier": 0.0485,
+        "bins": [
+          {
+            "range": "0.00-0.50",
+            "n": 1,
+            "mean_score": 0.44,
+            "accuracy": 0.0
+          },
+          {
+            "range": "0.85-1.00",
+            "n": 3,
+            "mean_score": 0.988,
+            "accuracy": 1.0
+          }
+        ]
+      }
+    },
+    "consistency": {
+      "cases_repeated": 1,
+      "stable_outcome_rate": {
+        "value": 1.0,
+        "numerator": 1,
+        "denominator": 1,
+        "definition": "repeated cases whose outcome never changed / repeated cases"
+      },
+      "per_case": {
+        "ho-off-by-one": {
+          "runs": 3,
+          "accepted": 3,
+          "correct_category": 3,
+          "distinct_outcomes": 1
+        }
+      }
+    }
+  },
+  "results": [
+    {
+      "case_id": "ho-off-by-one",
+      "expected": {
+        "root_cause_category": "logic_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/pages.py"
+        ]
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.985,
+      "predicted_category": "logic_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.7,
+      "observed_quotes": 3,
+      "grounded_quotes": 3,
+      "affected_files": [
+        "app/pages.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 4096,
+          "input_tokens": 2146,
+          "output_tokens": 1370,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.985,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/pages.py\n+++ b/app/pages.py\n@@ -1,5 +1,5 @@\n def last_page_titles(pages):\n     titles = []\n-    for i in range(len(pages) + 1):\n+    for i in range(len(pages)):\n         titles.append(pages[i][\"title\"])\n     return titles",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.70 (uncalibrated)"
+      },
+      "wall_ms": 4111,
+      "run": 1
+    },
+    {
+      "case_id": "ho-off-by-one",
+      "expected": {
+        "root_cause_category": "logic_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/pages.py"
+        ]
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.99,
+      "predicted_category": "logic_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.8,
+      "observed_quotes": 3,
+      "grounded_quotes": 3,
+      "affected_files": [
+        "app/pages.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 3954,
+          "input_tokens": 2146,
+          "output_tokens": 1684,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.99,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/pages.py\n+++ b/app/pages.py\n@@ -2,4 +2,4 @@\n     titles = []\n-    for i in range(len(pages) + 1):\n+    for i in range(len(pages)):\n         titles.append(pages[i][\"title\"])\n     return titles",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.80 (uncalibrated)"
+      },
+      "wall_ms": 3959,
+      "run": 2
+    },
+    {
+      "case_id": "ho-off-by-one",
+      "expected": {
+        "root_cause_category": "logic_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/pages.py"
+        ]
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.99,
+      "predicted_category": "logic_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.8,
+      "observed_quotes": 3,
+      "grounded_quotes": 3,
+      "affected_files": [
+        "app/pages.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 4400,
+          "input_tokens": 2146,
+          "output_tokens": 1893,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.99,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/pages.py\n+++ b/app/pages.py\n@@ -2,4 +2,4 @@\n     titles = []\n-    for i in range(len(pages) + 1):\n+    for i in range(len(pages)):\n         titles.append(pages[i][\"title\"])\n     return titles",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.80 (uncalibrated)"
+      },
+      "wall_ms": 4404,
+      "run": 3
+    },
+    {
+      "case_id": "ho-drift-attribute",
+      "expected": {
+        "root_cause_category": "attribute_error",
+        "inconclusive": true,
+        "relevant_files": [
+          "app/orders.py"
+        ]
+      },
+      "workflow_status": "failed",
+      "error_category": "llm_rate_limited",
+      "error": "the LLM provider rate limit was exceeded (TPM)",
+      "gate_passed": false,
+      "quality_score": 0.85,
+      "predicted_category": "attribute_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.7,
+      "observed_quotes": 2,
+      "grounded_quotes": 1,
+      "affected_files": [
+        "app/orders.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 17216,
+          "input_tokens": 2116,
+          "output_tokens": 1722,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": false,
+          "schema_error_fields": [
+            "evidence.1.source:literal_error"
+          ],
+          "gate_score": 0.85,
+          "gate_passed": false,
+          "failed_checks": [
+            "schema",
+            "evidence_grounding",
+            "trace_code_consistency",
+            "self_assessment"
+          ],
+          "decision": "retrying with evaluator feedback"
+        },
+        {
+          "iteration": 2,
+          "error_category": "llm_rate_limited"
+        }
+      ],
+      "patch": "--- a/app/orders.py\n+++ b/app/orders.py\n@@ -1,2 +1,6 @@\n def coupon_of(order):\n-    return order.coupon.code\n+    # Return the coupon code if the order has a coupon with a code attribute.\n+    coupon = getattr(order, 'coupon', None)\n+    if coupon is None or not hasattr(coupon, 'code'):\n+        return None\n+    return coupon.code",
+      "failed_check_details": {
+        "schema": "1 schema error(s): evidence.1.source: Input should be 'stack_trace', 'code_context', 'historical_incidents' or 'none'",
+        "evidence_grounding": "observed evidence #2 cites 'error_telemetry', which was not retrieved/available",
+        "trace_code_consistency": "the error names attribute 'discount_code' but the retrieved failing line (line 2) only uses ['code', 'coupon']: the running code probably differs from the retrieved source. Do not propose a patch; set evidence_sufficient to false and explain the discrepancy in uncertainties",
+        "self_assessment": "model self-assessed 0.70 (uncalibrated)"
+      },
+      "wall_ms": 46913,
+      "run": 1
+    },
+    {
+      "case_id": "ho-drift-attribute",
+      "expected": {
+        "root_cause_category": "attribute_error",
+        "inconclusive": true,
+        "relevant_files": [
+          "app/orders.py"
+        ]
+      },
+      "workflow_status": "failed",
+      "error_category": "llm_rate_limited",
+      "error": "the LLM provider rate limit was exceeded (TPM)",
+      "gate_passed": false,
+      "quality_score": 0.935,
+      "predicted_category": "attribute_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.7,
+      "observed_quotes": 2,
+      "grounded_quotes": 2,
+      "affected_files": [
+        "app/orders.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 3525,
+          "input_tokens": 2116,
+          "output_tokens": 1470,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.935,
+          "gate_passed": false,
+          "failed_checks": [
+            "trace_code_consistency",
+            "self_assessment"
+          ],
+          "decision": "retrying with evaluator feedback"
+        },
+        {
+          "iteration": 2,
+          "error_category": "llm_rate_limited"
+        }
+      ],
+      "patch": "--- a/app/orders.py\n+++ b/app/orders.py\n@@ -1,2 +1,2 @@\n def coupon_of(order):\n-    return order.coupon.code\n+    return order.discount_code",
+      "failed_check_details": {
+        "trace_code_consistency": "the error names attribute 'discount_code' but the retrieved failing line (line 2) only uses ['code', 'coupon']: the running code probably differs from the retrieved source. Do not propose a patch; set evidence_sufficient to false and explain the discrepancy in uncertainties",
+        "self_assessment": "model self-assessed 0.70 (uncalibrated)"
+      },
+      "wall_ms": 15798,
+      "run": 2
+    },
+    {
+      "case_id": "ho-drift-attribute",
+      "expected": {
+        "root_cause_category": "attribute_error",
+        "inconclusive": true,
+        "relevant_files": [
+          "app/orders.py"
+        ]
+      },
+      "workflow_status": "needs_review",
+      "error_category": "insufficient_evidence",
+      "error": null,
+      "gate_passed": false,
+      "quality_score": 0.44,
+      "predicted_category": "unknown",
+      "declared_insufficient": true,
+      "model_confidence": 0.5,
+      "observed_quotes": 2,
+      "grounded_quotes": 2,
+      "affected_files": [
+        "app/orders.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 3454,
+          "input_tokens": 2116,
+          "output_tokens": 1406,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.935,
+          "gate_passed": false,
+          "failed_checks": [
+            "trace_code_consistency",
+            "self_assessment"
+          ],
+          "decision": "retrying with evaluator feedback"
+        },
+        {
+          "iteration": 2,
+          "latency_ms": 16170,
+          "input_tokens": 2643,
+          "output_tokens": 1278,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": false,
+          "schema_error_fields": [
+            "tests_to_run:too_short"
+          ],
+          "gate_score": 0.44,
+          "gate_passed": false,
+          "failed_checks": [
+            "schema",
+            "trace_code_consistency",
+            "self_assessment",
+            "diff_wellformed",
+            "diff_applies",
+            "patch_minimal",
+            "patch_locality",
+            "patch_effective"
+          ],
+          "decision": "model reported insufficient evidence"
+        }
+      ],
+      "patch": null,
+      "failed_check_details": {
+        "schema": "1 schema error(s): tests_to_run: List should have at least 1 item after validation, not 0",
+        "trace_code_consistency": "the error names attribute 'discount_code' but the retrieved failing line (line 2) only uses ['code', 'coupon']: the running code probably differs from the retrieved source. Do not propose a patch; set evidence_sufficient to false and explain the discrepancy in uncertainties",
+        "self_assessment": "model asked for human review",
+        "diff_wellformed": "no patch provided",
+        "diff_applies": "no patch provided",
+        "patch_minimal": "no patch provided",
+        "patch_locality": "no patch provided",
+        "patch_effective": "no patch provided"
+      },
+      "wall_ms": 19631,
+      "run": 3
+    }
+  ]
+}
