@@ -197,7 +197,7 @@ class TraceResponse(BaseModel):
     versions: dict[str, Any] = Field(description="Model, prompt, quality-gate and retrieval versions of the run")
     attempts: list[dict[str, Any]] = Field(description="Per LLM attempt: latency, tokens, gate verdict and decision")
     totals: dict[str, Any] = Field(
-        description="Sums over attempts; estimated_cost_usd needs LLM_COST_INPUT_PER_MTOK and LLM_COST_OUTPUT_PER_MTOK, else null"
+        description="Sums over attempts; estimated_cost_usd needs both LLM_COST_*_PER_MTOK prices, else null"
     )
     final_quality_score: float | None = None
 

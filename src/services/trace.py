@@ -1,7 +1,7 @@
 """One incident's run trace: versions, per-attempt gate verdicts, latency and tokens - from the stored record.
 
-Deterministic and read-only. Nothing here is estimated: cost is reported only if prices are configured (LLM_COST_*_PER_MTOK),
-and a request id is present only if the analysis ran in the process that handled the submitting request.
+Deterministic and read-only. Nothing here is estimated: cost is reported only if prices are configured
+(LLM_COST_*_PER_MTOK). The request id is the one stored when the incident was submitted.
 """
 
 from __future__ import annotations
