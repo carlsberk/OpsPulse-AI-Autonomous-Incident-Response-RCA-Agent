@@ -41,6 +41,8 @@ jobs:
           HYPOTHESIS_EXPLORE: "1"
           HYPOTHESIS_EXAMPLES: "2000"
         run: pytest -q tests/unit/test_properties.py tests/unit/test_fuzz_model_output.py tests/unit/test_fuzz_ask.py
+      - name: Hunt for counterexamples in the console helpers (random seed, printed on failure)
+        run: FUZZ_RUNS=50000 FUZZ_SEED=$RANDOM node --test tests/js/util.fuzz.test.js
 
   codeql:
     name: CodeQL (Python and JavaScript)

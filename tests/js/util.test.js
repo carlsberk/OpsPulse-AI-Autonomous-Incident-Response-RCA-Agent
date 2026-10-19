@@ -89,3 +89,18 @@ test("writeState omits defaults and round-trips through readState", () => {
   const view = { status: "", query: "a b&c", sort: { key: "attempts", dir: "desc" }, theme: "light" };
   assert.deepEqual(U.readState(U.writeState(view)), view);
 });
+
+test("statusCounts: status names that collide with Object.prototype members count like any other", () => {
+  const rows = ["constructor", "toString", "__proto__", "constructor"].map((status) => ({ status }));
+  const { counts, order } = U.statusCounts(rows);
+  assert.equal(counts.constructor, 2);
+  assert.equal(counts.toString, 1);
+  assert.deepEqual([...order].sort(), ["__proto__", "constructor", "toString"].sort());
+  assert.equal(typeof {}.constructor, "function"); // the global Object.prototype is untouched
+});
+
+test("parseDiff: an absurd hunk number is shown as a plain integer, not as 1e+21", () => {
+  const rows = U.parseDiff("@@ -999999999999999999999,2 +5 @@\n a");
+  assert.equal(rows[1].left, "0");
+  assert.equal(rows[1].right, "5");
+});
