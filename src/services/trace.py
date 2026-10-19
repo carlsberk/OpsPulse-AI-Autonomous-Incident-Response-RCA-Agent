@@ -38,7 +38,7 @@ def build_trace(incident: dict[str, Any]) -> dict[str, Any]:
 
     return {
         "incident_id": incident.get("incident_id"),
-        "request_id": analysis.get("trace_request_id"),
+        "request_id": incident.get("request_id"),
         "status": incident.get("status"),
         "error_category": incident.get("error_category"),
         "versions": {k: meta.get(k) for k in _VERSION_KEYS},

@@ -14,6 +14,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from src.agent.patching import PatchError, parse_code_window
+
 _PROBLEM = re.compile(r"observed evidence #(\d+)")
 _MIN_ANCHOR_CHARS = 12
 
@@ -44,7 +46,21 @@ def _diff_text(patch: str) -> str:
     return _squash("\n".join(lines))
 
 
-def _status(item: dict[str, Any], index: int, trace_text: str, problems: dict[int, str], gated: bool) -> str:
+def _window_text(analysis: dict[str, Any]) -> str:
+    """Code lines of the stored windows (line-number gutter removed), squashed."""
+    windows = analysis.get("source_windows")
+    lines: list[str] = []
+    for block in windows.values() if isinstance(windows, dict) else []:
+        try:
+            lines.extend(parse_code_window(str(block))[1])
+        except PatchError:
+            continue
+    return _squash("\n".join(lines))
+
+
+def _status(
+    item: dict[str, Any], index: int, trace_text: str, problems: dict[int, str], gated: bool, window_text: str = ""
+) -> str:
     """Verification status of one evidence item; `index` is its 1-based position among observed items."""
     if item.get("kind") != "observed":
         return "not_checked"
@@ -53,6 +69,8 @@ def _status(item: dict[str, Any], index: int, trace_text: str, problems: dict[in
     quote = _squash(str(item.get("quote") or ""))
     if item.get("source") == "stack_trace":
         return "verified_in_record" if quote and quote in trace_text else "unverified"
+    if item.get("source") == "code_context" and quote and quote in window_text:
+        return "verified_in_record"  # re-checked here against the stored window
     return "verified_by_gate" if gated else "unverified"
 
 
@@ -63,6 +81,7 @@ def build_evidence_graph(incident: dict[str, Any]) -> dict[str, Any]:
     items = [e for e in analysis.get("evidence") or [] if isinstance(e, dict)]
     trace_text = _squash(f"{incident.get('error_message') or ''}\n{incident.get('stack_trace') or ''}")
     problems = _gate_problems(analysis)
+    window_text = _window_text(analysis)
     patch = incident.get("suggested_patch") or ""
     anchored = _diff_text(patch) if patch else ""
     category = analysis.get("root_cause_category")
@@ -83,7 +102,7 @@ def build_evidence_graph(incident: dict[str, Any]) -> dict[str, Any]:
         node_id = f"evidence-{position}"
         is_observed = item.get("kind") == "observed"
         observed += is_observed
-        status = _status(item, observed, trace_text, problems, bool(checks))
+        status = _status(item, observed, trace_text, problems, bool(checks), window_text)
         verified += is_observed and status != "unverified"
         quote = _squash(str(item.get("quote") or ""))
         nodes.append(

@@ -5,6 +5,14 @@ All notable changes are listed here. Versions of behaviour-critical components a
 
 ## [Unreleased]
 
+### Added
+- Migration 0007: `incidents.request_id`, stored when the incident is submitted, so `/incidents/{id}/trace` always
+  carries the submitting `X-Request-ID` (also in the incident response). Replaces the earlier best-effort value.
+- The code windows the model was shown (trigger and caller windows) are stored inside the analysis, redacted and capped
+  at 40,000 characters each, and are **never returned** by the public incident endpoints. The evidence trail uses them
+  to re-check `code_context` quotes itself (`verified_in_record`); when the quote is outside the stored window it falls
+  back to `verified_by_gate`, never to a false `unverified`. Historical-incident quotes still rest on the gate.
+
 ### Changed
 - Prompt `rca-prompt-v6.1`: when a caller is at fault the model must list the caller's file first in `affected_files`,
   and the "callee at fault" example that used to name an empty list (which pushed `caller-empty-list` into a callee

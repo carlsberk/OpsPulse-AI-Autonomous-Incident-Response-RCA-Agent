@@ -38,9 +38,8 @@ def test_totals_sum_attempts_and_ignore_missing_values():
             {"iteration": 1, "latency_ms": 100, "input_tokens": 10, "output_tokens": 5, "gate_passed": False},
             {"iteration": 2, "latency_ms": 50, "input_tokens": None, "output_tokens": 7, "gate_passed": True},
         ],
-        "trace_request_id": "abc123",
     }
-    trace = build_trace({"status": "analysis_ready", "analysis": analysis})
+    trace = build_trace({"status": "analysis_ready", "analysis": analysis, "request_id": "abc123"})
     assert trace["request_id"] == "abc123"
     assert trace["totals"] == {
         "llm_calls": 2,
@@ -49,3 +48,12 @@ def test_totals_sum_attempts_and_ignore_missing_values():
         "output_tokens": 12,
         "estimated_cost_usd": None,
     }
+
+
+def test_request_id_is_stored_when_the_incident_is_submitted(client, fake_llm, source_fetch):
+    fake_llm([make_analysis()])
+    headers = {**API_HEADERS, "X-Request-ID": "req-abc-123"}
+    resp = client.post("/webhook/incident?wait=true", json=incident_payload(), headers=headers)
+    incident_id = resp.json()["incident_id"]
+    assert resp.json()["request_id"] == "req-abc-123"
+    assert client.get(f"/incidents/{incident_id}/trace", headers=REPORTER_HEADERS).json()["request_id"] == "req-abc-123"

@@ -157,6 +157,7 @@ class RemediationDecision(BaseModel):
 
 class IncidentResult(BaseModel):
     incident_id: str
+    request_id: str | None = Field(None, description="X-Request-ID of the submitting request")
     repo_name: str
     status: IncidentStatus
     status_reason: str | None = None
@@ -178,6 +179,14 @@ class IncidentResult(BaseModel):
     )
     created_at: str | None = None
     updated_at: str | None = None
+
+    @field_validator("analysis", mode="before")
+    @classmethod
+    def _without_source_windows(cls, value: Any) -> Any:
+        """Stored source code windows are internal (they back the evidence trail); they are not an API field."""
+        if isinstance(value, dict) and "source_windows" in value:
+            return {k: v for k, v in value.items() if k != "source_windows"}
+        return value
 
 
 class TraceResponse(BaseModel):

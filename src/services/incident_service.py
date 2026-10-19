@@ -73,7 +73,7 @@ def submit_incident(
     fingerprint = compute_fingerprint(repo_name, error_message, stack_trace)
     try:
         row, created = repositories.create_incident(
-            incident_id, repo_name, fingerprint, error_message, stack_trace, submitted_by
+            incident_id, repo_name, fingerprint, error_message, stack_trace, submitted_by, request_id_var.get()
         )
     except SQLAlchemyError as exc:
         logger.error("database unavailable while creating incident: %s", type(exc).__name__)
@@ -230,7 +230,7 @@ def _run(
         root_cause_analysis={
             **(final["root_cause_analysis"] or {}),
             "attempts": final["attempts"],
-            "trace_request_id": request_id_var.get(),
+            "source_windows": source_windows(final),
         },
         suggested_patch=final["suggested_patch"],
         quality_score=final["quality_score"],
@@ -279,6 +279,17 @@ def get_incident_with_approval(incident_id: uuid.UUID) -> dict[str, Any] | None:
         return row
     except SQLAlchemyError as exc:
         raise DatabaseUnavailableError("database unavailable") from exc
+
+
+_WINDOW_LIMIT = 40_000
+
+
+def source_windows(final: IncidentState) -> dict[str, str]:
+    """The code the model was shown (trigger window, caller windows), redacted and capped, so the evidence trail can
+    re-verify quotes later. Kept inside the stored analysis, never returned by the public incident endpoints."""
+    return {
+        key: redact(str(final[key]))[:_WINDOW_LIMIT] for key in ("code_context", "caller_context") if final.get(key)
+    }
 
 
 def get_audit(incident_id: uuid.UUID) -> dict[str, Any] | None:

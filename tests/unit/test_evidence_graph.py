@@ -79,3 +79,25 @@ def test_endpoint(client, fake_llm, source_fetch):
     assert {n["type"] for n in body["nodes"]} >= {"incident", "claim", "evidence"}
     assert body["summary"]["observed"] >= 1
     assert client.get(f"/incidents/{uuid.uuid4()}/evidence-graph", headers=REPORTER_HEADERS).status_code == 404
+
+
+def test_quote_is_rechecked_against_the_stored_window_and_hidden_from_the_api(client, fake_llm, source_fetch):
+    fake_llm([make_analysis()])
+    resp = client.post("/webhook/incident?wait=true", json=incident_payload(), headers=API_HEADERS)
+    body = resp.json()
+    assert "source_windows" not in (body.get("analysis") or {})
+    incident_id = body["incident_id"]
+    assert (
+        "source_windows" not in (client.get(f"/incidents/{incident_id}", headers=REPORTER_HEADERS).json()["analysis"])
+    )
+
+    graph = client.get(f"/incidents/{incident_id}/evidence-graph", headers=REPORTER_HEADERS).json()
+    statuses = {n["status"] for n in graph["nodes"] if n["type"] == "evidence"}
+    assert "verified_in_record" in statuses and "unverified" not in statuses
+
+
+def test_a_quote_missing_from_the_stored_window_falls_back_to_the_gate():
+    incident = _incident([_item("observed", "code_context", "def only_in_the_full_file(): pass")])
+    incident["analysis"]["source_windows"] = {"code_context": "    10 | x = 1\n    11 | y = 2"}
+    graph = build_evidence_graph(incident)
+    assert _statuses(graph) == ["verified_by_gate"]  # not "unverified": the gate saw the full text
