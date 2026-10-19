@@ -89,7 +89,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.12", "3.13"]  # 3.11 (the image's version) runs in the quality job
+        python: ["3.12", "3.13", "3.14"]  # 3.11 (the image's version) runs in the quality job
     env:
       DATABASE_URL: sqlite://
     steps:

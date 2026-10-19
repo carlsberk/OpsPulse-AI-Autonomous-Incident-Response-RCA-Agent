@@ -203,6 +203,14 @@ def _find_open_pr(repo: Repository, branch: str) -> PullRequestResult | None:
     return None
 
 
+def _delete_branch(repo: Repository, branch: str) -> None:
+    """Best-effort removal of a branch this service just created; never raises."""
+    try:
+        repo.get_git_ref(f"heads/{branch}").delete()
+    except GithubException as exc:
+        logger.warning("could not remove branch %s after a failure: %s", branch, describe_github_error(exc))
+
+
 def create_fix_pull_request(
     repo_name: str, file_path: str, unified_diff: str, title: str, body: str, fingerprint: str
 ) -> PullRequestResult:
@@ -238,20 +246,26 @@ def create_fix_pull_request(
                     f"branch {branch} already exists (concurrent run in progress, or a stale branch to delete)"
                 ) from exc
             raise
-        repo.update_file(
-            path=file_path,
-            message=f"fix: {title[:60]}\n\nProposed by OpsPulse AI (fingerprint {fingerprint[:12]}). Needs review.",
-            content=patched,
-            sha=current.sha,
-            branch=branch,
-        )
         try:
-            pr = repo.create_pull(base=base, head=branch, title=title[:200], body=body, draft=settings.github_pr_draft)
-        except GithubException as exc:
-            if not (settings.github_pr_draft and exc.status == 422):
-                raise
-            # Draft PRs are not available on every plan; fall back to a regular (still unmerged) PR.
-            pr = repo.create_pull(base=base, head=branch, title=title[:200], body=body, draft=False)
+            repo.update_file(
+                path=file_path,
+                message=f"fix: {title[:60]}\n\nProposed by OpsPulse AI (fingerprint {fingerprint[:12]}). Needs review.",
+                content=patched,
+                sha=current.sha,
+                branch=branch,
+            )
+            try:
+                pr = repo.create_pull(
+                    base=base, head=branch, title=title[:200], body=body, draft=settings.github_pr_draft
+                )
+            except GithubException as exc:
+                if not (settings.github_pr_draft and exc.status == 422):
+                    raise
+                # Draft PRs are not available on every plan; fall back to a regular (still unmerged) PR.
+                pr = repo.create_pull(base=base, head=branch, title=title[:200], body=body, draft=False)
+        except GithubException:
+            _delete_branch(repo, branch)  # do not leave a half-made branch that would block every retry
+            raise
     except GithubException as exc:
         raise api_error(exc) from exc
 
