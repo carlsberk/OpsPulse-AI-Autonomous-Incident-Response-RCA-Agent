@@ -974,6 +974,17 @@ workflow has run green on GitHub since. Contributor workflow: [CONTRIBUTING.md](
 
 ## Demo
 
+**The whole flow, checked end to end** (no Docker, keys or GitHub; scripted model, GitHub stubbed):
+
+```bash
+python -m scripts.e2e_flow     # 25 checks: alert -> analysis -> review -> one draft PR -> the patch fixes the service
+```
+
+It runs a real crash of `examples/demo_service`, sends it through the Alertmanager webhook, the queue worker and the
+quality gate, shows that nothing reaches GitHub until a reviewer decides, that a reporter and a stale patch hash are
+refused, that a repeated approval creates no second PR, and that the review history is complete. It is also a unit
+test and a CI step. It proves the plumbing and the safety rules, not the model's quality (the evaluations measure that).
+
 **The console in one command** (no Docker, PostgreSQL or API keys; a throwaway SQLite database, ten scripted cases):
 
 ```bash

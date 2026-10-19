@@ -6,6 +6,14 @@ All notable changes are listed here. Versions of behaviour-critical components a
 ## [Unreleased]
 
 ### Added
+- `python -m scripts.e2e_flow` (also a unit test and a CI step): the whole service flow over HTTP in 25 checks. A real
+  crash of `examples/demo_service` -> Alertmanager webhook (duplicate delivery is not a second incident) -> queue
+  worker -> gate -> `awaiting_approval` with no PR yet -> guidance, evidence graph and trace -> reporter and stale-hash
+  decisions refused -> reviewer approves -> exactly one draft PR whose text names the reviewer -> repeated approval
+  conflicts -> review history complete -> the patch makes the service tests pass (sandbox copy). The model is a scripted
+  MOCK and GitHub is a recorder, so it proves the plumbing and the safety rules, not model quality.
+
+### Added
 - Migration 0007: `incidents.request_id`, stored when the incident is submitted, so `/incidents/{id}/trace` always
   carries the submitting `X-Request-ID` (also in the incident response). Replaces the earlier best-effort value.
 - The code windows the model was shown (trigger and caller windows) are stored inside the analysis, redacted and capped
