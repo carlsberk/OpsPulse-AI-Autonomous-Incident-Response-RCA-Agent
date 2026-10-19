@@ -5,6 +5,16 @@ All notable changes are listed here. Versions of behaviour-critical components a
 
 ## [Unreleased]
 
+### Added
+- `tests/unit/test_fuzz_model_output.py`: structure-aware fuzzing of everything the model's reply flows through. It starts
+  from a valid analysis and corrupts it at 34 known positions (wrong types, deleted fields, enormous values, odd Unicode,
+  truncated JSON). Properties: schema validation raises only `ValidationError` and a normalised analysis is a fixed
+  point; the quality gate never raises, scores stay in [0, 1], and it never passes while a blocking check fails; the
+  whole workflow always ends in a known status within its attempt budget, and `accepted` is always backed by a passing
+  gate; trace parsers are total on arbitrary text; redaction is idempotent and removes a planted credential. 4,000
+  random-seed examples per property found no counterexample, and two deliberately planted bugs (a missing clamp, a missing
+  type guard) were each caught, so the suite is not vacuous. The weekly Security workflow now explores it too.
+
 ### Fixed
 - Telemetry could break the work it observed: a failure while starting or ending a Langfuse span propagated into the
   incident pipeline (which would have marked a good analysis `failed`), and a span whose `__exit__` reported the error as
