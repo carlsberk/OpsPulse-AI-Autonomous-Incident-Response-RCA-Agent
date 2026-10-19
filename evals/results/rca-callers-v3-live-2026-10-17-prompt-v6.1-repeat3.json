@@ -1,0 +1,1039 @@
+{
+  "mode": "live",
+  "started_at": "2026-10-17T10:12:24.045968+00:00",
+  "dataset_version": "rca-callers-v3",
+  "run_metadata": {
+    "agent_version": "1.3.0-opspulse",
+    "prompt_version": "rca-prompt-v6.1",
+    "evaluator_version": "quality-gate-v8",
+    "retrieval_strategy": "lexical-v1",
+    "model": "openai/gpt-oss-120b",
+    "quality_threshold": 0.85,
+    "max_analysis_iterations": 3,
+    "max_output_tokens": 4096
+  },
+  "metrics": {
+    "cases": 15,
+    "cases_not_evaluated": [
+      "caller-two-levels-up",
+      "control-cause-in-trigger"
+    ],
+    "structured_output_validity": {
+      "value": 1.0,
+      "numerator": 15,
+      "denominator": 15,
+      "definition": "LLM attempts whose reply validated against RCAOutput / LLM attempts (provider errors excluded)"
+    },
+    "category_accuracy": {
+      "value": 1.0,
+      "numerator": 13,
+      "denominator": 13,
+      "definition": "final category == labelled category / cases labelled conclusive"
+    },
+    "evidence_grounding_accuracy": {
+      "value": 1.0,
+      "numerator": 34,
+      "denominator": 34,
+      "definition": "'observed' quotes found verbatim in their cited source / all 'observed' quotes (final analyses)"
+    },
+    "unsupported_claim_rate": {
+      "value": 0.0,
+      "numerator": 0,
+      "denominator": 49,
+      "definition": "(unverifiable 'observed' quotes + affected files absent from trace/retrieved file) / (all quotes + all affected files)"
+    },
+    "abstention_recall": {
+      "value": null,
+      "numerator": 0,
+      "denominator": 0,
+      "definition": "inconclusive-labelled cases where the model declared insufficient evidence or category 'unknown' / inconclusive-labelled cases"
+    },
+    "inconclusive_not_accepted_rate": {
+      "value": null,
+      "numerator": 0,
+      "denominator": 0,
+      "definition": "inconclusive-labelled cases the quality gate did NOT accept / inconclusive-labelled cases"
+    },
+    "false_abstention_rate": {
+      "value": 0.0,
+      "numerator": 0,
+      "denominator": 13,
+      "definition": "conclusive-labelled cases where the model abstained / conclusive-labelled cases"
+    },
+    "gate_acceptance_rate": {
+      "value": 0.1538,
+      "numerator": 2,
+      "denominator": 13,
+      "definition": "cases accepted by the quality gate / evaluated cases"
+    },
+    "false_acceptance_rate": {
+      "value": 0.0,
+      "numerator": 0,
+      "denominator": 2,
+      "definition": "accepted cases that are inconclusive-labelled or have the wrong category / accepted cases"
+    },
+    "relevant_file_hit_rate": {
+      "value": 1.0,
+      "numerator": 13,
+      "denominator": 13,
+      "definition": "cases whose affected_files contain a labelled relevant file / cases with labelled files"
+    },
+    "unsupported_acceptance_rate": {
+      "value": null,
+      "numerator": 0,
+      "denominator": 0,
+      "definition": "unsupported analyses (inconclusive-labelled or with an unverifiable quote) the gate accepted / unsupported analyses"
+    },
+    "workflow_failure_rate": {
+      "value": 0.1333,
+      "numerator": 2,
+      "denominator": 15,
+      "definition": "cases ending in workflow status 'failed' (e.g. provider errors) / cases"
+    },
+    "avg_attempts": 1.133,
+    "llm_latency_ms": {
+      "mean": 14200,
+      "p95": 43021,
+      "samples": 15
+    },
+    "case_wall_ms": {
+      "mean": 14402,
+      "p95": 43027
+    },
+    "tokens": {
+      "input": 35312,
+      "output": 21018,
+      "attempts_with_usage": 15
+    },
+    "estimated_cost_usd": null,
+    "calibration": {
+      "model_confidence": {
+        "samples": 13,
+        "brier": 0.0954,
+        "bins": [
+          {
+            "range": "0.50-0.70",
+            "n": 1,
+            "mean_score": 0.6,
+            "accuracy": 1.0
+          },
+          {
+            "range": "0.70-0.85",
+            "n": 12,
+            "mean_score": 0.7,
+            "accuracy": 1.0
+          }
+        ]
+      },
+      "quality_score": {
+        "samples": 13,
+        "brier": 0.184,
+        "bins": [
+          {
+            "range": "0.50-0.70",
+            "n": 11,
+            "mean_score": 0.535,
+            "accuracy": 1.0
+          },
+          {
+            "range": "0.85-1.00",
+            "n": 2,
+            "mean_score": 0.935,
+            "accuracy": 1.0
+          }
+        ]
+      }
+    },
+    "consistency": {
+      "cases_repeated": 5,
+      "stable_outcome_rate": {
+        "value": 1.0,
+        "numerator": 5,
+        "denominator": 5,
+        "definition": "repeated cases whose outcome never changed / repeated cases"
+      },
+      "per_case": {
+        "caller-passes-none": {
+          "runs": 3,
+          "accepted": 0,
+          "correct_category": 3,
+          "distinct_outcomes": 1
+        },
+        "caller-empty-list": {
+          "runs": 3,
+          "accepted": 0,
+          "correct_category": 3,
+          "distinct_outcomes": 1
+        },
+        "caller-symptomatic-patch": {
+          "runs": 3,
+          "accepted": 0,
+          "correct_category": 3,
+          "distinct_outcomes": 1
+        },
+        "caller-two-levels-up": {
+          "runs": 2,
+          "accepted": 0,
+          "correct_category": 2,
+          "distinct_outcomes": 1
+        },
+        "control-cause-in-trigger": {
+          "runs": 2,
+          "accepted": 2,
+          "correct_category": 2,
+          "distinct_outcomes": 1
+        }
+      }
+    }
+  },
+  "results": [
+    {
+      "case_id": "caller-passes-none",
+      "expected": {
+        "root_cause_category": "null_reference",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/mailer.py"
+        ]
+      },
+      "workflow_status": "needs_review",
+      "error_category": "no_code_fix",
+      "error": null,
+      "gate_passed": false,
+      "quality_score": 0.535,
+      "predicted_category": "null_reference",
+      "declared_insufficient": false,
+      "model_confidence": 0.7,
+      "observed_quotes": 2,
+      "grounded_quotes": 2,
+      "affected_files": [
+        "app/mailer.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 3902,
+          "input_tokens": 2257,
+          "output_tokens": 1302,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.535,
+          "gate_passed": false,
+          "failed_checks": [
+            "self_assessment",
+            "diff_wellformed",
+            "diff_applies",
+            "patch_minimal",
+            "patch_locality",
+            "patch_effective"
+          ],
+          "decision": "grounded analysis without a code patch (operational root cause?)"
+        }
+      ],
+      "patch": null,
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.70 (uncalibrated)",
+        "diff_wellformed": "no patch provided",
+        "diff_applies": "no patch provided",
+        "patch_minimal": "no patch provided",
+        "patch_locality": "no patch provided",
+        "patch_effective": "no patch provided"
+      },
+      "wall_ms": 3914,
+      "run": 1
+    },
+    {
+      "case_id": "caller-passes-none",
+      "expected": {
+        "root_cause_category": "null_reference",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/mailer.py"
+        ]
+      },
+      "workflow_status": "needs_review",
+      "error_category": "no_code_fix",
+      "error": null,
+      "gate_passed": false,
+      "quality_score": 0.535,
+      "predicted_category": "null_reference",
+      "declared_insufficient": false,
+      "model_confidence": 0.7,
+      "observed_quotes": 2,
+      "grounded_quotes": 2,
+      "affected_files": [
+        "app/mailer.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 3197,
+          "input_tokens": 2257,
+          "output_tokens": 1302,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.535,
+          "gate_passed": false,
+          "failed_checks": [
+            "self_assessment",
+            "diff_wellformed",
+            "diff_applies",
+            "patch_minimal",
+            "patch_locality",
+            "patch_effective"
+          ],
+          "decision": "grounded analysis without a code patch (operational root cause?)"
+        }
+      ],
+      "patch": null,
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.70 (uncalibrated)",
+        "diff_wellformed": "no patch provided",
+        "diff_applies": "no patch provided",
+        "patch_minimal": "no patch provided",
+        "patch_locality": "no patch provided",
+        "patch_effective": "no patch provided"
+      },
+      "wall_ms": 3203,
+      "run": 2
+    },
+    {
+      "case_id": "caller-passes-none",
+      "expected": {
+        "root_cause_category": "null_reference",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/mailer.py"
+        ]
+      },
+      "workflow_status": "needs_review",
+      "error_category": "no_code_fix",
+      "error": null,
+      "gate_passed": false,
+      "quality_score": 0.53,
+      "predicted_category": "null_reference",
+      "declared_insufficient": false,
+      "model_confidence": 0.6,
+      "observed_quotes": 1,
+      "grounded_quotes": 1,
+      "affected_files": [
+        "app/mailer.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 22124,
+          "input_tokens": 2257,
+          "output_tokens": 1257,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.46,
+          "gate_passed": false,
+          "failed_checks": [
+            "evidence_grounding",
+            "self_assessment",
+            "diff_wellformed",
+            "diff_applies",
+            "patch_minimal",
+            "patch_locality",
+            "patch_effective"
+          ],
+          "decision": "retrying with evaluator feedback"
+        },
+        {
+          "iteration": 2,
+          "latency_ms": 3918,
+          "input_tokens": 2816,
+          "output_tokens": 1434,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.53,
+          "gate_passed": false,
+          "failed_checks": [
+            "self_assessment",
+            "diff_wellformed",
+            "diff_applies",
+            "patch_minimal",
+            "patch_locality",
+            "patch_effective"
+          ],
+          "decision": "grounded analysis without a code patch (operational root cause?)"
+        }
+      ],
+      "patch": null,
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.60 (uncalibrated)",
+        "diff_wellformed": "no patch provided",
+        "diff_applies": "no patch provided",
+        "patch_minimal": "no patch provided",
+        "patch_locality": "no patch provided",
+        "patch_effective": "no patch provided"
+      },
+      "wall_ms": 26050,
+      "run": 3
+    },
+    {
+      "case_id": "caller-empty-list",
+      "expected": {
+        "root_cause_category": "logic_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/orders.py"
+        ]
+      },
+      "workflow_status": "needs_review",
+      "error_category": "no_code_fix",
+      "error": null,
+      "gate_passed": false,
+      "quality_score": 0.535,
+      "predicted_category": "logic_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.7,
+      "observed_quotes": 3,
+      "grounded_quotes": 3,
+      "affected_files": [
+        "app/orders.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 43021,
+          "input_tokens": 2262,
+          "output_tokens": 1236,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.535,
+          "gate_passed": false,
+          "failed_checks": [
+            "self_assessment",
+            "diff_wellformed",
+            "diff_applies",
+            "patch_minimal",
+            "patch_locality",
+            "patch_effective"
+          ],
+          "decision": "grounded analysis without a code patch (operational root cause?)"
+        }
+      ],
+      "patch": null,
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.70 (uncalibrated)",
+        "diff_wellformed": "no patch provided",
+        "diff_applies": "no patch provided",
+        "patch_minimal": "no patch provided",
+        "patch_locality": "no patch provided",
+        "patch_effective": "no patch provided"
+      },
+      "wall_ms": 43027,
+      "run": 1
+    },
+    {
+      "case_id": "caller-empty-list",
+      "expected": {
+        "root_cause_category": "logic_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/orders.py"
+        ]
+      },
+      "workflow_status": "needs_review",
+      "error_category": "no_code_fix",
+      "error": null,
+      "gate_passed": false,
+      "quality_score": 0.535,
+      "predicted_category": "logic_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.7,
+      "observed_quotes": 2,
+      "grounded_quotes": 2,
+      "affected_files": [
+        "app/orders.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 21954,
+          "input_tokens": 2262,
+          "output_tokens": 1553,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.535,
+          "gate_passed": false,
+          "failed_checks": [
+            "self_assessment",
+            "diff_wellformed",
+            "diff_applies",
+            "patch_minimal",
+            "patch_locality",
+            "patch_effective"
+          ],
+          "decision": "grounded analysis without a code patch (operational root cause?)"
+        }
+      ],
+      "patch": null,
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.70 (uncalibrated)",
+        "diff_wellformed": "no patch provided",
+        "diff_applies": "no patch provided",
+        "patch_minimal": "no patch provided",
+        "patch_locality": "no patch provided",
+        "patch_effective": "no patch provided"
+      },
+      "wall_ms": 21959,
+      "run": 2
+    },
+    {
+      "case_id": "caller-empty-list",
+      "expected": {
+        "root_cause_category": "logic_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/orders.py"
+        ]
+      },
+      "workflow_status": "needs_review",
+      "error_category": "no_code_fix",
+      "error": null,
+      "gate_passed": false,
+      "quality_score": 0.535,
+      "predicted_category": "logic_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.7,
+      "observed_quotes": 3,
+      "grounded_quotes": 3,
+      "affected_files": [
+        "app/orders.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 21704,
+          "input_tokens": 2262,
+          "output_tokens": 1141,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.535,
+          "gate_passed": false,
+          "failed_checks": [
+            "self_assessment",
+            "diff_wellformed",
+            "diff_applies",
+            "patch_minimal",
+            "patch_locality",
+            "patch_effective"
+          ],
+          "decision": "grounded analysis without a code patch (operational root cause?)"
+        }
+      ],
+      "patch": null,
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.70 (uncalibrated)",
+        "diff_wellformed": "no patch provided",
+        "diff_applies": "no patch provided",
+        "patch_minimal": "no patch provided",
+        "patch_locality": "no patch provided",
+        "patch_effective": "no patch provided"
+      },
+      "wall_ms": 21708,
+      "run": 3
+    },
+    {
+      "case_id": "caller-symptomatic-patch",
+      "expected": {
+        "root_cause_category": "null_reference",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/mailer.py"
+        ]
+      },
+      "workflow_status": "needs_review",
+      "error_category": "no_code_fix",
+      "error": null,
+      "gate_passed": false,
+      "quality_score": 0.535,
+      "predicted_category": "null_reference",
+      "declared_insufficient": false,
+      "model_confidence": 0.7,
+      "observed_quotes": 2,
+      "grounded_quotes": 2,
+      "affected_files": [
+        "app/mailer.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 18240,
+          "input_tokens": 2257,
+          "output_tokens": 1302,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.535,
+          "gate_passed": false,
+          "failed_checks": [
+            "self_assessment",
+            "diff_wellformed",
+            "diff_applies",
+            "patch_minimal",
+            "patch_locality",
+            "patch_effective"
+          ],
+          "decision": "grounded analysis without a code patch (operational root cause?)"
+        }
+      ],
+      "patch": null,
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.70 (uncalibrated)",
+        "diff_wellformed": "no patch provided",
+        "diff_applies": "no patch provided",
+        "patch_minimal": "no patch provided",
+        "patch_locality": "no patch provided",
+        "patch_effective": "no patch provided"
+      },
+      "wall_ms": 18245,
+      "run": 1
+    },
+    {
+      "case_id": "caller-symptomatic-patch",
+      "expected": {
+        "root_cause_category": "null_reference",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/mailer.py"
+        ]
+      },
+      "workflow_status": "needs_review",
+      "error_category": "no_code_fix",
+      "error": null,
+      "gate_passed": false,
+      "quality_score": 0.535,
+      "predicted_category": "null_reference",
+      "declared_insufficient": false,
+      "model_confidence": 0.7,
+      "observed_quotes": 2,
+      "grounded_quotes": 2,
+      "affected_files": [
+        "app/mailer.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 19053,
+          "input_tokens": 2257,
+          "output_tokens": 1302,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.535,
+          "gate_passed": false,
+          "failed_checks": [
+            "self_assessment",
+            "diff_wellformed",
+            "diff_applies",
+            "patch_minimal",
+            "patch_locality",
+            "patch_effective"
+          ],
+          "decision": "grounded analysis without a code patch (operational root cause?)"
+        }
+      ],
+      "patch": null,
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.70 (uncalibrated)",
+        "diff_wellformed": "no patch provided",
+        "diff_applies": "no patch provided",
+        "patch_minimal": "no patch provided",
+        "patch_locality": "no patch provided",
+        "patch_effective": "no patch provided"
+      },
+      "wall_ms": 19058,
+      "run": 2
+    },
+    {
+      "case_id": "caller-symptomatic-patch",
+      "expected": {
+        "root_cause_category": "null_reference",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/mailer.py"
+        ]
+      },
+      "workflow_status": "needs_review",
+      "error_category": "no_code_fix",
+      "error": null,
+      "gate_passed": false,
+      "quality_score": 0.535,
+      "predicted_category": "null_reference",
+      "declared_insufficient": false,
+      "model_confidence": 0.7,
+      "observed_quotes": 3,
+      "grounded_quotes": 3,
+      "affected_files": [
+        "app/greeting.py",
+        "app/mailer.py"
+      ],
+      "grounded_files": 2,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 17479,
+          "input_tokens": 2257,
+          "output_tokens": 1546,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.485,
+          "gate_passed": false,
+          "failed_checks": [
+            "evidence_grounding",
+            "self_assessment",
+            "diff_wellformed",
+            "diff_applies",
+            "patch_minimal",
+            "patch_locality",
+            "patch_effective"
+          ],
+          "decision": "retrying with evaluator feedback"
+        },
+        {
+          "iteration": 2,
+          "latency_ms": 19613,
+          "input_tokens": 2880,
+          "output_tokens": 1546,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.535,
+          "gate_passed": false,
+          "failed_checks": [
+            "self_assessment",
+            "diff_wellformed",
+            "diff_applies",
+            "patch_minimal",
+            "patch_locality",
+            "patch_effective"
+          ],
+          "decision": "grounded analysis without a code patch (operational root cause?)"
+        }
+      ],
+      "patch": null,
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.70 (uncalibrated)",
+        "diff_wellformed": "no patch provided",
+        "diff_applies": "no patch provided",
+        "patch_minimal": "no patch provided",
+        "patch_locality": "no patch provided",
+        "patch_effective": "no patch provided"
+      },
+      "wall_ms": 37100,
+      "run": 3
+    },
+    {
+      "case_id": "caller-two-levels-up",
+      "expected": {
+        "root_cause_category": "type_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/handlers.py"
+        ]
+      },
+      "workflow_status": "needs_review",
+      "error_category": "no_code_fix",
+      "error": null,
+      "gate_passed": false,
+      "quality_score": 0.535,
+      "predicted_category": "type_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.7,
+      "observed_quotes": 3,
+      "grounded_quotes": 3,
+      "affected_files": [
+        "app/handlers.py",
+        "app/util.py"
+      ],
+      "grounded_files": 2,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 5079,
+          "input_tokens": 2362,
+          "output_tokens": 1338,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.535,
+          "gate_passed": false,
+          "failed_checks": [
+            "self_assessment",
+            "diff_wellformed",
+            "diff_applies",
+            "patch_minimal",
+            "patch_locality",
+            "patch_effective"
+          ],
+          "decision": "grounded analysis without a code patch (operational root cause?)"
+        }
+      ],
+      "patch": null,
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.70 (uncalibrated)",
+        "diff_wellformed": "no patch provided",
+        "diff_applies": "no patch provided",
+        "patch_minimal": "no patch provided",
+        "patch_locality": "no patch provided",
+        "patch_effective": "no patch provided"
+      },
+      "wall_ms": 5087,
+      "run": 1
+    },
+    {
+      "case_id": "caller-two-levels-up",
+      "expected": {
+        "root_cause_category": "type_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/handlers.py"
+        ]
+      },
+      "workflow_status": "needs_review",
+      "error_category": "no_code_fix",
+      "error": null,
+      "gate_passed": false,
+      "quality_score": 0.535,
+      "predicted_category": "type_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.7,
+      "observed_quotes": 3,
+      "grounded_quotes": 3,
+      "affected_files": [
+        "app/handlers.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 6164,
+          "input_tokens": 2362,
+          "output_tokens": 1720,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.535,
+          "gate_passed": false,
+          "failed_checks": [
+            "self_assessment",
+            "diff_wellformed",
+            "diff_applies",
+            "patch_minimal",
+            "patch_locality",
+            "patch_effective"
+          ],
+          "decision": "grounded analysis without a code patch (operational root cause?)"
+        }
+      ],
+      "patch": null,
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.70 (uncalibrated)",
+        "diff_wellformed": "no patch provided",
+        "diff_applies": "no patch provided",
+        "patch_minimal": "no patch provided",
+        "patch_locality": "no patch provided",
+        "patch_effective": "no patch provided"
+      },
+      "wall_ms": 6167,
+      "run": 2
+    },
+    {
+      "case_id": "caller-two-levels-up",
+      "expected": {
+        "root_cause_category": "type_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/handlers.py"
+        ]
+      },
+      "workflow_status": "failed",
+      "error_category": "llm_unavailable",
+      "error": "could not reach the LLM provider",
+      "gate_passed": false,
+      "quality_score": 0.0,
+      "predicted_category": null,
+      "declared_insufficient": false,
+      "model_confidence": null,
+      "observed_quotes": 0,
+      "grounded_quotes": 0,
+      "affected_files": [],
+      "grounded_files": 0,
+      "attempts": [
+        {
+          "iteration": 1,
+          "error_category": "llm_unavailable"
+        }
+      ],
+      "patch": null,
+      "failed_check_details": {},
+      "wall_ms": 1431,
+      "run": 3
+    },
+    {
+      "case_id": "control-cause-in-trigger",
+      "expected": {
+        "root_cause_category": "logic_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/stats.py"
+        ]
+      },
+      "workflow_status": "failed",
+      "error_category": "llm_unavailable",
+      "error": "could not reach the LLM provider",
+      "gate_passed": false,
+      "quality_score": 0.0,
+      "predicted_category": null,
+      "declared_insufficient": false,
+      "model_confidence": null,
+      "observed_quotes": 0,
+      "grounded_quotes": 0,
+      "affected_files": [],
+      "grounded_files": 0,
+      "attempts": [
+        {
+          "iteration": 1,
+          "error_category": "llm_unavailable"
+        }
+      ],
+      "patch": null,
+      "failed_check_details": {},
+      "wall_ms": 1473,
+      "run": 1
+    },
+    {
+      "case_id": "control-cause-in-trigger",
+      "expected": {
+        "root_cause_category": "logic_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/stats.py"
+        ]
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.935,
+      "predicted_category": "logic_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.7,
+      "observed_quotes": 4,
+      "grounded_quotes": 4,
+      "affected_files": [
+        "app/stats.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 3960,
+          "input_tokens": 2282,
+          "output_tokens": 1500,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.935,
+          "gate_passed": true,
+          "failed_checks": [
+            "fix_location",
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/stats.py\n+++ b/app/stats.py\n@@ -5,2 +5,5 @@\n def safe_mean(values):\n-    return mean(values)\n+    if not values:\n+        return 0\n+    return mean(values)",
+      "failed_check_details": {
+        "fix_location": "the evidence cites code that only occurs in a caller ('values = [m[\"value\"] for m in metrics if m[\"value\"') but the patch changes the failing function, which may only hide the symptom. If the cause is in the caller, say so in uncertainties and leave unified_diff empty",
+        "self_assessment": "model self-assessed 0.70 (uncalibrated)"
+      },
+      "wall_ms": 3996,
+      "run": 2
+    },
+    {
+      "case_id": "control-cause-in-trigger",
+      "expected": {
+        "root_cause_category": "logic_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/stats.py"
+        ]
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.935,
+      "predicted_category": "logic_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.7,
+      "observed_quotes": 4,
+      "grounded_quotes": 4,
+      "affected_files": [
+        "app/stats.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 3598,
+          "input_tokens": 2282,
+          "output_tokens": 1539,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.935,
+          "gate_passed": true,
+          "failed_checks": [
+            "fix_location",
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/stats.py\n+++ b/app/stats.py\n@@ -5,2 +5,5 @@\n def safe_mean(values):\n-    return mean(values)\n+    if not values:\n+        return 0\n+    return mean(values)",
+      "failed_check_details": {
+        "fix_location": "the evidence cites code that only occurs in a caller ('values = [m[\"value\"] for m in metrics if m[\"value\"') but the patch changes the failing function, which may only hide the symptom. If the cause is in the caller, say so in uncertainties and leave unified_diff empty",
+        "self_assessment": "model self-assessed 0.70 (uncalibrated)"
+      },
+      "wall_ms": 3614,
+      "run": 3
+    }
+  ]
+}

@@ -35,6 +35,7 @@ from src.errors import LLM_CATEGORY, ErrorCategory
 from src.integrations.github import TRANSPORT_ERRORS, GitHubError, SourceContext
 from src.integrations.llm import LLMError, ModelFactory, invoke_json_model
 from src.integrations.observability import observe
+from src.logging_config import redact
 from src.retrieval.history import HistoryQuery
 from src.versions import run_metadata
 
@@ -52,7 +53,11 @@ Update = dict[str, Any]
 def normalize_incident(state: IncidentState) -> Update:
     """Strip ANSI/NUL characters, cap sizes, and separate a traceback embedded in the message."""
     message, trace = split_embedded_trace(state["error_message"] or "", state["stack_trace"] or "")
-    return {"error_message": clean_text(message, 10_000) or "unknown error", "stack_trace": clean_text(trace, 60_000)}
+    # Credentials in reported errors are masked before they are stored, sent to the model or quoted anywhere.
+    return {
+        "error_message": redact(clean_text(message, 10_000)) or "unknown error",
+        "stack_trace": redact(clean_text(trace, 60_000)),
+    }
 
 
 def extract_stack_trace_context(state: IncidentState) -> Update:
@@ -269,6 +274,11 @@ def _analyze_root_cause(state: IncidentState, config: RunnableConfig, model_fact
     }
 
 
+def _llm_seconds(state: IncidentState) -> float:
+    """Time the model calls of this incident have taken so far (recorded per attempt)."""
+    return sum((a.get("latency_ms") or 0) for a in state["attempts"]) / 1000
+
+
 def evaluate_analysis(state: IncidentState) -> Update:
     """Run the deterministic quality gate and decide the next workflow status."""
     analysis = dict(state["root_cause_analysis"] or {})
@@ -291,6 +301,9 @@ def evaluate_analysis(state: IncidentState) -> Update:
         status, reason = "needs_review", "analysis attempt budget exhausted"
         malformed = "output_error" in content
         category = ErrorCategory.MALFORMED_MODEL_OUTPUT if malformed else ErrorCategory.RETRY_BUDGET_EXHAUSTED
+    elif _llm_seconds(state) >= settings.max_incident_seconds:
+        status, reason = "needs_review", "analysis time budget exhausted"
+        category = ErrorCategory.TIME_BUDGET_EXHAUSTED
     elif not state["code_context"]:
         status, reason = "needs_review", "source code unavailable; another attempt cannot add grounding"
         category = ErrorCategory.SOURCE_UNAVAILABLE

@@ -35,9 +35,17 @@ def _abstained(r: Result) -> bool:
     return r["declared_insufficient"] or r["predicted_category"] == "unknown"
 
 
+def category_matches(r: Result) -> bool:
+    """The predicted category is the labelled one or an accepted alternative for an ambiguous label."""
+    expected = r["expected"]
+    return r["predicted_category"] == expected["root_cause_category"] or r["predicted_category"] in expected.get(
+        "alternative_categories", []
+    )
+
+
 def _correct(r: Result) -> bool:
     """Outcome used for calibration: a conclusive case diagnosed with the labelled category."""
-    return not r["expected"]["inconclusive"] and r["predicted_category"] == r["expected"]["root_cause_category"]
+    return not r["expected"]["inconclusive"] and category_matches(r)
 
 
 def _unsupported(r: Result) -> bool:
@@ -127,7 +135,7 @@ def compute_metrics(
     grounded_files = sum(r["grounded_files"] for r in evaluated)
 
     def wrong(r: Result) -> bool:
-        return r["expected"]["inconclusive"] or r["predicted_category"] != r["expected"]["root_cause_category"]
+        return r["expected"]["inconclusive"] or not category_matches(r)
 
     def hit(r: Result) -> bool:
         return any(path_matches(p, e) for p in r["affected_files"] for e in r["expected"]["relevant_files"])
@@ -149,9 +157,9 @@ def compute_metrics(
             "LLM attempts whose reply validated against RCAOutput / LLM attempts (provider errors excluded)",
         ),
         "category_accuracy": _ratio(
-            count(conclusive, lambda r: r["predicted_category"] == r["expected"]["root_cause_category"]),
+            count(conclusive, category_matches),
             len(conclusive),
-            "final category == labelled category / cases labelled conclusive",
+            "final category == labelled category (or an accepted alternative) / cases labelled conclusive",
         ),
         "evidence_grounding_accuracy": _ratio(
             grounded,

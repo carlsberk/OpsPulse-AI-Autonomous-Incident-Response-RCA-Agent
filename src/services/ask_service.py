@@ -80,11 +80,21 @@ def _clip(value: Any, limit: int) -> str:
     return text if len(text) <= limit else text[:limit] + " ...[truncated]"
 
 
+def _obj(value: Any) -> dict[str, Any]:
+    """The value if it is an object, else an empty one. A stored analysis that never passed the schema is the model's
+    raw output, so any field can have any type."""
+    return value if isinstance(value, dict) else {}
+
+
+def _items(value: Any) -> list[Any]:
+    return value if isinstance(value, list) else []
+
+
 def build_sections(incident: dict[str, Any], guide: dict[str, Any] | None = None) -> dict[str, str]:
     """Section name -> text, only for sections the record actually contains."""
-    analysis = incident.get("analysis") or {}
+    analysis = _obj(incident.get("analysis"))
     sections: dict[str, str] = {}
-    summary = analysis.get("incident_summary") or {}
+    summary = _obj(analysis.get("incident_summary"))
     head = [
         f"status: {incident.get('status')}",
         f"status reason: {incident.get('status_reason') or '-'}",
@@ -102,23 +112,21 @@ def build_sections(incident: dict[str, Any], guide: dict[str, Any] | None = None
             f"{guide['headline']}. {guide['explanation']} Next steps: {steps or 'none'}. " + " ".join(guide["facts"]),
             1800,
         )
-    root = ((analysis.get("diagnostic_chain") or {}).get("primary_root_cause") or {}).get("technical_explanation")
+    root = _obj(_obj(analysis.get("diagnostic_chain")).get("primary_root_cause")).get("technical_explanation")
     if root or analysis.get("root_cause_category"):
         sections["root_cause"] = f"category: {analysis.get('root_cause_category')}\n{_clip(root or '', 1500)}"
-    if analysis.get("evidence"):
-        sections["evidence"] = _clip(
-            [
-                {k: item.get(k) for k in ("kind", "claim", "quote", "source")}
-                for item in analysis["evidence"]
-                if isinstance(item, dict)
-            ],
-            3500,
-        )
+    evidence = [
+        {k: item.get(k) for k in ("kind", "claim", "quote", "source")}
+        for item in _items(analysis.get("evidence"))
+        if isinstance(item, dict)
+    ]
+    if evidence:
+        sections["evidence"] = _clip(evidence, 3500)
     if analysis.get("uncertainties"):
         sections["uncertainties"] = _clip(analysis["uncertainties"], 1200)
     if analysis.get("tests_to_run"):
         sections["tests"] = _clip(analysis["tests_to_run"], 1000)
-    checks = (analysis.get("evaluation") or {}).get("checks") or {}
+    checks = _obj(_obj(analysis.get("evaluation")).get("checks"))
     if checks:
         sections["gate"] = _clip(
             [
@@ -247,6 +255,29 @@ _APPROVAL_ADVICE = re.compile(
     r"\b(approve|merge)\b[^.\n]{0,20}\b(now|immediately|this|it)\b",
     re.IGNORECASE,
 )
+# Turkish (the assistant is used in Turkish too, and a model answers in the language of the question). Turkish is
+# agglutinative, so this works clause by clause: an approve/merge/deploy stem plus an advisory cue ("you can", "I
+# recommend", "just", "safely", an imperative...) in the same clause. Clauses that negate or condition ("before",
+# "for", "-ma/-me" negation) are left alone. Diacritic-free spellings are matched too, since people type without them.
+_TR_ACTION = re.compile(r"(onayla|onaylay|merge|birle[sş]tir|yay[ıi]nla|deploy|canl[ıi]ya)\w*")
+_TR_CUE = re.compile(
+    r"(\w*[ae]bil\w*|[öo]ner\w*|tavsiye|g[üu]venle|rahat[çc]a|hemen|l[üu]tfen|gerek\w*|\w*(mal[ıi]|meli)\w*|"
+    r"\w*(?:[ıiuü]n|[ıiuü]n[ıiuü]z)$|onayla$|merge et$)"
+)
+_TR_SKIP = re.compile(r"(de[ğg]il|[öo]nce|i[çc]in|\w*(madan|meden)|\w*(may[ıi]n|mey[ıi]n)|\w*(mama|meme)\w*)")
+
+
+def turkish_approval_advice(answer: str) -> bool:
+    text = answer.replace("İ", "i").replace("I", "ı").lower()
+    for clause in re.split(r"[.!?;,:\n]+", text):
+        words = clause.split()
+        if not words or _TR_SKIP.search(clause):
+            continue
+        if any(_TR_ACTION.fullmatch(w) for w in words) and any(_TR_CUE.search(w) for w in words):
+            return True
+    return False
+
+
 APPROVAL_NOTICE = (
     "The model's answer contained a recommendation to approve or merge. This assistant never gives that "
     "recommendation: the decision is yours. Use the evidence, the gate checks and the uncertainties on this page."
@@ -276,11 +307,11 @@ def parse_answer(text: str, sections: dict[str, str], extra_text: str = "") -> d
             "flags": ["unusable"],
         }
     flags: list[str] = []
-    if _APPROVAL_ADVICE.search(answer):
+    if _APPROVAL_ADVICE.search(answer) or turkish_approval_advice(answer):
         flags.append("approval_advice")
         answer = APPROVAL_NOTICE
     answerable = obj.get("answerable") is not False
-    cited = [s for s in obj.get("cited_sections", []) if isinstance(s, str) and s in sections]
+    cited = [s for s in _items(obj.get("cited_sections")) if isinstance(s, str) and s in sections]
     cited = list(dict.fromkeys(cited))
     bad_quotes = unverified_quotes(answer, sections, extra_text)
     grounded = ((not answerable) or bool(cited)) and not bad_quotes and not flags

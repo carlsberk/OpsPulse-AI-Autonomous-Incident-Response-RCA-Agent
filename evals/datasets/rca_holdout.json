@@ -1,5 +1,5 @@
 {
-  "version": "rca-holdout-v1",
+  "version": "rca-holdout-v2",
   "cases": [
     {
       "id": "ho-none-config",
@@ -312,7 +312,11 @@
         "relevant_files": [
           "app/pay.py"
         ],
-        "root_cause_category": "dependency_unavailable"
+        "root_cause_category": "dependency_unavailable",
+        "alternative_categories": [
+          "configuration_error"
+        ],
+        "note": "PoolTimeout means the client's connection pool was exhausted. That is a capacity/pool-size setting (configuration_error) as much as a slow provider (dependency_unavailable); live runs consistently chose the former, and a reviewer could defend either, so both are accepted."
       },
       "mock_replies": [
         {

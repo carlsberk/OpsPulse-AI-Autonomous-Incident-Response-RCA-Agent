@@ -157,6 +157,7 @@ class RemediationDecision(BaseModel):
 
 class IncidentResult(BaseModel):
     incident_id: str
+    request_id: str | None = Field(None, description="X-Request-ID of the submitting request")
     repo_name: str
     status: IncidentStatus
     status_reason: str | None = None
@@ -178,6 +179,43 @@ class IncidentResult(BaseModel):
     )
     created_at: str | None = None
     updated_at: str | None = None
+
+    @field_validator("analysis", mode="before")
+    @classmethod
+    def _without_source_windows(cls, value: Any) -> Any:
+        """Stored source code windows are internal (they back the evidence trail); they are not an API field."""
+        if isinstance(value, dict) and "source_windows" in value:
+            return {k: v for k, v in value.items() if k != "source_windows"}
+        return value
+
+
+class TraceResponse(BaseModel):
+    incident_id: str | None = None
+    request_id: str | None = Field(None, description="Request that submitted the incident, when recorded")
+    status: str | None = None
+    error_category: str | None = None
+    versions: dict[str, Any] = Field(description="Model, prompt, quality-gate and retrieval versions of the run")
+    attempts: list[dict[str, Any]] = Field(description="Per LLM attempt: latency, tokens, gate verdict and decision")
+    totals: dict[str, Any] = Field(
+        description="Sums over attempts; estimated_cost_usd needs both LLM_COST_*_PER_MTOK prices, else null"
+    )
+    final_quality_score: float | None = None
+
+
+class EvidenceGraphResponse(BaseModel):
+    incident_id: str | None = None
+    nodes: list[dict[str, Any]] = Field(
+        description="incident, claim, evidence (with verification status), patch, files"
+    )
+    edges: list[dict[str, Any]] = Field(description="from/to/relation: diagnosed_as, supports, suggests, anchors, ...")
+    flags: list[str] = Field(description="Missing, unverified or conflicting evidence, stated plainly")
+    summary: dict[str, int]
+
+
+class AuditResponse(BaseModel):
+    incident_id: str | None = None
+    events: list[dict[str, Any]] = Field(description="Ordered review timeline: who did what, when, and why")
+    merge_policy: str = Field(description="Merging is never done by this service")
 
 
 class ErrorBody(BaseModel):

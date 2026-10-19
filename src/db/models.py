@@ -51,6 +51,7 @@ class Incident(Base):
     status_reason: Mapped[str | None] = mapped_column("failure_reason", Text, nullable=True)
     error_category: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)  # migration 0002
     submitted_by: Mapped[str | None] = mapped_column(String(100), nullable=True)  # migration 0003
+    request_id: Mapped[str | None] = mapped_column(String(64), nullable=True)  # migration 0007
     # Job queue (migration 0004): how often a worker claimed the incident, and until when its claim is valid.
     job_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

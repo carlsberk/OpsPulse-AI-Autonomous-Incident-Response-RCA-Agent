@@ -77,11 +77,18 @@
 
   /** Status -> count, plus the statuses in a stable display order. */
   function statusCounts(items) {
-    const counts = {};
+    // No prototype: a status called "constructor", "toString" or "__proto__" must count like any other string.
+    const counts = Object.create(null);
     for (const item of items) counts[item.status] = (counts[item.status] || 0) + 1;
     const known = STATUS_OPTIONS.filter((status) => counts[status]);
     const other = Object.keys(counts).filter((status) => !STATUS_OPTIONS.includes(status)).sort();
     return { counts, order: [...known, ...other] };
+  }
+
+  /** A hunk-header line number as a safe integer (an absurd value would otherwise render as "1e+21"). */
+  function safeLine(text) {
+    const value = Number(text);
+    return Number.isSafeInteger(value) ? value : 0;
   }
 
   /**
@@ -95,8 +102,8 @@
     for (const text of String(patch || "").split("\n")) {
       const hunk = text.match(/^@@ -(\d+)(?:,\d+)? \+(\d+)/);
       if (hunk) {
-        oldLine = Number(hunk[1]);
-        newLine = Number(hunk[2]);
+        oldLine = safeLine(hunk[1]);
+        newLine = safeLine(hunk[2]);
         rows.push({ kind: "hunk", left: "", right: "", text });
       } else if (text.startsWith("---") || text.startsWith("+++") || text.startsWith("\\")) {
         rows.push({ kind: "meta", left: "", right: "", text });

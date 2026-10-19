@@ -48,6 +48,7 @@ def incident_to_dict(row: Incident) -> dict[str, Any]:
         "error_category": row.error_category,
         "error_message": row.error_message,
         "submitted_by": row.submitted_by,
+        "request_id": row.request_id,
         "job_attempts": row.job_attempts,
         "available_at": _iso(_aware(row.available_at)) if row.available_at else None,
         "affected_file": row.affected_file,
@@ -89,6 +90,7 @@ def create_incident(
     error_message: str,
     stack_trace: str,
     submitted_by: str | None = None,
+    request_id: str | None = None,
 ) -> tuple[dict[str, Any], bool]:
     """Insert a `processing` row. Idempotent per id: returns (row, created)."""
     try:
@@ -104,6 +106,7 @@ def create_incident(
                 stack_trace=stack_trace,
                 status="queued",
                 submitted_by=submitted_by,
+                request_id=request_id,
             )
             session.add(row)
             session.flush()
@@ -441,6 +444,17 @@ def get_approval(approval_id: uuid.UUID) -> dict[str, Any] | None:
     with session_scope() as session:
         row = session.get(RemediationApproval, approval_id)
         return approval_to_dict(row) if row else None
+
+
+def list_approvals(incident_id: uuid.UUID) -> list[dict[str, Any]]:
+    """Every approval of an incident (pending, decided, expired, superseded), oldest first."""
+    stmt = (
+        select(RemediationApproval)
+        .where(RemediationApproval.incident_id == incident_id)
+        .order_by(RemediationApproval.created_at)
+    )
+    with session_scope() as session:
+        return [approval_to_dict(row) for row in session.scalars(stmt)]
 
 
 def get_pending_approval(incident_id: uuid.UUID) -> dict[str, Any] | None:

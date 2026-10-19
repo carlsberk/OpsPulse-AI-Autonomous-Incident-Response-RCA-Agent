@@ -5,6 +5,116 @@ All notable changes are listed here. Versions of behaviour-critical components a
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-10-19
+
+Hardening, evidence and honesty. Nothing here changes the safety model (no GitHub write without a human decision, no merge);
+it makes the analysis harder to break, easier to audit and more honestly measured. **Versioned 1.4.0 rather than 1.3.1**
+because it adds a database migration, a setting, an error category and a prompt version.
+
+### Upgrade notes
+- **Run the migrations** (`alembic upgrade head`; the Docker image does it on start). Migration 0007 adds
+  `incidents.request_id` (nullable, no backfill).
+- The code windows the model saw (trigger and caller windows) are now stored inside the analysis, redacted and capped at
+  40,000 characters each. They are **never returned** by the public incident endpoints. Existing incidents have none.
+- New optional setting `MAX_INCIDENT_SECONDS` (default 300, range 30-3600).
+- Prompt is `rca-prompt-v6.1`; the holdout evaluation set is `rca-holdout-v2` (its mock baseline was regenerated, metrics
+  unchanged; the only change is the accepted alternative for `ho-pool-timeout`). Compare live results across prompt versions with `evals.reliability_report`, not by eye.
+
+### Fixed
+- **A failure after the fix branch was created left that branch behind.** Every later delivery of the same incident then
+  failed with "branch already exists". The branch is now removed (best effort).
+- **Telemetry could break the work it observed.** A Langfuse failure while starting or ending a span propagated into the
+  incident pipeline (a good analysis could be marked `failed`), and a span reporting the error as handled could hide a real
+  error. Spans now go through a guard; the observed code's own exceptions always propagate unchanged.
+- **The incident assistant crashed on an incident whose stored analysis has a wrong-typed field** (a string where an
+  object belongs; normal for an analysis that never passed the schema). Found by fuzzing.
+- **The assistant's approval-advice guard only knew English.** A Turkish "güvenle onaylayabilirsiniz" passed as grounded.
+  A conservative, clause-level Turkish detector now replaces such answers with the notice (it can also replace an answer
+  that merely described approval).
+- Console: a status named `constructor`, `toString` or `hasOwnProperty` produced nonsense counts, and a hunk number beyond
+  2^53 rendered as `1e+21`. Neither was reachable with the server's fixed status list; fixed because the helpers receive
+  data they do not control.
+
+### Added
+- **The evidence trail now re-verifies code quotes itself.** The code windows the model saw are stored (see the upgrade
+  notes), so a `code_context` quote is `verified_in_record`; when it lies outside the stored window the status falls back
+  to `verified_by_gate`, never to a false `unverified`.
+- **`request_id` is stored with the incident** (migration 0007), so `GET /incidents/{id}/trace` always carries the
+  `X-Request-ID` of the submitting request, and `estimated_cost_usd` is filled when both `LLM_COST_*_PER_MTOK` prices are
+  configured (otherwise `null`; no price is assumed).
+- **`MAX_INCIDENT_SECONDS`**: a model-time budget per incident. Once spent, no further attempt starts and the incident goes
+  to review as `time_budget_exhausted` (guidance card included). An attempt already running is not interrupted.
+- **`evals.reliability_report` v2:** false accepted and false rejected as separate numbers, *unsafe accepted* (an accepted
+  patch with a wrong diagnosis or on a file other than the labelled fix location), evidence verification, attempts, cost,
+  a "Data quality" section and a small-sample banner. Runs the provider prevented from finishing are excluded from every
+  rate (they used to count as failures, which made the model look worse on a quota problem).
+- **Ambiguous evaluation labels** via `Expected.alternative_categories` and `Expected.note`.
+- **`evals/pilot_real_repo.py` and `run_rca --dataset-file`:** inject known bugs into a throwaway copy of a real
+  repository, take the real traceback as the incident and measure; the repository is never modified.
+- **`python -m scripts.e2e_flow`** (unit test and CI step): the whole flow over HTTP in 25 checks, with a scripted model and
+  a stubbed GitHub. `--dump FILE` writes the reviewer-facing responses; the committed example is kept in shape by a test.
+- **Documentation:** [architecture](docs/ARCHITECTURE.md), [a worked example](docs/TRACE_EXAMPLE.md) and
+  [limitations and what is proven](docs/LIMITATIONS.md), all on the documentation site.
+- **Tests:** 515 (398 at 1.3.0), coverage about 95.7 % (the CI floor is 84 %). Structure-aware fuzzing of the model-output
+  path, the quality gate, the workflow, the assistant and the console helpers (the weekly Security workflow explores them
+  with random seeds); failure-path tests for the GitHub adapter, the API (503/404/409), Alertmanager, the CLI,
+  configuration parsing and the worker loop; a four-thread race proving every queued incident is claimed exactly once.
+  CI also runs Python 3.14.
+
+### Changed
+- **Prompt `rca-prompt-v6.1`:** when a caller is at fault the model lists the caller's file first in `affected_files`, and
+  the "callee at fault" example that used to name an empty list (which pushed the empty-list case into a callee patch) is
+  replaced by a contract-based description. Live, callers set x3: relevant-file hit 5/15 -> 13/13 evaluated; the
+  empty-list case is now routed to review 3/3 instead of patched and accepted 3/3; the control case accepted in 2 of 2
+  evaluated runs. Two of 15 runs hit provider limits and are not evaluated: read these as indications, not rates.
+- The holdout evaluation set is `rca-holdout-v2` (see the upgrade notes).
+
+### Measured, with the usual caveats
+- Public-repository pilot (4 injected bugs in `codcreater1/AI-Evaluation`, x3, live): correct fix file 12/12, 0 invented
+  quotes, category 9/12 (all three misses are one arguable label). Three of the four bugs were not caught by that
+  repository's own tests. Injected bugs are simpler and more local than organic failures.
+- `ho-pool-timeout` now accepts a second category because the label is a judgement call; `ho-drift-attribute` keeps its
+  clear label (provider limits made it hard to measure, not the label).
+
+## [1.3.0] - 2026-10-16
+
+### Added
+- Agent security: patches that add credentials are rejected by the remediation policy; reported errors and PR text
+  are redacted (AWS/Slack/JWT/private-key shapes added); tests prove GitHub writes are reachable only from the
+  approval-gated service and that the model has no tools.
+- `GET /incidents/{id}/audit` and a "Review history" card: submission, analysis versions and gate score, every proposal
+  (including superseded and expired), who decided it and why, and the resulting draft PR. Derived from stored rows;
+  it is a report, not a tamper-evident log. Merging is never done by this service.
+- `Dockerfile.demo`: offline demo image (`docker build -f Dockerfile.demo -t opspulse-demo .`).
+
+### Changed (console)
+- Calmer redesign: one accent, hairline borders, a reading column with a sticky decision sidebar, the API-key form
+  only while disconnected, the quality gate collapsed by default. Same element ids, same CSP, WCAG AA contrast kept.
+- `GET /incidents/{id}/evidence-graph` and an "Evidence trail" card in the console: claim -> evidence -> patch ->
+  file, each observed quote labelled `verified_in_record` (re-checked against the stored trace), `verified_by_gate`
+  (source text not stored; rests on the gate), `unverified` or `not_checked` (inference), plus explicit flags for
+  missing, unverified or patch-without-anchor evidence.
+- `GET /incidents/{id}/trace`: model/prompt/gate versions, per-attempt latency, tokens and gate verdict, totals and
+  the submitting `request_id` (when the analysis ran in the submitting process). Cost is `null`: no prices are configured.
+- `python -m evals.reliability_report CANDIDATE.json [--baseline BASELINE.json]`: per-case-class table
+  (accepted, correct category, patch kept, false acceptance, stability, latency, tokens) and a list of the cases that
+  moved against a baseline. First report: `evals/results/RELIABILITY-callers-v3-prompt-v6.md`.
+
+### Changed
+- `ho-off-by-one` x3 on `rca-prompt-v6` (live, 2026-10-16): accepted 3/3 on the first attempt, so the single-run miss on
+  2026-10-15 was variance, not a v6 regression. `ho-drift-attribute` x3: 2 runs ended `failed` (provider-side, run
+  did not complete: not evaluated), 1 abstained to `unknown` as labelled. Three runs per case: indicative only.
+- Live check of `rca-prompt-v6` on the other datasets (single run each, `gpt-oss-120b`, 2026-10-15): holdout
+  category 9/10, 1 provider rate-limit failure (`ho-drift-attribute`, not evaluated), one false acceptance
+  (`ho-pool-timeout`, the known label ambiguity); adversarial category 5/5, 0 false acceptances, 2/3 abstentions
+  (`adv-deploy-drift` abstained, `adv-guess-without-source` did not). Reports and a per-case comparison are in
+  `evals/results/`. One run per case: indicative, not statistical.
+- Prompt `rca-prompt-v6`: the model is told to decide *where* the fault is (failing function vs. a caller) and to leave
+  `unified_diff` empty when a caller is at fault. Live, `rca-callers-v3` x3 (15 runs): category 15/15, control case
+  accepted 3/3 with its patch, the three blame cases routed to review 9/9 (no callee patch); but `caller-empty-list`
+  (label: caller) was still patched in the callee and accepted 3/3, and `relevant_file_hit_rate` is 5/15 because the
+  caller file is named in the explanation rather than `affected_files`. Small n; see the report in `evals/results/`.
+
 ### Changed
 - Review console redesign: deep links and back/forward navigation, search, auto-refresh, keyboard shortcuts,
   gate-check meters (failures first), attempt timeline, patch view with line numbers, copy/download, confirmation

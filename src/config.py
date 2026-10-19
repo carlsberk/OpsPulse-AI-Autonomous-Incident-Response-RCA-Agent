@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-AGENT_VERSION = "1.2.0-opspulse"
+AGENT_VERSION = "1.4.0-opspulse"
 
 
 class ConfigError(ValueError):
@@ -203,6 +203,12 @@ class Settings:
     )
     max_analysis_iterations: int = field(
         default_factory=lambda: int(_number(("MAX_ANALYSIS_ITERATIONS", "MAX_ITERATIONS"), 3, int, 1, 5))
+    )
+
+    # Wall-clock budget for the model calls of one incident: once the attempts so far have used it, no further
+    # attempt is started (an attempt already running is not interrupted; its own timeout bounds it).
+    max_incident_seconds: float = field(
+        default_factory=lambda: _number(("MAX_INCIDENT_SECONDS",), 300.0, float, 30, 3600)
     )
 
     # --- Observability ---

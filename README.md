@@ -79,7 +79,7 @@ publishes a GitHub Release using that version's section of `CHANGELOG.md` as its
 | Area | Implemented |
 |---|---|
 | Ingestion | `POST /webhook/incident` with validation, size limits, role-based API keys (fail-closed, stored as SHA-256), per-identity rate limit, repository allow-list, idempotent client-supplied `incident_id` |
-| Orchestration | Compiled LangGraph `StateGraph`, one typed state contract, bounded retry loop (`MAX_ANALYSIS_ITERATIONS`); durable PostgreSQL-backed job queue with leased claims and any number of workers |
+| Orchestration | Compiled LangGraph `StateGraph`, one typed state contract, bounded retry loop (`MAX_ANALYSIS_ITERATIONS`, plus a model-time budget `MAX_INCIDENT_SECONDS`); durable PostgreSQL-backed job queue with leased claims and any number of workers |
 | Integrations | Sentry issue-alert webhooks (`POST /integrations/sentry`, HMAC-verified, project -> repository mapping, idempotent per event); Prometheus Alertmanager receiver (`POST /integrations/alertmanager`, Bearer API key, idempotent per alert) |
 | Context | Stack-trace parsing (Python, JS, Java, Go), GitHub source window around the failing line, ranked same-repository history |
 | Analysis | Groq (`openai/gpt-oss-120b` by default; `llama-3.3-70b-versatile` is no longer served) in JSON mode, validated by a Pydantic schema; every evidence item labelled *observed / inference / hypothesis* |
@@ -137,6 +137,11 @@ flowchart LR
 | `src/db/` | Engine, models, parameterized queries; `migrations/` holds Alembic revisions |
 | `src/versions.py` | Prompt / evaluator / retrieval versions recorded with every analysis and report |
 | `evals/` | Datasets, harness, metrics, runners |
+
+**Understand the system:** [architecture and data flow](docs/ARCHITECTURE.md) (diagrams, and which test proves each
+guarantee), [one incident read end to end](docs/TRACE_EXAMPLE.md) (real API output) and
+[limitations and what is proven](docs/LIMITATIONS.md) (what is demonstrated, what is measured with caveats, what is not
+done).
 
 Design decisions are recorded in [`docs/adr/`](docs/adr): the deterministic gate
 ([0001](docs/adr/0001-deterministic-quality-gate.md)), side effects outside the graph and no checkpointer
@@ -974,6 +979,17 @@ workflow has run green on GitHub since. Contributor workflow: [CONTRIBUTING.md](
 
 ## Demo
 
+**The whole flow, checked end to end** (no Docker, keys or GitHub; scripted model, GitHub stubbed):
+
+```bash
+python -m scripts.e2e_flow     # 25 checks: alert -> analysis -> review -> one draft PR -> the patch fixes the service
+```
+
+It runs a real crash of `examples/demo_service`, sends it through the Alertmanager webhook, the queue worker and the
+quality gate, shows that nothing reaches GitHub until a reviewer decides, that a reporter and a stale patch hash are
+refused, that a repeated approval creates no second PR, and that the review history is complete. It is also a unit
+test and a CI step. It proves the plumbing and the safety rules, not the model's quality (the evaluations measure that).
+
 **The console in one command** (no Docker, PostgreSQL or API keys; a throwaway SQLite database, ten scripted cases):
 
 ```bash
@@ -1005,6 +1021,16 @@ first attempt (quality score 0.99), category `missing_key`, root cause "the SKU 
 One run of one bug - it shows the loop works end to end, not that it generalises.
 
 ## Security model
+
+**Agent boundaries, enforced by tests** (`tests/unit/test_agent_security.py`):
+
+- The only code that can write to GitHub is the adapter in `src/integrations/github.py`, reachable only from the
+  approval-gated remediation service; no code path merges or deletes anything (checked by scanning the source tree).
+- The model client is created without tools: the model returns text, it cannot call anything.
+- A patch that *adds* a credential-shaped string (GitHub/AWS/Slack tokens, JWTs, private keys, `password = "..."`) is
+  rejected by the remediation policy; the message names the kind, never the value. Removing a leaked secret is allowed.
+- Credentials in reported errors are masked before they are stored, sent to the model or put in a PR body.
+  Pattern-based, so it reduces leak risk rather than eliminating it.
 
 - Logs, traces, source files, history and model output are untrusted data. They are wrapped in delimiter tags
   that untrusted text cannot close (`[filtered-tag]`), and the system prompt says they are data. **Authorization

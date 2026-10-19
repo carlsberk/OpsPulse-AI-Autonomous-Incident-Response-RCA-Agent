@@ -1,15 +1,16 @@
 {
   "mode": "mock",
-  "started_at": "2026-10-10T11:46:04.694853+00:00",
-  "dataset_version": "rca-holdout-v1",
+  "started_at": "2026-10-19T13:34:42.936771+00:00",
+  "dataset_version": "rca-holdout-v2",
   "run_metadata": {
-    "agent_version": "1.1.0-opspulse",
-    "prompt_version": "rca-prompt-v4",
-    "evaluator_version": "quality-gate-v4",
+    "agent_version": "1.3.0-opspulse",
+    "prompt_version": "rca-prompt-v6.1",
+    "evaluator_version": "quality-gate-v8",
     "retrieval_strategy": "lexical-v1",
     "model": "openai/gpt-oss-120b",
     "quality_threshold": 0.85,
-    "max_analysis_iterations": 3
+    "max_analysis_iterations": 3,
+    "max_output_tokens": 4096
   },
   "metrics": {
     "cases": 12,
@@ -24,7 +25,7 @@
       "value": 1.0,
       "numerator": 10,
       "denominator": 10,
-      "definition": "final category == labelled category / cases labelled conclusive"
+      "definition": "final category == labelled category (or an accepted alternative) / cases labelled conclusive"
     },
     "evidence_grounding_accuracy": {
       "value": 1.0,
@@ -93,8 +94,8 @@
       "samples": 12
     },
     "case_wall_ms": {
-      "mean": 2,
-      "p95": 6
+      "mean": 5,
+      "p95": 13
     },
     "tokens": {
       "input": null,
@@ -129,13 +130,19 @@
       },
       "quality_score": {
         "samples": 12,
-        "brier": 0.1065,
+        "brier": 0.0952,
         "bins": [
           {
             "range": "0.00-0.50",
-            "n": 6,
-            "mean_score": 0.415,
-            "accuracy": 0.667
+            "n": 2,
+            "mean_score": 0.338,
+            "accuracy": 0.0
+          },
+          {
+            "range": "0.50-0.70",
+            "n": 4,
+            "mean_score": 0.529,
+            "accuracy": 1.0
           },
           {
             "range": "0.85-1.00",
@@ -145,7 +152,8 @@
           }
         ]
       }
-    }
+    },
+    "consistency": null
   },
   "results": [
     {
@@ -155,10 +163,13 @@
         "inconclusive": false,
         "relevant_files": [
           "app/settings.py"
-        ]
+        ],
+        "alternative_categories": [],
+        "note": ""
       },
       "workflow_status": "accepted",
       "error_category": null,
+      "error": null,
       "gate_passed": true,
       "quality_score": 0.9875,
       "predicted_category": "null_reference",
@@ -176,6 +187,7 @@
           "latency_ms": 0,
           "input_tokens": null,
           "output_tokens": null,
+          "truncated": false,
           "valid_json": true,
           "schema_valid": true,
           "schema_error_fields": [],
@@ -187,7 +199,12 @@
           "decision": "quality gate passed"
         }
       ],
-      "wall_ms": 6
+      "patch": "--- a/app/settings.py\n+++ b/app/settings.py\n@@ -3,4 +3,4 @@\n \n def request_timeout():\n     config = load_config(\"payments\")\n-    return config.get(\"timeout\", 30)\n+    return (config or {}).get(\"timeout\", 30)",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.75 (uncalibrated)"
+      },
+      "wall_ms": 13,
+      "run": 1
     },
     {
       "case_id": "ho-env-int",
@@ -196,12 +213,15 @@
         "inconclusive": false,
         "relevant_files": [
           "app/pool.py"
-        ]
+        ],
+        "alternative_categories": [],
+        "note": ""
       },
       "workflow_status": "needs_review",
       "error_category": "no_code_fix",
+      "error": null,
       "gate_passed": false,
-      "quality_score": 0.48,
+      "quality_score": 0.53,
       "predicted_category": "configuration_error",
       "declared_insufficient": false,
       "model_confidence": 0.6,
@@ -217,10 +237,11 @@
           "latency_ms": 0,
           "input_tokens": null,
           "output_tokens": null,
+          "truncated": false,
           "valid_json": true,
           "schema_valid": true,
           "schema_error_fields": [],
-          "gate_score": 0.48,
+          "gate_score": 0.53,
           "gate_passed": false,
           "failed_checks": [
             "self_assessment",
@@ -233,7 +254,17 @@
           "decision": "grounded analysis without a code patch (operational root cause?)"
         }
       ],
-      "wall_ms": 2
+      "patch": null,
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.60 (uncalibrated)",
+        "diff_wellformed": "no patch provided",
+        "diff_applies": "no patch provided",
+        "patch_minimal": "no patch provided",
+        "patch_locality": "no patch provided",
+        "patch_effective": "no patch provided"
+      },
+      "wall_ms": 6,
+      "run": 1
     },
     {
       "case_id": "ho-redis-down",
@@ -242,12 +273,15 @@
         "inconclusive": false,
         "relevant_files": [
           "app/cache.py"
-        ]
+        ],
+        "alternative_categories": [],
+        "note": ""
       },
       "workflow_status": "needs_review",
       "error_category": "no_code_fix",
+      "error": null,
       "gate_passed": false,
-      "quality_score": 0.48,
+      "quality_score": 0.53,
       "predicted_category": "dependency_unavailable",
       "declared_insufficient": false,
       "model_confidence": 0.6,
@@ -263,10 +297,11 @@
           "latency_ms": 0,
           "input_tokens": null,
           "output_tokens": null,
+          "truncated": false,
           "valid_json": true,
           "schema_valid": true,
           "schema_error_fields": [],
-          "gate_score": 0.48,
+          "gate_score": 0.53,
           "gate_passed": false,
           "failed_checks": [
             "self_assessment",
@@ -279,7 +314,17 @@
           "decision": "grounded analysis without a code patch (operational root cause?)"
         }
       ],
-      "wall_ms": 2
+      "patch": null,
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.60 (uncalibrated)",
+        "diff_wellformed": "no patch provided",
+        "diff_applies": "no patch provided",
+        "patch_minimal": "no patch provided",
+        "patch_locality": "no patch provided",
+        "patch_effective": "no patch provided"
+      },
+      "wall_ms": 6,
+      "run": 1
     },
     {
       "case_id": "ho-upstream-shape",
@@ -288,10 +333,13 @@
         "inconclusive": false,
         "relevant_files": [
           "app/search.py"
-        ]
+        ],
+        "alternative_categories": [],
+        "note": ""
       },
       "workflow_status": "accepted",
       "error_category": null,
+      "error": null,
       "gate_passed": true,
       "quality_score": 0.9875,
       "predicted_category": "invalid_external_response",
@@ -309,6 +357,7 @@
           "latency_ms": 0,
           "input_tokens": null,
           "output_tokens": null,
+          "truncated": false,
           "valid_json": true,
           "schema_valid": true,
           "schema_error_fields": [],
@@ -320,7 +369,12 @@
           "decision": "quality gate passed"
         }
       ],
-      "wall_ms": 2
+      "patch": "--- a/app/search.py\n+++ b/app/search.py\n@@ -3,4 +3,4 @@\n \n def search_repos(query):\n     payload = requests.get(\"https://api.example.test/search\", params={\"q\": query}, timeout=5).json()\n-    return [item[\"name\"] for item in payload[\"items\"]]\n+    return [item[\"name\"] for item in payload.get(\"items\", [])]",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.75 (uncalibrated)"
+      },
+      "wall_ms": 6,
+      "run": 1
     },
     {
       "case_id": "ho-typo-method",
@@ -329,10 +383,13 @@
         "inconclusive": false,
         "relevant_files": [
           "app/users.py"
-        ]
+        ],
+        "alternative_categories": [],
+        "note": ""
       },
       "workflow_status": "accepted",
       "error_category": null,
+      "error": null,
       "gate_passed": true,
       "quality_score": 0.9875,
       "predicted_category": "attribute_error",
@@ -350,6 +407,7 @@
           "latency_ms": 0,
           "input_tokens": null,
           "output_tokens": null,
+          "truncated": false,
           "valid_json": true,
           "schema_valid": true,
           "schema_error_fields": [],
@@ -361,7 +419,12 @@
           "decision": "quality gate passed"
         }
       ],
-      "wall_ms": 3
+      "patch": "--- a/app/users.py\n+++ b/app/users.py\n@@ -7,4 +7,4 @@\n \n \n def greeting(user):\n-    return \"Hello \" + user.get_ful_name()\n+    return \"Hello \" + user.get_full_name()",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.75 (uncalibrated)"
+      },
+      "wall_ms": 6,
+      "run": 1
     },
     {
       "case_id": "ho-internal-key",
@@ -370,10 +433,13 @@
         "inconclusive": false,
         "relevant_files": [
           "app/prefs.py"
-        ]
+        ],
+        "alternative_categories": [],
+        "note": ""
       },
       "workflow_status": "accepted",
       "error_category": null,
+      "error": null,
       "gate_passed": true,
       "quality_score": 0.9875,
       "predicted_category": "missing_key",
@@ -391,6 +457,7 @@
           "latency_ms": 0,
           "input_tokens": null,
           "output_tokens": null,
+          "truncated": false,
           "valid_json": true,
           "schema_valid": true,
           "schema_error_fields": [],
@@ -402,7 +469,12 @@
           "decision": "quality gate passed"
         }
       ],
-      "wall_ms": 3
+      "patch": "--- a/app/prefs.py\n+++ b/app/prefs.py\n@@ -2,4 +2,4 @@\n \n \n def theme():\n-    return _PREFERENCES[\"theme\"]\n+    return _PREFERENCES.get(\"theme\", \"light\")",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.75 (uncalibrated)"
+      },
+      "wall_ms": 4,
+      "run": 1
     },
     {
       "case_id": "ho-str-price",
@@ -411,10 +483,13 @@
         "inconclusive": false,
         "relevant_files": [
           "app/csv_import.py"
-        ]
+        ],
+        "alternative_categories": [],
+        "note": ""
       },
       "workflow_status": "accepted",
       "error_category": null,
+      "error": null,
       "gate_passed": true,
       "quality_score": 0.9875,
       "predicted_category": "type_error",
@@ -432,6 +507,7 @@
           "latency_ms": 0,
           "input_tokens": null,
           "output_tokens": null,
+          "truncated": false,
           "valid_json": true,
           "schema_valid": true,
           "schema_error_fields": [],
@@ -443,7 +519,12 @@
           "decision": "quality gate passed"
         }
       ],
-      "wall_ms": 2
+      "patch": "--- a/app/csv_import.py\n+++ b/app/csv_import.py\n@@ -1,3 +1,3 @@\n def line_total(row):\n-    price = row[\"price\"]\n+    price = float(row[\"price\"])\n     return price * row[\"quantity\"] * 1.2",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.75 (uncalibrated)"
+      },
+      "wall_ms": 5,
+      "run": 1
     },
     {
       "case_id": "ho-off-by-one",
@@ -452,10 +533,13 @@
         "inconclusive": false,
         "relevant_files": [
           "app/pages.py"
-        ]
+        ],
+        "alternative_categories": [],
+        "note": ""
       },
       "workflow_status": "accepted",
       "error_category": null,
+      "error": null,
       "gate_passed": true,
       "quality_score": 0.9875,
       "predicted_category": "logic_error",
@@ -473,6 +557,7 @@
           "latency_ms": 0,
           "input_tokens": null,
           "output_tokens": null,
+          "truncated": false,
           "valid_json": true,
           "schema_valid": true,
           "schema_error_fields": [],
@@ -484,7 +569,12 @@
           "decision": "quality gate passed"
         }
       ],
-      "wall_ms": 2
+      "patch": "--- a/app/pages.py\n+++ b/app/pages.py\n@@ -1,5 +1,5 @@\n def last_page_titles(pages):\n     titles = []\n-    for i in range(len(pages) + 1):\n+    for i in range(len(pages)):\n         titles.append(pages[i][\"title\"])\n     return titles",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.75 (uncalibrated)"
+      },
+      "wall_ms": 4,
+      "run": 1
     },
     {
       "case_id": "ho-missing-package",
@@ -493,12 +583,15 @@
         "inconclusive": false,
         "relevant_files": [
           "app/dates.py"
-        ]
+        ],
+        "alternative_categories": [],
+        "note": ""
       },
       "workflow_status": "needs_review",
       "error_category": "no_code_fix",
+      "error": null,
       "gate_passed": false,
-      "quality_score": 0.48,
+      "quality_score": 0.53,
       "predicted_category": "import_error",
       "declared_insufficient": false,
       "model_confidence": 0.6,
@@ -514,10 +607,11 @@
           "latency_ms": 0,
           "input_tokens": null,
           "output_tokens": null,
+          "truncated": false,
           "valid_json": true,
           "schema_valid": true,
           "schema_error_fields": [],
-          "gate_score": 0.48,
+          "gate_score": 0.53,
           "gate_passed": false,
           "failed_checks": [
             "self_assessment",
@@ -530,19 +624,32 @@
           "decision": "grounded analysis without a code patch (operational root cause?)"
         }
       ],
-      "wall_ms": 2
+      "patch": null,
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.60 (uncalibrated)",
+        "diff_wellformed": "no patch provided",
+        "diff_applies": "no patch provided",
+        "patch_minimal": "no patch provided",
+        "patch_locality": "no patch provided",
+        "patch_effective": "no patch provided"
+      },
+      "wall_ms": 4,
+      "run": 1
     },
     {
       "case_id": "ho-gateway-timeout",
       "expected": {
         "root_cause_category": "unknown",
         "inconclusive": true,
-        "relevant_files": []
+        "relevant_files": [],
+        "alternative_categories": [],
+        "note": ""
       },
       "workflow_status": "needs_review",
       "error_category": "insufficient_evidence",
+      "error": null,
       "gate_passed": false,
-      "quality_score": 0.175,
+      "quality_score": 0.225,
       "predicted_category": "unknown",
       "declared_insufficient": true,
       "model_confidence": 0.1,
@@ -556,10 +663,11 @@
           "latency_ms": 0,
           "input_tokens": null,
           "output_tokens": null,
+          "truncated": false,
           "valid_json": true,
           "schema_valid": true,
           "schema_error_fields": [],
-          "gate_score": 0.175,
+          "gate_score": 0.225,
           "gate_passed": false,
           "failed_checks": [
             "trigger_grounding",
@@ -575,7 +683,20 @@
           "decision": "model reported insufficient evidence"
         }
       ],
-      "wall_ms": 2
+      "patch": null,
+      "failed_check_details": {
+        "trigger_grounding": "no application frame found in the stack trace",
+        "evidence_grounding": "no 'observed' evidence with a verbatim quote was provided",
+        "affected_files_grounding": "affected_files is empty",
+        "self_assessment": "model asked for human review",
+        "diff_wellformed": "no patch provided",
+        "diff_applies": "no patch provided",
+        "patch_minimal": "no patch provided",
+        "patch_locality": "no patch provided",
+        "patch_effective": "no patch provided"
+      },
+      "wall_ms": 3,
+      "run": 1
     },
     {
       "case_id": "ho-drift-attribute",
@@ -584,12 +705,15 @@
         "inconclusive": true,
         "relevant_files": [
           "app/orders.py"
-        ]
+        ],
+        "alternative_categories": [],
+        "note": ""
       },
       "workflow_status": "needs_review",
       "error_category": "insufficient_evidence",
+      "error": null,
       "gate_passed": false,
-      "quality_score": 0.4,
+      "quality_score": 0.45,
       "predicted_category": "unknown",
       "declared_insufficient": true,
       "model_confidence": 0.2,
@@ -605,10 +729,11 @@
           "latency_ms": 0,
           "input_tokens": null,
           "output_tokens": null,
+          "truncated": false,
           "valid_json": true,
           "schema_valid": true,
           "schema_error_fields": [],
-          "gate_score": 0.4,
+          "gate_score": 0.45,
           "gate_passed": false,
           "failed_checks": [
             "trace_code_consistency",
@@ -622,7 +747,18 @@
           "decision": "model reported insufficient evidence"
         }
       ],
-      "wall_ms": 2
+      "patch": null,
+      "failed_check_details": {
+        "trace_code_consistency": "the error names attribute 'discount_code' but the retrieved failing line (line 2) only uses ['code', 'coupon']: the running code probably differs from the retrieved source. Do not propose a patch; set evidence_sufficient to false and explain the discrepancy in uncertainties",
+        "self_assessment": "model asked for human review",
+        "diff_wellformed": "no patch provided",
+        "diff_applies": "no patch provided",
+        "patch_minimal": "no patch provided",
+        "patch_locality": "no patch provided",
+        "patch_effective": "no patch provided"
+      },
+      "wall_ms": 4,
+      "run": 1
     },
     {
       "case_id": "ho-pool-timeout",
@@ -631,12 +767,17 @@
         "inconclusive": false,
         "relevant_files": [
           "app/pay.py"
-        ]
+        ],
+        "alternative_categories": [
+          "configuration_error"
+        ],
+        "note": "PoolTimeout means the client's connection pool was exhausted. That is a capacity/pool-size setting (configuration_error) as much as a slow provider (dependency_unavailable); live runs consistently chose the former, and a reviewer could defend either, so both are accepted."
       },
       "workflow_status": "needs_review",
       "error_category": "no_code_fix",
+      "error": null,
       "gate_passed": false,
-      "quality_score": 0.475,
+      "quality_score": 0.525,
       "predicted_category": "dependency_unavailable",
       "declared_insufficient": false,
       "model_confidence": 0.5,
@@ -652,10 +793,11 @@
           "latency_ms": 0,
           "input_tokens": null,
           "output_tokens": null,
+          "truncated": false,
           "valid_json": true,
           "schema_valid": true,
           "schema_error_fields": [],
-          "gate_score": 0.475,
+          "gate_score": 0.525,
           "gate_passed": false,
           "failed_checks": [
             "self_assessment",
@@ -668,7 +810,17 @@
           "decision": "grounded analysis without a code patch (operational root cause?)"
         }
       ],
-      "wall_ms": 2
+      "patch": null,
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.50 (uncalibrated)",
+        "diff_wellformed": "no patch provided",
+        "diff_applies": "no patch provided",
+        "patch_minimal": "no patch provided",
+        "patch_locality": "no patch provided",
+        "patch_effective": "no patch provided"
+      },
+      "wall_ms": 3,
+      "run": 1
     }
   ]
 }

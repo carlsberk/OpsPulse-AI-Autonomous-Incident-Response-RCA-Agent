@@ -77,7 +77,12 @@ def main(argv: list[str] | None = None) -> int:
 
         step("2. Reproduce the production crash")
         crash = run([sys.executable, "-E", "-s", "app.py"], work)
-        trace = crash.stderr.replace(str(work) + os.sep, "/app/").replace(os.sep, "/").strip()
+        trace = (
+            crash.stderr.replace(str(work.resolve()) + os.sep, "/app/")
+            .replace(str(work) + os.sep, "/app/")
+            .replace(os.sep, "/")
+            .strip()
+        )
         print(trace)
         error = trace.splitlines()[-1]
 
