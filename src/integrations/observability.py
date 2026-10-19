@@ -8,7 +8,8 @@ before it leaves the process. Short values (incident id, model name, scores, nod
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterator
+import sys
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from functools import lru_cache
 from typing import Any, Literal
@@ -78,10 +79,47 @@ ObservationType = Literal["span", "chain", "retriever", "evaluator", "tool"]
 
 
 @contextmanager
+def _guarded(*factories: Callable[[], Any]) -> Iterator[list[Any]]:
+    """Enter telemetry context managers so that telemetry can never break the work it observes.
+
+    A failure while *starting* (or later *ending*) a span is logged and ignored; the wrapped code then runs without
+    that span. An exception raised by the wrapped code itself propagates unchanged and is never suppressed.
+    """
+    entered: list[Any] = []
+    values: list[Any] = []
+    try:
+        for factory in factories:
+            manager = factory()
+            values.append(manager.__enter__())
+            entered.append(manager)
+    except Exception as exc:  # noqa: BLE001 - see the docstring
+        logger.warning("Langfuse span could not be started (%s) - continuing without it", type(exc).__name__)
+        _leave(entered, (None, None, None))
+        yield [None] * len(factories)
+        return
+    exc_info: tuple[Any, Any, Any] = (None, None, None)
+    try:
+        yield values
+    except BaseException:
+        exc_info = sys.exc_info()
+        raise
+    finally:
+        _leave(entered, exc_info)
+
+
+def _leave(entered: list[Any], exc_info: tuple[Any, Any, Any]) -> None:
+    for manager in reversed(entered):
+        try:
+            manager.__exit__(*exc_info)  # the return value is ignored on purpose: never swallow the caller's error
+        except Exception as exc:  # noqa: BLE001 - telemetry must never break incident processing
+            logger.warning("Langfuse span could not be closed (%s)", type(exc).__name__)
+
+
+@contextmanager
 def observe(
     name: str, as_type: ObservationType = "span", metadata: dict[str, Any] | None = None
 ) -> Iterator[Observation]:
-    """Child observation of the current trace (no-op when tracing is disabled).
+    """Child observation of the current trace (no-op when tracing is disabled or failing).
 
     Exceptions raised by the wrapped code propagate unchanged; Langfuse records them on the span.
     """
@@ -89,7 +127,9 @@ def observe(
     if client is None:
         yield Observation()
         return
-    with client.start_as_current_observation(name=name, as_type=as_type, metadata=metadata) as inner:
+    with _guarded(lambda: client.start_as_current_observation(name=name, as_type=as_type, metadata=metadata)) as (
+        inner,
+    ):
         yield Observation(inner)
 
 
@@ -103,16 +143,16 @@ def incident_trace(incident_id: str, repo_name: str, fingerprint: str) -> Iterat
     attributes = {
         k: str(v)[:200] for k, v in {**run_metadata(), "repo_name": repo_name, "fingerprint": fingerprint[:16]}.items()
     }
-    with (
-        propagate_attributes(
+    with _guarded(
+        lambda: propagate_attributes(
             session_id=incident_id,
             trace_name="opspulse.incident",
             tags=["opspulse"],
             version=PROMPT_VERSION,
             metadata=attributes,
         ),
-        client.start_as_current_observation(name="incident.process", as_type="chain") as inner,
-    ):
+        lambda: client.start_as_current_observation(name="incident.process", as_type="chain"),
+    ) as (_, inner):
         yield Observation(inner)
 
 

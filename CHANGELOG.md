@@ -6,6 +6,17 @@ All notable changes are listed here. Versions of behaviour-critical components a
 ## [Unreleased]
 
 ### Fixed
+- Telemetry could break the work it observed: a failure while starting or ending a Langfuse span propagated into the
+  incident pipeline (which would have marked a good analysis `failed`), and a span whose `__exit__` reported the error as
+  handled could hide a real error from the observed code. Spans are now entered and left through a guard: start/end
+  failures are logged and ignored, and the observed code's own exceptions always propagate unchanged. Five new tests
+  fail on the old implementation.
+
+### Added
+- Tests for the database client (URL normalisation, a failed transaction leaves nothing behind, no engine without
+  `DATABASE_URL`).
+
+### Fixed
 - A failure after the fix branch was created (writing the file, opening the PR) now deletes that branch (best effort)
   instead of leaving it behind; a leftover branch made every later delivery of the same incident fail with
   "branch already exists" until someone removed it by hand.
