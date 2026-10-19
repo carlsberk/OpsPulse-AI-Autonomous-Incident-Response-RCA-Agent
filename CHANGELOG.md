@@ -6,6 +6,20 @@ All notable changes are listed here. Versions of behaviour-critical components a
 ## [Unreleased]
 
 ### Fixed
+- Console: `statusCounts` used a plain object, so a status named `constructor`, `toString` or `hasOwnProperty` produced
+  nonsense counts (`"0function toString() { [native code] }1"`), and `__proto__` was silently lost. It now counts into a
+  prototype-less object. Statuses come from the server's fixed list, so this was not reachable in practice; it is fixed
+  because the helper receives data it does not control.
+- Console: `parseDiff` rendered a hunk number beyond 2^53 as `1e+21`; unsafe numbers now fall back to 0.
+
+### Added
+- `tests/js/util.fuzz.test.js`: dependency-free, seeded fuzzing of the console's pure helpers (`ago`, `humanize`,
+  `plainMarkup`, `toneForScore`, `filterItems`, `sortItems`, `statusCounts`, `parseDiff`, `readState`/`writeState`):
+  totality, a sort is a stable idempotent permutation that never mutates its input, counts add up, URL state round-trips.
+  A failure prints its seed (`FUZZ_SEED=...` reproduces it). Six seeds x 20,000 runs are clean; the weekly Security
+  workflow runs it with a random seed.
+
+### Fixed
 - The incident assistant crashed (`AttributeError`) on an incident whose stored analysis has a wrong-typed field, e.g. a
   string where an object belongs. Such records are normal: an analysis that never passed the schema keeps the model's raw
   object. Found by the new fuzz suite; prompt sections are now built defensively, and a non-list `cited_sections` in a
