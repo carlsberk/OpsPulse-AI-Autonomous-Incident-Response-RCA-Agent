@@ -5,6 +5,15 @@ All notable changes are listed here. Versions of behaviour-critical components a
 
 ## [Unreleased]
 
+### Changed
+- Prompt `rca-prompt-v6.1`: when a caller is at fault the model must list the caller's file first in `affected_files`,
+  and the "callee at fault" example that used to name an empty list (which pushed `caller-empty-list` into a callee
+  patch) is replaced by a contract-based description. Live, `rca-callers-v3` x3 (2026-10-17): `relevant_file_hit_rate`
+  5/15 -> 13/13 evaluated; `caller-empty-list` now routed to review 3/3 with no callee patch (v6: patched and accepted
+  3/3); category 13/13; the control case accepted 2/2 evaluated runs. Two of 15 runs were not evaluated (provider
+  `failed`, one on the control case), so control retention is 2 of 2, not 3 of 3. Small n; comparison in
+  `evals/results/RELIABILITY-callers-v3-prompt-v6.1.md`.
+
 ## [1.3.0] - 2026-10-16
 
 ### Added
