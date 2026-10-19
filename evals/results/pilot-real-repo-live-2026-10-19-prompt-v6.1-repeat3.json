@@ -1,0 +1,819 @@
+{
+  "mode": "live",
+  "started_at": "2026-10-19T10:45:50.927660+00:00",
+  "dataset_version": "pilot-real-repo-v1",
+  "run_metadata": {
+    "agent_version": "1.3.0-opspulse",
+    "prompt_version": "rca-prompt-v6.1",
+    "evaluator_version": "quality-gate-v8",
+    "retrieval_strategy": "lexical-v1",
+    "model": "openai/gpt-oss-120b",
+    "quality_threshold": 0.85,
+    "max_analysis_iterations": 3,
+    "max_output_tokens": 4096
+  },
+  "metrics": {
+    "cases": 12,
+    "cases_not_evaluated": [],
+    "structured_output_validity": {
+      "value": 0.9333,
+      "numerator": 14,
+      "denominator": 15,
+      "definition": "LLM attempts whose reply validated against RCAOutput / LLM attempts (provider errors excluded)"
+    },
+    "category_accuracy": {
+      "value": 0.75,
+      "numerator": 9,
+      "denominator": 12,
+      "definition": "final category == labelled category / cases labelled conclusive"
+    },
+    "evidence_grounding_accuracy": {
+      "value": 1.0,
+      "numerator": 29,
+      "denominator": 29,
+      "definition": "'observed' quotes found verbatim in their cited source / all 'observed' quotes (final analyses)"
+    },
+    "unsupported_claim_rate": {
+      "value": 0.0,
+      "numerator": 0,
+      "denominator": 41,
+      "definition": "(unverifiable 'observed' quotes + affected files absent from trace/retrieved file) / (all quotes + all affected files)"
+    },
+    "abstention_recall": {
+      "value": null,
+      "numerator": 0,
+      "denominator": 0,
+      "definition": "inconclusive-labelled cases where the model declared insufficient evidence or category 'unknown' / inconclusive-labelled cases"
+    },
+    "inconclusive_not_accepted_rate": {
+      "value": null,
+      "numerator": 0,
+      "denominator": 0,
+      "definition": "inconclusive-labelled cases the quality gate did NOT accept / inconclusive-labelled cases"
+    },
+    "false_abstention_rate": {
+      "value": 0.0,
+      "numerator": 0,
+      "denominator": 12,
+      "definition": "conclusive-labelled cases where the model abstained / conclusive-labelled cases"
+    },
+    "gate_acceptance_rate": {
+      "value": 1.0,
+      "numerator": 12,
+      "denominator": 12,
+      "definition": "cases accepted by the quality gate / evaluated cases"
+    },
+    "false_acceptance_rate": {
+      "value": 0.25,
+      "numerator": 3,
+      "denominator": 12,
+      "definition": "accepted cases that are inconclusive-labelled or have the wrong category / accepted cases"
+    },
+    "relevant_file_hit_rate": {
+      "value": 1.0,
+      "numerator": 12,
+      "denominator": 12,
+      "definition": "cases whose affected_files contain a labelled relevant file / cases with labelled files"
+    },
+    "unsupported_acceptance_rate": {
+      "value": null,
+      "numerator": 0,
+      "denominator": 0,
+      "definition": "unsupported analyses (inconclusive-labelled or with an unverifiable quote) the gate accepted / unsupported analyses"
+    },
+    "workflow_failure_rate": {
+      "value": 0.0,
+      "numerator": 0,
+      "denominator": 12,
+      "definition": "cases ending in workflow status 'failed' (e.g. provider errors) / cases"
+    },
+    "avg_attempts": 1.25,
+    "llm_latency_ms": {
+      "mean": 29630,
+      "p95": 56371,
+      "samples": 15
+    },
+    "case_wall_ms": {
+      "mean": 37050,
+      "p95": 99486
+    },
+    "tokens": {
+      "input": 56101,
+      "output": 26997,
+      "attempts_with_usage": 15
+    },
+    "estimated_cost_usd": null,
+    "calibration": {
+      "model_confidence": {
+        "samples": 12,
+        "brier": 0.175,
+        "bins": [
+          {
+            "range": "0.50-0.70",
+            "n": 1,
+            "mean_score": 0.6,
+            "accuracy": 1.0
+          },
+          {
+            "range": "0.70-0.85",
+            "n": 11,
+            "mean_score": 0.745,
+            "accuracy": 0.727
+          }
+        ]
+      },
+      "quality_score": {
+        "samples": 12,
+        "brier": 0.2427,
+        "bins": [
+          {
+            "range": "0.85-1.00",
+            "n": 12,
+            "mean_score": 0.987,
+            "accuracy": 0.75
+          }
+        ]
+      }
+    },
+    "consistency": {
+      "cases_repeated": 4,
+      "stable_outcome_rate": {
+        "value": 1.0,
+        "numerator": 4,
+        "denominator": 4,
+        "definition": "repeated cases whose outcome never changed / repeated cases"
+      },
+      "per_case": {
+        "finding-codes-missing-key": {
+          "runs": 3,
+          "accepted": 3,
+          "correct_category": 3,
+          "distinct_outcomes": 1
+        },
+        "field-accuracy-empty-division": {
+          "runs": 3,
+          "accepted": 3,
+          "correct_category": 3,
+          "distinct_outcomes": 1
+        },
+        "dataset-version-bad-group": {
+          "runs": 3,
+          "accepted": 3,
+          "correct_category": 3,
+          "distinct_outcomes": 1
+        },
+        "retrieval-k-default-dropped": {
+          "runs": 3,
+          "accepted": 3,
+          "correct_category": 0,
+          "distinct_outcomes": 1
+        }
+      }
+    }
+  },
+  "results": [
+    {
+      "case_id": "finding-codes-missing-key",
+      "expected": {
+        "root_cause_category": "missing_key",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/evaluators/deterministic/finding_codes.py"
+        ]
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.99,
+      "predicted_category": "missing_key",
+      "declared_insufficient": false,
+      "model_confidence": 0.8,
+      "observed_quotes": 2,
+      "grounded_quotes": 2,
+      "affected_files": [
+        "app/evaluators/deterministic/finding_codes.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 4790,
+          "input_tokens": 3127,
+          "output_tokens": 1659,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.99,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/evaluators/deterministic/finding_codes.py\n+++ b/app/evaluators/deterministic/finding_codes.py\n@@ -39,5 +39,5 @@\n         expected_codes = set(expected[\"must_include_finding_codes\"])\n         allowed_extra = set(expected.get(\"allowed_extra_finding_codes\", []))\n-        actual_codes = {f.get(\"code\") for f in execution.output[\"findings\"]}\n+        actual_codes = {f.get(\"code\") for f in execution.output.get(\"findings\", [])}\n \n         missing = expected_codes - actual_codes",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.80 (uncalibrated)"
+      },
+      "wall_ms": 4801,
+      "run": 1
+    },
+    {
+      "case_id": "finding-codes-missing-key",
+      "expected": {
+        "root_cause_category": "missing_key",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/evaluators/deterministic/finding_codes.py"
+        ]
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.985,
+      "predicted_category": "missing_key",
+      "declared_insufficient": false,
+      "model_confidence": 0.7,
+      "observed_quotes": 2,
+      "grounded_quotes": 2,
+      "affected_files": [
+        "app/evaluators/deterministic/finding_codes.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 7262,
+          "input_tokens": 3127,
+          "output_tokens": 1782,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.985,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/evaluators/deterministic/finding_codes.py\n+++ b/app/evaluators/deterministic/finding_codes.py\n@@ -40,2 +40,2 @@\n-        actual_codes = {f.get(\"code\") for f in execution.output[\"findings\"]}\n+        actual_codes = {f.get(\"code\") for f in execution.output.get(\"findings\", [])}",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.70 (uncalibrated)"
+      },
+      "wall_ms": 7268,
+      "run": 2
+    },
+    {
+      "case_id": "finding-codes-missing-key",
+      "expected": {
+        "root_cause_category": "missing_key",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/evaluators/deterministic/finding_codes.py"
+        ]
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.99,
+      "predicted_category": "missing_key",
+      "declared_insufficient": false,
+      "model_confidence": 0.8,
+      "observed_quotes": 2,
+      "grounded_quotes": 2,
+      "affected_files": [
+        "app/evaluators/deterministic/finding_codes.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 28532,
+          "input_tokens": 3127,
+          "output_tokens": 1948,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.99,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/evaluators/deterministic/finding_codes.py\n+++ b/app/evaluators/deterministic/finding_codes.py\n@@ -39,4 +39,4 @@\n         expected_codes = set(expected[\"must_include_finding_codes\"])\n         allowed_extra = set(expected.get(\"allowed_extra_finding_codes\", []))\n-        actual_codes = {f.get(\"code\") for f in execution.output[\"findings\"]}\n+        actual_codes = {f.get(\"code\") for f in execution.output.get(\"findings\", [])}\n \n         missing = expected_codes - actual_codes",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.80 (uncalibrated)"
+      },
+      "wall_ms": 28537,
+      "run": 3
+    },
+    {
+      "case_id": "field-accuracy-empty-division",
+      "expected": {
+        "root_cause_category": "logic_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/evaluators/deterministic/field_accuracy.py"
+        ]
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.99,
+      "predicted_category": "logic_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.8,
+      "observed_quotes": 3,
+      "grounded_quotes": 3,
+      "affected_files": [
+        "app/evaluators/deterministic/field_accuracy.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 4024,
+          "input_tokens": 2833,
+          "output_tokens": 1782,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.99,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/evaluators/deterministic/field_accuracy.py\n+++ b/app/evaluators/deterministic/field_accuracy.py\n@@ -30,6 +30,9 @@\n         checkable = [f for f in fields if f in expected]\n \n         correct = sum(1 for f in checkable if execution.output.get(f) == expected.get(f))\n-        total = len(checkable)\n-        score = correct / total\n+        total = len(checkable)\n+        if total == 0:\n+            score = 0.0\n+        else:\n+            score = correct / total\n         minimum = self.config.get(\"minimum\", 0.9)",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.80 (uncalibrated)"
+      },
+      "wall_ms": 4030,
+      "run": 1
+    },
+    {
+      "case_id": "field-accuracy-empty-division",
+      "expected": {
+        "root_cause_category": "logic_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/evaluators/deterministic/field_accuracy.py"
+        ]
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.98,
+      "predicted_category": "logic_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.6,
+      "observed_quotes": 2,
+      "grounded_quotes": 2,
+      "affected_files": [
+        "app/evaluators/deterministic/field_accuracy.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 17635,
+          "input_tokens": 2833,
+          "output_tokens": 1859,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": false,
+          "schema_error_fields": [
+            "patch_remediation:missing",
+            "uncertainties:missing",
+            "tests_to_run:missing",
+            "control_flow:missing"
+          ],
+          "gate_score": 0.46,
+          "gate_passed": false,
+          "failed_checks": [
+            "schema",
+            "self_assessment",
+            "diff_wellformed",
+            "diff_applies",
+            "patch_minimal",
+            "patch_locality",
+            "patch_effective"
+          ],
+          "decision": "retrying with evaluator feedback"
+        },
+        {
+          "iteration": 2,
+          "latency_ms": 44682,
+          "input_tokens": 3723,
+          "output_tokens": 1536,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.98,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/evaluators/deterministic/field_accuracy.py\n+++ b/app/evaluators/deterministic/field_accuracy.py\n@@ -32,4 +32,7 @@\n         correct = sum(1 for f in checkable if execution.output.get(f) == expected.get(f))\n         total = len(checkable)\n-        score = correct / total\n+        if total == 0:\n+            score = 0.0\n+        else:\n+            score = correct / total\n         minimum = self.config.get(\"minimum\", 0.9)",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.60 (uncalibrated)"
+      },
+      "wall_ms": 62326,
+      "run": 2
+    },
+    {
+      "case_id": "field-accuracy-empty-division",
+      "expected": {
+        "root_cause_category": "logic_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/evaluators/deterministic/field_accuracy.py"
+        ]
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.985,
+      "predicted_category": "logic_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.7,
+      "observed_quotes": 2,
+      "grounded_quotes": 2,
+      "affected_files": [
+        "app/evaluators/deterministic/field_accuracy.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 26949,
+          "input_tokens": 2833,
+          "output_tokens": 1619,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.985,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/evaluators/deterministic/field_accuracy.py\n+++ b/app/evaluators/deterministic/field_accuracy.py\n@@ -30,6 +30,9 @@\n         correct = sum(1 for f in checkable if execution.output.get(f) == expected.get(f))\n         total = len(checkable)\n-        score = correct / total\n+        if total == 0:\n+            score = 0.0\n+        else:\n+            score = correct / total\n         minimum = self.config.get(\"minimum\", 0.9)",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.70 (uncalibrated)"
+      },
+      "wall_ms": 26954,
+      "run": 3
+    },
+    {
+      "case_id": "dataset-version-bad-group",
+      "expected": {
+        "root_cause_category": "logic_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/core/dataset_manager.py"
+        ]
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.99,
+      "predicted_category": "logic_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.8,
+      "observed_quotes": 3,
+      "grounded_quotes": 3,
+      "affected_files": [
+        "app/core/dataset_manager.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 40083,
+          "input_tokens": 4777,
+          "output_tokens": 1654,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.99,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/core/dataset_manager.py\n+++ b/app/core/dataset_manager.py\n@@ -45,4 +45,4 @@\n     def _version_sort_key(version: str) -> int:\n         match = _VERSION_RE.match(version)\n-        return int(match.group(2)) if match else -1\n+        return int(match.group(1)) if match else -1",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.80 (uncalibrated)"
+      },
+      "wall_ms": 40089,
+      "run": 1
+    },
+    {
+      "case_id": "dataset-version-bad-group",
+      "expected": {
+        "root_cause_category": "logic_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/core/dataset_manager.py"
+        ]
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.99,
+      "predicted_category": "logic_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.8,
+      "observed_quotes": 3,
+      "grounded_quotes": 3,
+      "affected_files": [
+        "app/core/dataset_manager.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 39686,
+          "input_tokens": 4777,
+          "output_tokens": 1903,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.99,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/core/dataset_manager.py\n+++ b/app/core/dataset_manager.py\n@@ -45,5 +45,5 @@\n     @staticmethod\n     def _version_sort_key(version: str) -> int:\n         match = _VERSION_RE.match(version)\n-        return int(match.group(2)) if match else -1\n+        return int(match.group(1)) if match else -1",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.80 (uncalibrated)"
+      },
+      "wall_ms": 39692,
+      "run": 2
+    },
+    {
+      "case_id": "dataset-version-bad-group",
+      "expected": {
+        "root_cause_category": "logic_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/core/dataset_manager.py"
+        ]
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.985,
+      "predicted_category": "logic_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.7,
+      "observed_quotes": 2,
+      "grounded_quotes": 2,
+      "affected_files": [
+        "app/core/dataset_manager.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 43052,
+          "input_tokens": 4777,
+          "output_tokens": 2146,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.54,
+          "gate_passed": false,
+          "failed_checks": [
+            "self_assessment",
+            "diff_wellformed",
+            "diff_applies",
+            "patch_minimal",
+            "patch_locality",
+            "patch_effective"
+          ],
+          "decision": "retrying with evaluator feedback"
+        },
+        {
+          "iteration": 2,
+          "latency_ms": 56371,
+          "input_tokens": 5404,
+          "output_tokens": 1617,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.985,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/core/dataset_manager.py\n+++ b/app/core/dataset_manager.py\n@@ -44,5 +44,5 @@\n     @staticmethod\n     def _version_sort_key(version: str) -> int:\n         match = _VERSION_RE.match(version)\n-        return int(match.group(2)) if match else -1\n+        return int(match.group(1)) if match else -1",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.70 (uncalibrated)"
+      },
+      "wall_ms": 99486,
+      "run": 3
+    },
+    {
+      "case_id": "retrieval-k-default-dropped",
+      "expected": {
+        "root_cause_category": "type_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/evaluators/deterministic/retrieval_metrics.py"
+        ]
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.985,
+      "predicted_category": "configuration_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.7,
+      "observed_quotes": 2,
+      "grounded_quotes": 2,
+      "affected_files": [
+        "app/evaluators/deterministic/retrieval_metrics.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 34132,
+          "input_tokens": 3489,
+          "output_tokens": 2081,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.985,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/evaluators/deterministic/retrieval_metrics.py\n+++ b/app/evaluators/deterministic/retrieval_metrics.py\n@@ -45,4 +45,4 @@\n class RecallAtKEvaluator(Evaluator):\n     async def evaluate(self, case: EvaluationCase, execution: SystemExecution) -> EvaluationResult:\n-        k = self.config.get(\"k\")\n+        k = self.config.get(\"k\", 5)\n         relevant = _relevant_ids(case)",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.70 (uncalibrated)"
+      },
+      "wall_ms": 34139,
+      "run": 1
+    },
+    {
+      "case_id": "retrieval-k-default-dropped",
+      "expected": {
+        "root_cause_category": "type_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/evaluators/deterministic/retrieval_metrics.py"
+        ]
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.985,
+      "predicted_category": "configuration_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.7,
+      "observed_quotes": 3,
+      "grounded_quotes": 3,
+      "affected_files": [
+        "app/evaluators/deterministic/retrieval_metrics.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 18394,
+          "input_tokens": 3489,
+          "output_tokens": 1768,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.685,
+          "gate_passed": false,
+          "failed_checks": [
+            "self_assessment",
+            "diff_applies",
+            "patch_locality",
+            "patch_effective"
+          ],
+          "decision": "retrying with evaluator feedback"
+        },
+        {
+          "iteration": 2,
+          "latency_ms": 46013,
+          "input_tokens": 4296,
+          "output_tokens": 2105,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.985,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/evaluators/deterministic/retrieval_metrics.py\n+++ b/app/evaluators/deterministic/retrieval_metrics.py\n@@ -44,5 +44,5 @@\n @register_evaluator(\"retrieval_recall_at_k\")\n class RecallAtKEvaluator(Evaluator):\n     async def evaluate(self, case: EvaluationCase, execution: SystemExecution) -> EvaluationResult:\n-        k = self.config.get(\"k\")\n+        k = self.config.get(\"k\", 5)\n         relevant = _relevant_ids(case)",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.70 (uncalibrated)"
+      },
+      "wall_ms": 64435,
+      "run": 2
+    },
+    {
+      "case_id": "retrieval-k-default-dropped",
+      "expected": {
+        "root_cause_category": "type_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/evaluators/deterministic/retrieval_metrics.py"
+        ]
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.985,
+      "predicted_category": "configuration_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.7,
+      "observed_quotes": 3,
+      "grounded_quotes": 3,
+      "affected_files": [
+        "app/evaluators/deterministic/retrieval_metrics.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 32840,
+          "input_tokens": 3489,
+          "output_tokens": 1538,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.985,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/evaluators/deterministic/retrieval_metrics.py\n+++ b/app/evaluators/deterministic/retrieval_metrics.py\n@@\n-        k = self.config.get(\"k\")\n+        # Default to top\u20115 documents if 'k' is not configured, mirroring PrecisionAtKEvaluator.\n+        k = self.config.get(\"k\", 5)",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.70 (uncalibrated)"
+      },
+      "wall_ms": 32845,
+      "run": 3
+    }
+  ]
+}

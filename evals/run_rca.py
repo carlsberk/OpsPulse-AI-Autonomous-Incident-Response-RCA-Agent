@@ -145,6 +145,9 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--mode", choices=("mock", "live"), default="mock")
     parser.add_argument("--dataset", choices=tuple(DATASET_FILES), default="tuning")
+    parser.add_argument(
+        "--dataset-file", type=pathlib.Path, help="run an external dataset file (e.g. a real-repo pilot)"
+    )
     parser.add_argument("--case", action="append", dest="cases", help="run only this case id (repeatable)")
     parser.add_argument("--out", type=pathlib.Path, default=REPORTS)
     parser.add_argument("--sleep", type=float, default=1.0, help="seconds between cases in live mode")
@@ -175,7 +178,11 @@ def main(argv: list[str] | None = None) -> int:
         args.rescore.with_suffix(".md").write_text(_summary(report), encoding="utf-8")
         print(_summary(report))
         return 0
-    report = run(args.mode, args.cases, args.out, args.sleep, args.dataset, args.repeat)
+    dataset_name = args.dataset
+    if args.dataset_file:
+        dataset_name = args.dataset_file.stem
+        DATASET_FILES[dataset_name] = args.dataset_file
+    report = run(args.mode, args.cases, args.out, args.sleep, dataset_name, args.repeat)
     print(_summary(report))
     print("reports:", *report["paths"], sep="\n  ")
     failures = _check_minimums(report["metrics"], args.min)

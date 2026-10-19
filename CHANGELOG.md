@@ -6,6 +6,19 @@ All notable changes are listed here. Versions of behaviour-critical components a
 ## [Unreleased]
 
 ### Added
+- `evals/pilot_real_repo.py` and `run_rca --dataset-file`: build an RCA dataset from a **real repository** by injecting
+  known bugs into a throwaway copy (the repository is never modified), taking the real native traceback of the crash
+  as the incident, and labelling truth from the mutation. First pilot: four injected bugs in
+  `codcreater1/AI-Evaluation` (public, ~5k lines, never seen by the prompt), `rca-prompt-v6.1`, `gpt-oss-120b`, x3:
+  correct fix file 12/12, gate-accepted 12/12, category 9/12. All three misses are one case
+  (`retrieval-k-default-dropped`), which the model called `configuration_error` (a missing config default) where the
+  label says `type_error` (the exception type); the label is arguable, so the "false acceptance" it produces is a label
+  question, not a clear model error. Injected bugs are simpler and more local than organic failures: this shows the
+  model can localise a known fault in unfamiliar real code, not that it will fix production incidents. Side finding:
+  three of the four injected bugs were **not** caught by that repository's own test suite (120 tests), i.e. the paths
+  were untested. Report: `evals/results/pilot-real-repo-live-2026-10-19-prompt-v6.1-repeat3.md`.
+
+### Added
 - `python -m scripts.e2e_flow` (also a unit test and a CI step): the whole service flow over HTTP in 25 checks. A real
   crash of `examples/demo_service` -> Alertmanager webhook (duplicate delivery is not a second incident) -> queue
   worker -> gate -> `awaiting_approval` with no PR yet -> guidance, evidence graph and trace -> reporter and stale-hash
