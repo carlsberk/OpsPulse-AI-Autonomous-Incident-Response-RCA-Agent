@@ -138,6 +138,11 @@ flowchart LR
 | `src/versions.py` | Prompt / evaluator / retrieval versions recorded with every analysis and report |
 | `evals/` | Datasets, harness, metrics, runners |
 
+**Understand the system:** [architecture and data flow](docs/ARCHITECTURE.md) (diagrams, and which test proves each
+guarantee), [one incident read end to end](docs/TRACE_EXAMPLE.md) (real API output) and
+[limitations and what is proven](docs/LIMITATIONS.md) (what is demonstrated, what is measured with caveats, what is not
+done).
+
 Design decisions are recorded in [`docs/adr/`](docs/adr): the deterministic gate
 ([0001](docs/adr/0001-deterministic-quality-gate.md)), side effects outside the graph and no checkpointer
 ([0002](docs/adr/0002-side-effects-outside-the-graph.md)), lexical retrieval before embeddings

@@ -37,3 +37,11 @@ def test_build_writes_the_pages_and_images(tmp_path):
     assert any(name.startswith("adr/") for name in written)
     assert (tmp_path / "site-src" / "images").is_dir()
     assert set(page_map(tmp_path)) >= {"README.md", "docs/RUNBOOK.md"}
+
+
+def test_the_understanding_pages_are_published_and_link_only_to_things_that_exist(tmp_path):
+    written = build(out=tmp_path / "site-src")
+    assert {"architecture.md", "limitations.md", "trace-example.md"} <= set(written)
+    for name in ("architecture.md", "limitations.md", "trace-example.md"):
+        text = (tmp_path / "site-src" / name).read_text(encoding="utf-8")
+        assert "](docs/" not in text and "](../" not in text, f"{name} has an unrewritten relative link"

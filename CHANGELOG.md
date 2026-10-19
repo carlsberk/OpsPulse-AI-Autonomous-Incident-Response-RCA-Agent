@@ -6,6 +6,15 @@ All notable changes are listed here. Versions of behaviour-critical components a
 ## [Unreleased]
 
 ### Added
+- Documentation: [architecture](docs/ARCHITECTURE.md) (component, workflow and status diagrams; where data goes; a
+  guarantee -> mechanism -> test table), [a worked example](docs/TRACE_EXAMPLE.md) (one incident read through `/trace`,
+  `/evidence-graph`, `/guidance` and `/audit`, with real API output and a safe way to debug a failed incident) and
+  [limitations and what is proven](docs/LIMITATIONS.md) (demonstrated / measured with caveats / not done). All three are on the
+  documentation site; its strict build passes and the diagrams render.
+- `python -m scripts.e2e_flow --dump FILE` writes the reviewer-facing API responses of the run. The committed
+  `docs/examples/e2e-trace.json` is such a dump, and a test fails when an endpoint's fields change until it is regenerated.
+
+### Added
 - `MAX_INCIDENT_SECONDS` (default 300, range 30-3600): a model-time budget per incident. Once the attempts so far used
   it, no further attempt starts and the incident goes to review with the new category `time_budget_exhausted` (guidance
   card included). Before, only the attempt count was bounded, so three slow attempts with provider retries could run for
