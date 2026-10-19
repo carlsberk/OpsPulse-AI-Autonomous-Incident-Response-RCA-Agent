@@ -5,6 +5,21 @@ All notable changes are listed here. Versions of behaviour-critical components a
 
 ## [Unreleased]
 
+### Fixed
+- The incident assistant crashed (`AttributeError`) on an incident whose stored analysis has a wrong-typed field, e.g. a
+  string where an object belongs. Such records are normal: an analysis that never passed the schema keeps the model's raw
+  object. Found by the new fuzz suite; prompt sections are now built defensively, and a non-list `cited_sections` in a
+  model reply no longer raises.
+- The approval-advice guard only knew English. A model answering a Turkish question could say "güvenle
+  onaylayabilirsiniz" and it would pass as grounded. A clause-level Turkish detector (action stem plus an advisory cue, with
+  negation and condition suppression, diacritic-free spellings included) now replaces such answers with the same notice.
+  It is deliberately conservative: it may replace an answer that was only describing approval.
+
+### Added
+- `tests/unit/test_fuzz_ask.py`: the assistant against arbitrary stored records, hostile questions and history, and any
+  model reply (totality, bounded answers, only known citations, no injected prompt delimiters, approval advice replaced in
+  both languages, neutral statements not flagged).
+
 ### Added
 - `tests/unit/test_fuzz_model_output.py`: structure-aware fuzzing of everything the model's reply flows through. It starts
   from a valid analysis and corrupts it at 34 known positions (wrong types, deleted fields, enormous values, odd Unicode,
