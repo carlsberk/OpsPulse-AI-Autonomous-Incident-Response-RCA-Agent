@@ -106,7 +106,12 @@ def run(quiet: bool = False) -> dict[str, Any]:
         before = run_in_sandbox(pytest_cmd(), work)
         log.check("service tests fail before any change", before.returncode != 0)
         crash = run_in_sandbox([sys.executable, "-E", "-s", "app.py"], work)
-        trace = crash.stderr.replace(str(work) + os.sep, "/app/").replace(os.sep, "/").strip()
+        trace = (
+            crash.stderr.replace(str(work.resolve()) + os.sep, "/app/")
+            .replace(str(work) + os.sep, "/app/")
+            .replace(os.sep, "/")
+            .strip()
+        )
         error = trace.splitlines()[-1]
         log.check("the crash produces a real traceback", "Traceback" in trace, error)
 
