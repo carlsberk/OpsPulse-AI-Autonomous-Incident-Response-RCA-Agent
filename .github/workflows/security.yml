@@ -40,7 +40,7 @@ jobs:
         env:
           HYPOTHESIS_EXPLORE: "1"
           HYPOTHESIS_EXAMPLES: "2000"
-        run: pytest -q tests/unit/test_properties.py tests/unit/test_fuzz_model_output.py
+        run: pytest -q tests/unit/test_properties.py tests/unit/test_fuzz_model_output.py tests/unit/test_fuzz_ask.py
 
   codeql:
     name: CodeQL (Python and JavaScript)
