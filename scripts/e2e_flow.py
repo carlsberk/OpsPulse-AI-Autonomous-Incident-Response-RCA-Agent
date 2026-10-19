@@ -25,6 +25,10 @@ from typing import Any
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 REPORTER_KEY, REVIEWER_KEY = "e2e-reporter-key", "e2e-reviewer-key"
 REPO = "demo/inventory"
+DUMP_NOTE = (
+    "One run of scripts/e2e_flow.py with a scripted (MOCK) model and a stubbed GitHub: "
+    "real shapes, illustrative values."
+)
 
 
 def _configure(db_path: pathlib.Path) -> None:
@@ -258,17 +262,38 @@ def run(quiet: bool = False) -> dict[str, Any]:
         from src.db.client import get_engine
 
         get_engine().dispose()  # release the SQLite file before the temp directory is removed
-        return {"passed": log.passed, "model": "MOCK (scripted)", "incident_id": incident_id, "steps": log.steps}
+        artifacts = {
+            "note": DUMP_NOTE,
+            "incident": {
+                key: incident.get(key)
+                for key in ("incident_id", "status", "quality_score", "iterations", "affected_file", "suggested_patch")
+            },
+            "guidance": guidance,
+            "trace": trace_body,
+            "evidence_graph": graph_body,
+            "audit": audit,
+        }
+        return {
+            "passed": log.passed,
+            "model": "MOCK (scripted)",
+            "incident_id": incident_id,
+            "steps": log.steps,
+            "artifacts": artifacts,
+        }
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--json", type=pathlib.Path, help="also write the result as JSON")
     parser.add_argument("--quiet", action="store_true")
+    parser.add_argument("--dump", type=pathlib.Path, help="write the reviewer-facing API responses of the run as JSON")
     args = parser.parse_args(argv)
     result = run(quiet=args.quiet)
     if args.json:
         args.json.write_text(json.dumps(result, indent=2), encoding="utf-8")
+    if args.dump:
+        args.dump.parent.mkdir(parents=True, exist_ok=True)
+        args.dump.write_text(json.dumps(result["artifacts"], indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     failed = [s["step"] for s in result["steps"] if not s["ok"]]
     print(
         f"\nRESULT: {'PASS' if result['passed'] else 'FAIL'}  ({len(result['steps'])} checks, model: {result['model']})"

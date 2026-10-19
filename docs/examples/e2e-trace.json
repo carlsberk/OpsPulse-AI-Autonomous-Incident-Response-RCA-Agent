@@ -1,0 +1,234 @@
+{
+  "note": "One run of scripts/e2e_flow.py with a scripted (MOCK) model and a stubbed GitHub: real shapes, illustrative values.",
+  "incident": {
+    "incident_id": "cc4f639d-3ba2-55ac-b190-89392f7e6f40",
+    "status": "awaiting_approval",
+    "quality_score": 0.985,
+    "iterations": 1,
+    "affected_file": "inventory.py",
+    "suggested_patch": "--- a/inventory.py\n+++ b/inventory.py\n@@ -4,7 +4,7 @@\n \n \n def available(sku):\n-    return STOCK.get(sku)\n+    return STOCK.get(sku, 0)\n \n \n def reserve(sku, quantity):"
+  },
+  "guidance": {
+    "state": "attention",
+    "headline": "A patch waits for your decision",
+    "explanation": "The gate accepted the analysis and a draft pull request proposal waits for a reviewer.",
+    "next_steps": [
+      {
+        "kind": "action",
+        "audience": "reviewer",
+        "text": "Read the evidence quotes and the patch, then approve (opens a draft PR) or reject. The approval is bound to this exact patch; you cannot decide on incidents you submitted."
+      },
+      {
+        "kind": "check",
+        "audience": "reviewer",
+        "text": "The patch only adds a guard or default value in the failing function. That can be right, but it can also hide the real cause (a caller passing a bad value, or missing data upstream): check where the value comes from before accepting it."
+      },
+      {
+        "kind": "check",
+        "audience": "reviewer",
+        "text": "Read the model's own uncertainties before acting: they list what it could not verify."
+      },
+      {
+        "kind": "check",
+        "audience": "developer",
+        "text": "Run the suggested tests yourself - none were executed by the service."
+      }
+    ],
+    "failed_checks": [
+      {
+        "name": "self_assessment",
+        "blocking": false,
+        "fraction": 0.7,
+        "meaning": "the model's own confidence (uncalibrated, low weight)",
+        "advice": "Low model confidence is a hint to look closer, not a measurement.",
+        "detail": "model self-assessed 0.70 (uncalibrated)"
+      }
+    ],
+    "facts": [
+      "1 attempt(s), 0 provider tokens",
+      "gate score 0.98 (a rubric score, not a probability)",
+      "patch: inventory.py, +1 -1 in 1 hunk(s), not run"
+    ],
+    "patch": {
+      "parsable": true,
+      "file": "inventory.py",
+      "hunks": 1,
+      "added": 1,
+      "removed": 1,
+      "starts": [
+        4
+      ],
+      "pattern": "guard_or_default"
+    }
+  },
+  "trace": {
+    "incident_id": "cc4f639d-3ba2-55ac-b190-89392f7e6f40",
+    "request_id": "266560bcd3c74047b8ee788edaebca11",
+    "status": "awaiting_approval",
+    "error_category": null,
+    "versions": {
+      "agent_version": "1.3.0-opspulse",
+      "prompt_version": "rca-prompt-v6.1",
+      "evaluator_version": "quality-gate-v8",
+      "retrieval_strategy": "lexical-v1",
+      "model": "openai/gpt-oss-120b"
+    },
+    "attempts": [
+      {
+        "iteration": 1,
+        "latency_ms": 0,
+        "input_tokens": null,
+        "output_tokens": null,
+        "truncated": false,
+        "valid_json": true,
+        "schema_valid": true,
+        "gate_score": 0.985,
+        "gate_passed": true,
+        "failed_checks": [
+          "self_assessment"
+        ],
+        "decision": "quality gate passed"
+      }
+    ],
+    "totals": {
+      "llm_calls": 1,
+      "latency_ms": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "estimated_cost_usd": null
+    },
+    "final_quality_score": 0.985
+  },
+  "evidence_graph": {
+    "incident_id": "cc4f639d-3ba2-55ac-b190-89392f7e6f40",
+    "nodes": [
+      {
+        "id": "incident",
+        "type": "incident",
+        "label": "InventoryErrors: orders failing\nTypeError: '>=' not supported between instances of 'NoneType' and 'int'"
+      },
+      {
+        "id": "claim",
+        "type": "claim",
+        "label": "null_reference: scripted null_reference explanation"
+      },
+      {
+        "id": "evidence-1",
+        "type": "evidence",
+        "kind": "observed",
+        "source": "code_context",
+        "claim": "the failing statement",
+        "quote": "if available(sku) >= quantity:",
+        "status": "verified_in_record"
+      },
+      {
+        "id": "evidence-2",
+        "type": "evidence",
+        "kind": "observed",
+        "source": "stack_trace",
+        "claim": "the raised exception",
+        "quote": "TypeError: '>=' not supported between instances of 'NoneType' and 'int'",
+        "status": "verified_in_record"
+      },
+      {
+        "id": "evidence-3",
+        "type": "evidence",
+        "kind": "inference",
+        "source": "none",
+        "claim": "the input violated an assumption",
+        "quote": "",
+        "status": "not_checked"
+      },
+      {
+        "id": "patch",
+        "type": "patch",
+        "label": "11 diff lines"
+      },
+      {
+        "id": "file:inventory.py",
+        "type": "file",
+        "label": "inventory.py"
+      }
+    ],
+    "edges": [
+      {
+        "from": "incident",
+        "to": "claim",
+        "relation": "diagnosed_as"
+      },
+      {
+        "from": "evidence-1",
+        "to": "claim",
+        "relation": "supports"
+      },
+      {
+        "from": "evidence-2",
+        "to": "claim",
+        "relation": "supports"
+      },
+      {
+        "from": "evidence-3",
+        "to": "claim",
+        "relation": "suggests"
+      },
+      {
+        "from": "claim",
+        "to": "patch",
+        "relation": "proposes"
+      },
+      {
+        "from": "patch",
+        "to": "file:inventory.py",
+        "relation": "changes"
+      }
+    ],
+    "flags": [
+      "no evidence quote touches the code the patch changes"
+    ],
+    "summary": {
+      "evidence": 3,
+      "observed": 2,
+      "observed_verified": 2,
+      "anchoring_patch": 0
+    }
+  },
+  "audit": {
+    "incident_id": "cc4f639d-3ba2-55ac-b190-89392f7e6f40",
+    "events": [
+      {
+        "at": "2026-10-19T13:46:38.476227",
+        "event": "submitted",
+        "actor": "alice",
+        "detail": "incident reported for demo/inventory"
+      },
+      {
+        "at": "2026-10-19T13:46:38.522601",
+        "event": "analysed",
+        "actor": "agent",
+        "detail": "gate score 0.985, 1 attempt(s); model openai/gpt-oss-120b, prompt rca-prompt-v6.1, gate quality-gate-v8"
+      },
+      {
+        "at": "2026-10-19T13:46:38.522601",
+        "event": "proposed",
+        "actor": "agent",
+        "detail": "open a draft PR changing inventory.py",
+        "patch_sha256": "b46e89c61c2beffc4138eb8f2faeef36f58dff1f2632a9220c16152972fd7543",
+        "expires_at": "2026-10-22T13:46:38.522601+00:00"
+      },
+      {
+        "at": "2026-10-19T13:46:38.604284",
+        "event": "approved",
+        "actor": "bob",
+        "detail": "guard matches the existing contract",
+        "patch_sha256": "b46e89c61c2beffc4138eb8f2faeef36f58dff1f2632a9220c16152972fd7543"
+      },
+      {
+        "at": "2026-10-19T13:46:38.604284",
+        "event": "pr_opened",
+        "actor": "system",
+        "detail": "draft PR on branch opspulse/fix-e2e: https://github.com/demo/inventory/pull/1"
+      }
+    ],
+    "merge_policy": "never automatic"
+  }
+}
