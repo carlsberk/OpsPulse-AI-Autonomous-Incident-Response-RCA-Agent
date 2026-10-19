@@ -274,6 +274,11 @@ def _analyze_root_cause(state: IncidentState, config: RunnableConfig, model_fact
     }
 
 
+def _llm_seconds(state: IncidentState) -> float:
+    """Time the model calls of this incident have taken so far (recorded per attempt)."""
+    return sum((a.get("latency_ms") or 0) for a in state["attempts"]) / 1000
+
+
 def evaluate_analysis(state: IncidentState) -> Update:
     """Run the deterministic quality gate and decide the next workflow status."""
     analysis = dict(state["root_cause_analysis"] or {})
@@ -296,6 +301,9 @@ def evaluate_analysis(state: IncidentState) -> Update:
         status, reason = "needs_review", "analysis attempt budget exhausted"
         malformed = "output_error" in content
         category = ErrorCategory.MALFORMED_MODEL_OUTPUT if malformed else ErrorCategory.RETRY_BUDGET_EXHAUSTED
+    elif _llm_seconds(state) >= settings.max_incident_seconds:
+        status, reason = "needs_review", "analysis time budget exhausted"
+        category = ErrorCategory.TIME_BUDGET_EXHAUSTED
     elif not state["code_context"]:
         status, reason = "needs_review", "source code unavailable; another attempt cannot add grounding"
         category = ErrorCategory.SOURCE_UNAVAILABLE

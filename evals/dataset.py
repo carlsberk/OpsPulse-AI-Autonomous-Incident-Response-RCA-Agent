@@ -19,12 +19,24 @@ class Expected(BaseModel):
     root_cause_category: str
     inconclusive: bool = Field(description="True when the correct behaviour is to report insufficient evidence")
     relevant_files: list[str] = Field(default_factory=list)
+    alternative_categories: list[str] = Field(
+        default_factory=list,
+        description="Other categories a careful reviewer would accept for this failure (a genuinely ambiguous label)",
+    )
+    note: str = Field("", description="Why the label is what it is, when that is not obvious")
 
     @model_validator(mode="after")
     def _known_category(self) -> Expected:
-        if self.root_cause_category not in ROOT_CAUSE_CATEGORIES:
-            raise ValueError(f"unknown category {self.root_cause_category!r}")
+        for category in (self.root_cause_category, *self.alternative_categories):
+            if category not in ROOT_CAUSE_CATEGORIES:
+                raise ValueError(f"unknown category {category!r}")
+        if self.root_cause_category in self.alternative_categories:
+            raise ValueError("alternative_categories must not repeat the primary category")
         return self
+
+    def accepts(self, category: object) -> bool:
+        """True if `category` is the labelled one or an accepted alternative."""
+        return category == self.root_cause_category or category in self.alternative_categories
 
 
 class HistoryRecord(BaseModel):

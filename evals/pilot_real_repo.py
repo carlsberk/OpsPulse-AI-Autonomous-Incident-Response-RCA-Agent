@@ -40,6 +40,7 @@ class Mutation:
     scenario: str
     category: str
     fix_files: tuple[str, ...]  # where a correct fix belongs (labelled truth)
+    alternatives: tuple[str, ...] = ()  # other categories a reviewer would accept for the same failure
     edits: tuple[Edit, ...] = field(default_factory=tuple)
     trigger: str = ""  # python snippet reproducing a realistic crash when the repository's own tests do not reach it
 
@@ -99,6 +100,7 @@ MUTATIONS = (
                 'k = self.config.get("k")\n        relevant = _relevant_ids(case)\n        if not relevant:',
             ),
         ),
+        alternatives=("configuration_error",),  # the missing config default is as defensible a label as the TypeError
         trigger='import asyncio\nfrom app.core.schemas import EvaluationCase, SystemExecution\nfrom app.evaluators.deterministic.retrieval_metrics import RecallAtKEvaluator\n\ncase = EvaluationCase(id="c4", system="ata-rag", expected_output={"relevant_document_ids": ["d1"]})\nrun = SystemExecution(case_id="c4", system="ata-rag", output={"retrieved_documents": [{"id": "d1"}, {"id": "d2"}]})\nasyncio.run(RecallAtKEvaluator().evaluate(case, run))\n',
     ),
 )
@@ -164,6 +166,7 @@ def build_case(mutation: Mutation, repo_dir: pathlib.Path, python: str, repo_nam
                 "root_cause_category": mutation.category,
                 "inconclusive": False,
                 "relevant_files": list(mutation.fix_files),
+                "alternative_categories": list(mutation.alternatives),
             },
             "mock_replies": [{"unused": "live mode only"}],
         }

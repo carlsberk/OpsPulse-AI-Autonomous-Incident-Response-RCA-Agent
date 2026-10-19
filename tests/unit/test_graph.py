@@ -149,3 +149,31 @@ def test_ungrounded_analysis_without_patch_is_still_retried(fake_llm):
     llm = fake_llm([make_analysis(diff="", quote="invented line of code")] * 3)
     final = run_graph()
     assert llm.calls == 3 and final["error_category"] == "retry_budget_exhausted"
+
+
+def test_a_slow_provider_stops_the_retry_loop_at_the_time_budget(fake_llm, monkeypatch):
+    """Three slow attempts could run for minutes. Once the attempts so far used the budget, no further attempt starts:
+    the incident goes to a reviewer with its own error category instead of burning more time (and quota)."""
+    from src.agent import nodes
+
+    llm = fake_llm([make_analysis(BAD_DIFF)] * 3)
+    monkeypatch.setattr(nodes, "_llm_seconds", lambda state: 10_000.0)
+    final = run_graph()
+    assert llm.calls == 1 and final["workflow_status"] == "needs_review"
+    assert final["error_category"] == "time_budget_exhausted"
+    assert final["root_cause_analysis"]["evaluation"]["decision"] == "analysis time budget exhausted"
+
+
+def test_attempt_time_is_summed_from_the_recorded_latencies():
+    from src.agent.nodes import _llm_seconds
+
+    state = {"attempts": [{"latency_ms": 1500}, {"latency_ms": None}, {"error_category": "x"}, {"latency_ms": 500}]}
+    assert _llm_seconds(state) == 2.0  # type: ignore[arg-type]
+
+
+def test_the_time_budget_is_bounded_in_configuration(monkeypatch):
+    from src import config
+
+    monkeypatch.setenv("MAX_INCIDENT_SECONDS", "5")
+    with pytest.raises(config.ConfigError, match="between"):
+        config._number(("MAX_INCIDENT_SECONDS",), 300.0, float, 30, 3600)
