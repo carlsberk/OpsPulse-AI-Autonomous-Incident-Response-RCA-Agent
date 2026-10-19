@@ -189,3 +189,41 @@ def test_worker_liveness_file_is_touched_and_checked(tmp_path, set_settings):
     Worker().run_once()
     touch_liveness()
     assert is_alive() is True
+
+
+def test_competing_workers_win_every_incident_exactly_once():
+    """Several threads drain a queue at the same time: no incident is claimed twice and none is skipped."""
+    import threading
+
+    ids = {_queued() for _ in range(12)}
+    claimed: list = []
+    errors: list = []
+    guard = threading.Lock()
+
+    def drain():
+        for _ in range(60):  # SQLite serialises writers; a locked database is retried, never a lost or double claim
+            try:
+                job = repositories.claim_next(LEASE)
+            except OperationalError:
+                continue
+            if job is None:
+                if len(claimed) >= len(ids):
+                    return
+                continue
+            with guard:
+                claimed.append(job["incident_id"])
+
+    threads = [threading.Thread(target=lambda: _guarded(drain, errors)) for _ in range(4)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=60)
+    assert not errors, errors
+    assert sorted(map(str, claimed)) == sorted(map(str, ids)), "an incident was claimed twice or never"
+
+
+def _guarded(fn, errors):
+    try:
+        fn()
+    except Exception as exc:  # the test reports whatever escaped a worker thread
+        errors.append(repr(exc))

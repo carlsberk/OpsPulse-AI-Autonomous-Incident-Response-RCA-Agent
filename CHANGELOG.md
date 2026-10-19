@@ -15,6 +15,11 @@ All notable changes are listed here. Versions of behaviour-critical components a
   failures, odd targets, opening the repository) and for the process lifecycle (the worker loop survives a database
   outage and an unexpected error, startup with an unreachable database, generic 500 without leaking the message).
   Coverage 93% (was 86% when the floor was set).
+- More failure-path tests: every incident endpoint answers 503 on a database outage (10 endpoints), 404/409 mappings,
+  the Alertmanager receiver degrades per alert (missing label, disallowed repository, conflict) and refuses oversized or
+  non-JSON bodies, CLI exit codes (1 server error, 2 usage/connection), configuration parsing that must stop startup
+  (booleans, bounded numbers, malformed `API_KEYS`), and a four-thread race proving every queued incident is claimed
+  exactly once. No production code needed changing for these: they lock in behaviour that already held.
 - CI runs the unit tests on Python 3.14 as well (passed locally on 3.14.5).
 
 ### Changed
