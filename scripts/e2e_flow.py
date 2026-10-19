@@ -24,7 +24,8 @@ from typing import Any
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 REPORTER_KEY, REVIEWER_KEY = "e2e-reporter-key", "e2e-reviewer-key"
-REPO = "demo/inventory"
+LIVE_REPO = os.environ.get("E2E_LIVE_GITHUB_REPO", "")  # set (with GITHUB_TOKEN) to open the PR on a real test repo
+REPO = LIVE_REPO or "demo/inventory"
 DUMP_NOTE = (
     "One run of scripts/e2e_flow.py with a scripted (MOCK) model and a stubbed GitHub: "
     "real shapes, illustrative values."
@@ -50,7 +51,7 @@ def _configure(db_path: pathlib.Path) -> None:
             "SENTRY_CLIENT_SECRET": "",
             "ALLOW_UNAUTHENTICATED": "false",
             "ENABLE_GITHUB_REMEDIATION": "true",
-            "GITHUB_TOKEN": "e2e-placeholder-not-a-token",
+            "GITHUB_TOKEN": os.environ.get("GITHUB_TOKEN", "") if LIVE_REPO else "e2e-placeholder-not-a-token",
             "REQUIRE_REMEDIATION_APPROVAL": "true",
             "RATE_LIMIT_PER_MINUTE": "1000",
             "LOG_LEVEL": "ERROR",
@@ -132,8 +133,14 @@ def run(quiet: bool = False) -> dict[str, Any]:
         incident_service.get_graph = lambda: graph  # type: ignore[assignment]
         pull_requests: list[dict[str, Any]] = []
 
+        real_create_fix_pull_request = remediation_service.create_fix_pull_request
+
         def record_pull_request(**kwargs: Any) -> PullRequestResult:
             pull_requests.append(kwargs)
+            if LIVE_REPO:
+                result = real_create_fix_pull_request(**kwargs)
+                say(f"  live pull request: {result.pr_url}")
+                return result
             return PullRequestResult("https://github.com/demo/inventory/pull/1", 1, "opspulse/fix-e2e", False)
 
         remediation_service.create_fix_pull_request = record_pull_request  # type: ignore[assignment]

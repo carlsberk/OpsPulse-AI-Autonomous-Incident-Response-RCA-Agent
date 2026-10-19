@@ -41,8 +41,11 @@ provider failures excluded from every rate).
 
 ## Not done
 
-- **No production use.** No real user, no real incident stream, no live GitHub pull request produced by this code. The
-  GitHub adapter is tested against an in-memory fake of the API, not against github.com.
+- **No production use.** No real user and no real incident stream. The GitHub adapter is unit-tested against an
+  in-memory fake of the API. It has also been run once against github.com: `scripts/e2e_flow.py` with
+  `E2E_LIVE_GITHUB_REPO=<owner/repo>` and `GITHUB_TOKEN` set opened a draft PR (one line changed, labelled, not merged)
+  on a private test repository holding the demo service. That run used the scripted (MOCK) model, so it shows the
+  GitHub plumbing works, not the model's quality, and it is a single run on a toy repository.
 - **No test execution before and after the patch.** That would run code from the target repository and needs a real
   sandbox design.
 - **No statistical claim.** There is no confidence interval anywhere, because the samples are too small for one.
