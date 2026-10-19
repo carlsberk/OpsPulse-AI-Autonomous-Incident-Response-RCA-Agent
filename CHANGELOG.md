@@ -5,6 +5,18 @@ All notable changes are listed here. Versions of behaviour-critical components a
 
 ## [Unreleased]
 
+### Fixed
+- A failure after the fix branch was created (writing the file, opening the PR) now deletes that branch (best effort)
+  instead of leaving it behind; a leftover branch made every later delivery of the same incident fail with
+  "branch already exists" until someone removed it by hand.
+
+### Added
+- Failure-path tests for the GitHub adapter (error classification without response bodies, draft-PR fallback, label
+  failures, odd targets, opening the repository) and for the process lifecycle (the worker loop survives a database
+  outage and an unexpected error, startup with an unreachable database, generic 500 without leaking the message).
+  Coverage 93% (was 86% when the floor was set).
+- CI runs the unit tests on Python 3.14 as well (passed locally on 3.14.5).
+
 ### Changed
 - `/incidents/{id}/trace` now fills `estimated_cost_usd` when both `LLM_COST_INPUT_PER_MTOK` and
   `LLM_COST_OUTPUT_PER_MTOK` are set (the same prices the evaluation reports use); with no prices, or only one, it stays
