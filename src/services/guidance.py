@@ -179,6 +179,17 @@ CATEGORY_GUIDE: dict[str, tuple[str, list[tuple[str, str, str]]]] = {
             )
         ],
     ),
+    "time_budget_exhausted": (
+        "The language model was too slow: another attempt would have exceeded the per-incident time budget.",
+        [
+            (
+                "action",
+                "operator",
+                "Check the provider's status and latency, then use Retry; raise MAX_INCIDENT_SECONDS only if "
+                "slow-but-successful attempts are normal for your provider.",
+            )
+        ],
+    ),
     "insufficient_evidence": (
         "The model reported that the data does not support a diagnosis (or the trace is too thin).",
         [("action", "developer", "Add a full stack trace or the failing source and re-submit; do not act on a guess.")],

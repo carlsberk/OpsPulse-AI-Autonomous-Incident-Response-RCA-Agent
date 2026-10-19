@@ -5,6 +5,23 @@ All notable changes are listed here. Versions of behaviour-critical components a
 
 ## [Unreleased]
 
+### Added
+- `MAX_INCIDENT_SECONDS` (default 300, range 30-3600): a model-time budget per incident. Once the attempts so far used
+  it, no further attempt starts and the incident goes to review with the new category `time_budget_exhausted` (guidance
+  card included). Before, only the attempt count was bounded, so three slow attempts with provider retries could run for
+  several minutes. An attempt already running is not interrupted; its own timeout bounds it.
+- Evaluation labels can now say they are ambiguous: `Expected.alternative_categories` and `Expected.note`. Metrics and the
+  reliability report accept an alternative as correct and list such cases under "Data quality". `ho-pool-timeout`
+  (`httpx.PoolTimeout`: pool size is a setting as much as a slow provider) now also accepts `configuration_error`; the
+  holdout set is `rca-holdout-v2` and its mock baseline was regenerated (metrics unchanged). `ho-drift-attribute` keeps its
+  label: it is clear (the code and the trace disagree, so the right behaviour is to abstain); what made it hard to
+  measure was provider rate limits.
+- `evals.reliability_report` v2: false accepted and false rejected as separate numbers, **unsafe accepted** (an accepted
+  patch with a wrong diagnosis or on a file other than the labelled fix location), evidence verification, mean attempts,
+  cost when prices are configured, a "Data quality" section, and a small-sample banner. Runs the provider prevented from
+  finishing are excluded from every rate and counted separately (they used to count as failures, which made the model look
+  worse on a quota problem).
+
 ### Fixed
 - Console: `statusCounts` used a plain object, so a status named `constructor`, `toString` or `hasOwnProperty` produced
   nonsense counts (`"0function toString() { [native code] }1"`), and `__proto__` was silently lost. It now counts into a

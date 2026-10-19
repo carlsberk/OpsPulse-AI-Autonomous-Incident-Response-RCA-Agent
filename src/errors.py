@@ -25,6 +25,7 @@ class ErrorCategory(StrEnum):
     # partial results (analysis stored, a later stage did not happen)
     MALFORMED_MODEL_OUTPUT = "malformed_model_output"
     RETRY_BUDGET_EXHAUSTED = "retry_budget_exhausted"
+    TIME_BUDGET_EXHAUSTED = "time_budget_exhausted"  # slow provider: another attempt would exceed MAX_INCIDENT_SECONDS
     INSUFFICIENT_EVIDENCE = "insufficient_evidence"
     NO_CODE_FIX = "no_code_fix"  # grounded analysis, but the cause is operational (config, dependency, infra)
     SOURCE_UNAVAILABLE = "source_unavailable"
