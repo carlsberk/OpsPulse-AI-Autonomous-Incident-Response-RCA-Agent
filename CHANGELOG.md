@@ -5,6 +5,11 @@ All notable changes are listed here. Versions of behaviour-critical components a
 
 ## [Unreleased]
 
+### Changed
+- `/incidents/{id}/trace` now fills `estimated_cost_usd` when both `LLM_COST_INPUT_PER_MTOK` and
+  `LLM_COST_OUTPUT_PER_MTOK` are set (the same prices the evaluation reports use); with no prices, or only one, it stays
+  `null` rather than inventing a number. Provider prices change: set them from your own bill, not from this repo.
+
 ### Added
 - `evals/pilot_real_repo.py` and `run_rca --dataset-file`: build an RCA dataset from a **real repository** by injecting
   known bugs into a throwaway copy (the repository is never modified), taking the real native traceback of the crash

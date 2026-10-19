@@ -57,3 +57,13 @@ def test_request_id_is_stored_when_the_incident_is_submitted(client, fake_llm, s
     incident_id = resp.json()["incident_id"]
     assert resp.json()["request_id"] == "req-abc-123"
     assert client.get(f"/incidents/{incident_id}/trace", headers=REPORTER_HEADERS).json()["request_id"] == "req-abc-123"
+
+
+def test_cost_is_estimated_only_when_both_prices_are_configured(set_settings):
+    analysis = {"attempts": [{"iteration": 1, "latency_ms": 10, "input_tokens": 2000, "output_tokens": 1000}]}
+    record = {"status": "analysis_ready", "analysis": analysis}
+    assert build_trace(record)["totals"]["estimated_cost_usd"] is None  # no prices: no invented number
+    set_settings(llm_cost_input_per_mtok=1.0)
+    assert build_trace(record)["totals"]["estimated_cost_usd"] is None  # half a price list is not a price list
+    set_settings(llm_cost_input_per_mtok=1.0, llm_cost_output_per_mtok=3.0)
+    assert build_trace(record)["totals"]["estimated_cost_usd"] == 0.005  # (2000*1 + 1000*3) / 1e6

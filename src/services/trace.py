@@ -1,6 +1,6 @@
 """One incident's run trace: versions, per-attempt gate verdicts, latency and tokens - from the stored record.
 
-Deterministic and read-only. Nothing here is estimated: cost is reported only if prices are configured (they are not),
+Deterministic and read-only. Nothing here is estimated: cost is reported only if prices are configured (LLM_COST_*_PER_MTOK),
 and a request id is present only if the analysis ran in the process that handled the submitting request.
 """
 
@@ -8,7 +8,17 @@ from __future__ import annotations
 
 from typing import Any
 
+from src.config import settings
+
 _VERSION_KEYS = ("agent_version", "prompt_version", "evaluator_version", "retrieval_strategy", "model")
+
+
+def _estimated_cost(input_tokens: int | None, output_tokens: int | None) -> float | None:
+    """USD estimate from the configured per-million-token prices; None unless both prices are set and tokens known."""
+    price_in, price_out = settings.llm_cost_input_per_mtok, settings.llm_cost_output_per_mtok
+    if not (price_in > 0 and price_out > 0) or input_tokens is None or output_tokens is None:
+        return None
+    return round((input_tokens * price_in + output_tokens * price_out) / 1_000_000, 6)
 
 
 def build_trace(incident: dict[str, Any]) -> dict[str, Any]:
@@ -48,7 +58,7 @@ def build_trace(incident: dict[str, Any]) -> dict[str, Any]:
             "latency_ms": total("latency_ms"),
             "input_tokens": total("input_tokens"),
             "output_tokens": total("output_tokens"),
-            "estimated_cost_usd": None,
+            "estimated_cost_usd": _estimated_cost(total("input_tokens"), total("output_tokens")),
         },
         "final_quality_score": incident.get("quality_score"),
     }
