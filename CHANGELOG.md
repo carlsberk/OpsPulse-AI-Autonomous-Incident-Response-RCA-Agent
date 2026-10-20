@@ -5,6 +5,11 @@ All notable changes are listed here. Versions of behaviour-critical components a
 
 ## [Unreleased]
 
+### Added
+- CI job `sandbox-docker`: runs `tests/integration/test_sandbox_docker.py` against the runner's real Docker daemon on
+  Linux (a real fix, a regression, a missing test runner and five escape attempts). Until it has run green once on GitHub,
+  the sandbox is only proven on Docker Desktop for Windows.
+
 ### Fixed
 - A sandbox unit test split the mounted path on `:` and so failed on Windows (`C:\...`); the production code was fine.
 - Sandbox: the default `SANDBOX_IMAGE` (`python:3.11-slim`) has no pytest, so `python -m pytest` exits 1 with "No module

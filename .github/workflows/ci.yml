@@ -165,3 +165,21 @@ jobs:
 
       - name: End-to-end smoke test (api + worker + PostgreSQL via Compose)
         run: bash scripts/compose_smoke.sh
+
+  sandbox-docker:
+    name: Sandbox against a real Docker daemon
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements*.txt
+      - run: pip install -r requirements-dev.txt
+      - name: Real fix, regression, missing test runner and five escape attempts (network, writes, root, secrets, fork bomb)
+        env:
+          RUN_DOCKER_TESTS: "1"
+          DATABASE_URL: sqlite://
+        run: pytest -q tests/integration/test_sandbox_docker.py
