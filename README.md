@@ -1086,7 +1086,7 @@ One run of one bug - it shows the loop works end to end, not that it generalises
 - More inbound adapters (Datadog, OpenTelemetry) and per-tenant allow-lists.
 - PostgreSQL full-text search for candidate selection when histories outgrow the 200-row window; evaluate
   embeddings only if lexical recall proves insufficient on real data.
-- Optional sandboxed execution of the target repository's tests before proposing a PR.
+- Sandbox follow-ups: dependency-aware images (the sandbox has no network), other test runners per language.
 
 ## Verified versions
 

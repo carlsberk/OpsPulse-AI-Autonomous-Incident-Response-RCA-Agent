@@ -185,6 +185,20 @@ class Settings:
         default_factory=lambda: int(_number(("MAX_PATCH_CHANGED_LINES",), 40, int, 1, 400))
     )
 
+    # --- Sandboxed test run (optional, off by default) ---
+    # Runs the target repository's tests in a throwaway Docker container (no network, read-only root, capped
+    # memory/CPU/processes) before and after the patch, and shows the result to the reviewer.
+    sandbox_enabled: bool = field(default_factory=lambda: _bool("SANDBOX_ENABLED", False))
+    sandbox_image: str = field(default_factory=lambda: _env("SANDBOX_IMAGE", default="python:3.11-slim"))
+    sandbox_command: str = field(
+        default_factory=lambda: _env("SANDBOX_COMMAND", default="python -m pytest -q -x -p no:cacheprovider")
+    )
+    sandbox_timeout_seconds: int = field(
+        default_factory=lambda: int(_number(("SANDBOX_TIMEOUT_SECONDS",), 120, int, 10, 900))
+    )
+    sandbox_memory_mb: int = field(default_factory=lambda: int(_number(("SANDBOX_MEMORY_MB",), 512, int, 128, 8192)))
+    sandbox_max_repo_mb: int = field(default_factory=lambda: int(_number(("SANDBOX_MAX_REPO_MB",), 50, int, 1, 500)))
+
     # --- Inbound integrations ---
     sentry_client_secret: str = field(default_factory=lambda: _env("SENTRY_CLIENT_SECRET"))
     sentry_project_repos: dict[str, str] = field(default_factory=_sentry_projects)

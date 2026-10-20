@@ -9,8 +9,11 @@ from __future__ import annotations
 
 import logging
 import re
+import shutil
+import tarfile
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 import requests
@@ -278,3 +281,62 @@ def create_fix_pull_request(
     except GithubException as exc:
         logger.warning("could not label PR: %s", describe_github_error(exc))
     return PullRequestResult(pr.html_url, pr.number, branch, already_existed=False)
+
+
+def download_repository_snapshot(repo_name: str, dest: Path, max_bytes: int) -> str:
+    """Extract the default branch head into `dest` (an empty directory) and return its commit SHA.
+
+    Only regular files and directories are extracted (no links, no absolute or `..` paths) and the download and
+    the extracted size are both capped, because the archive comes from a repository we do not control.
+    """
+    repo = get_repo(repo_name)
+    try:
+        sha = repo.get_branch(repo.default_branch).commit.sha
+        url = repo.get_archive_link("tarball", ref=sha)
+    except GithubException as exc:
+        raise api_error(exc, "cannot fetch repository archive: ") from exc
+    archive = dest.parent / f"{dest.name}.tar.gz"
+    try:
+        with requests.get(url, stream=True, timeout=30) as response:
+            response.raise_for_status()
+            size = 0
+            with archive.open("wb") as out:
+                for chunk in response.iter_content(1 << 16):
+                    size += len(chunk)
+                    if size > max_bytes:
+                        raise GitHubError("repository archive exceeds the sandbox size limit")
+                    out.write(chunk)
+        _extract_regular_files(archive, dest, max_bytes)
+    except (requests.RequestException, tarfile.TarError, OSError) as exc:
+        raise GitHubError(f"cannot fetch repository archive: {type(exc).__name__}") from exc
+    finally:
+        archive.unlink(missing_ok=True)
+    return sha
+
+
+def _extract_regular_files(archive: Path, dest: Path, max_bytes: int) -> None:
+    dest.mkdir(parents=True, exist_ok=True)
+    root = dest.resolve()
+    total = 0
+    with tarfile.open(archive, "r:gz") as tar:
+        for member in tar:
+            parts = PurePosixPath(member.name).parts[1:]  # drop the "<owner>-<repo>-<sha>/" prefix
+            if not parts or not (member.isfile() or member.isdir()):
+                continue
+            if PurePosixPath(member.name).is_absolute() or ".." in parts:
+                raise GitHubError("repository archive contains an unsafe path")
+            target = root.joinpath(*parts)
+            if not target.resolve().is_relative_to(root):
+                raise GitHubError("repository archive contains an unsafe path")
+            if member.isdir():
+                target.mkdir(parents=True, exist_ok=True)
+                continue
+            total += member.size
+            if total > max_bytes:
+                raise GitHubError("repository contents exceed the sandbox size limit")
+            source = tar.extractfile(member)
+            if source is None:
+                continue
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with source, target.open("wb") as out:
+                shutil.copyfileobj(source, out)

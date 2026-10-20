@@ -5,6 +5,19 @@ All notable changes are listed here. Versions of behaviour-critical components a
 
 ## [Unreleased]
 
+### Added
+- **Optional sandboxed test run** (`SANDBOX_ENABLED`, default off). Before a patch is proposed, the target repository's
+  tests run in a throwaway Docker container (no network, read-only root, `--cap-drop ALL`, unprivileged user, memory,
+  CPU, process and time caps) with and without the patch. The result is stored in the analysis (`analysis.sandbox`),
+  shown to the reviewer and written into the PR text. A patch that breaks tests that passed before is routed to
+  `needs_review` and gets no approval. Settings: `SANDBOX_IMAGE`, `SANDBOX_COMMAND`, `SANDBOX_TIMEOUT_SECONDS`,
+  `SANDBOX_MEMORY_MB`, `SANDBOX_MAX_REPO_MB`. Unit-tested with a fake runner; not yet run against a real Docker daemon.
+- `scripts/e2e_flow.py` can open its PR on a real test repository (`E2E_LIVE_GITHUB_REPO`, `GITHUB_TOKEN`).
+
+### Fixed
+- `scripts/demo.py` and `scripts/e2e_flow.py` failed on macOS because the sandbox traceback printed the resolved
+  `/private/var/...` path while the `/app/` rewrite used the symlinked one.
+
 ## [1.4.0] - 2026-10-19
 
 Hardening, evidence and honesty. Nothing here changes the safety model (no GitHub write without a human decision, no merge);

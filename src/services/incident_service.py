@@ -25,6 +25,7 @@ from __future__ import annotations
 import logging
 import time
 import uuid
+from dataclasses import replace
 from datetime import timedelta
 from functools import lru_cache
 from typing import Any, cast
@@ -42,6 +43,7 @@ from src.errors import TRANSIENT_CATEGORIES, ErrorCategory
 from src.integrations import github
 from src.integrations.notify import notify_incident
 from src.integrations.observability import build_run_config, flush_traces, incident_trace
+from src.integrations.sandbox import run_patch_in_sandbox
 from src.logging_config import incident_id_var, redact, request_id_var
 from src.services import remediation_service
 from src.services.remediation_service import ApprovalForbiddenError, ProposedFix, RemediationOutcome
@@ -237,8 +239,25 @@ def _run(
         iterations=final["iterations"],
     )
     if final["quality_gate_passed"]:
+        fix = _fix_from_state(incident_id, fingerprint, final)
+        # Only this service writes `sandbox`; never trust a key of that name that came from the model.
+        fix = replace(fix, analysis={k: v for k, v in fix.analysis.items() if k != "sandbox"})
+        if settings.sandbox_enabled and fix.patch and fix.target_file:
+            report = run_patch_in_sandbox(fix.repo_name, fix.target_file, fix.patch)
+            logger.info("sandbox run: %s", report.status)
+            fix = replace(fix, analysis={**fix.analysis, "sandbox": report.as_dict()})
+            _persist_or_raise(
+                incident_id,
+                claim_token=claim_token,
+                root_cause_analysis={
+                    **(final["root_cause_analysis"] or {}),
+                    "attempts": final["attempts"],
+                    "source_windows": source_windows(final),
+                    "sandbox": report.as_dict(),
+                },
+            )
         try:
-            outcome = remediation_service.remediate(_fix_from_state(incident_id, fingerprint, final))
+            outcome = remediation_service.remediate(fix)
         except SQLAlchemyError as exc:
             logger.error("database unavailable during remediation: %s", type(exc).__name__)
             raise DatabaseUnavailableError("database unavailable") from exc
