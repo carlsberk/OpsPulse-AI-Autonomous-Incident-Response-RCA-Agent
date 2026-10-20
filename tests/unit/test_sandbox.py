@@ -48,6 +48,27 @@ def test_classify(before, after, status):
     assert classify(ran(before), ran(after))[0] == status
 
 
+def test_a_missing_test_runner_is_an_environment_error_not_a_failing_test():
+    """Seen against a real daemon: the default python:3.11-slim has no pytest, `python -m pytest` exits 1, and that used
+    to be reported as "tests fail both before and after the patch"."""
+    missing = "/usr/local/bin/python: No module named pytest"
+    status, summary = classify(ran(1, missing), ran(1, missing))
+    assert status == "error" and "SANDBOX_IMAGE" in summary
+
+
+def test_a_missing_dependency_that_is_missing_both_times_is_an_environment_error():
+    collection = "ERROR collecting test_x.py\nModuleNotFoundError: No module named 'requests'\n1 error in 0.1s"
+    assert classify(ran(2, collection), ran(2, collection))[0] == "error"
+
+
+def test_an_import_error_introduced_by_the_patch_is_still_a_regression():
+    assert classify(ran(0, "3 passed"), ran(1, "ModuleNotFoundError: No module named 'typo'"))[0] == "regression"
+
+
+def test_ordinary_failures_without_environment_markers_are_unchanged():
+    assert classify(ran(1, "1 failed, 2 passed"), ran(1, "1 failed, 2 passed"))[0] == "still_failing"
+
+
 def fake_snapshot(repo, dest: Path, limit):
     (dest / "src").mkdir(parents=True)
     (dest / "src" / "app.py").write_text(SOURCE, encoding="utf-8")
@@ -58,7 +79,7 @@ def test_runs_before_and_after_on_separate_checkouts(set_settings):
     seen = []
 
     def runner(argv, timeout):
-        checkout = Path(next(a for a in argv if a.endswith(":/src:ro")).split(":")[0])
+        checkout = Path(next(a for a in argv if a.endswith(":/src:ro")).removesuffix(":/src:ro"))  # drive letters
         seen.append((checkout.name, "profile" in (checkout / "src" / "app.py").read_text()))
         return (1, "boom") if checkout.name == "base" else (0, "ok")
 

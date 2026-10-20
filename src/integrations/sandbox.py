@@ -86,11 +86,27 @@ def _run(checkout: Path, runner: Runner) -> SandboxRun:
     return SandboxRun(code, redact(output)[-OUTPUT_TAIL_CHARS:])
 
 
+ENVIRONMENT_MARKERS = ("No module named", "command not found", ": not found", "executable file not found")
+
+
+def _environment_problem(before: SandboxRun, after: SandboxRun) -> bool:
+    """The same missing module or program shows up before AND after the patch: the image cannot run these tests, so
+    neither run says anything about the patch. (A bare `python:3.11-slim` has no pytest: exit code 1, which would
+    otherwise be reported as "tests fail both before and after".)"""
+    return all(any(marker in run.output_tail for marker in ENVIRONMENT_MARKERS) for run in (before, after))
+
+
 def classify(before: SandboxRun, after: SandboxRun) -> tuple[str, str]:
     if before.exit_code is None or after.exit_code is None:
         return "timeout", f"the tests did not finish within {settings.sandbox_timeout_seconds}s"
     if before.exit_code in DOCKER_ERROR_CODES or after.exit_code in DOCKER_ERROR_CODES:
         return "error", "the container could not run the tests (see the output; the image may lack the dependencies)"
+    if _environment_problem(before, after):
+        return (
+            "error",
+            "the image cannot run the tests: a module or program is missing both before and after the patch "
+            "(use a SANDBOX_IMAGE that contains pytest and the repository's dependencies)",
+        )
     if before.exit_code != 0 and after.exit_code == 0:
         return "fixes_failing_tests", "tests failed before the patch and pass after it"
     if before.exit_code == 0 and after.exit_code != 0:
