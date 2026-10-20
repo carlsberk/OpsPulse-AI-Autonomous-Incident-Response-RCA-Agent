@@ -49,9 +49,13 @@ provider failures excluded from every rate).
 - **Test execution is opt-in and only lightly proven.** With `SANDBOX_ENABLED=true` the repository's tests run in a
   throwaway Docker container (no network, read-only root, no capabilities, unprivileged user, memory/CPU/process/time
   caps) before and after the patch, and a patch that breaks previously passing tests is routed to review instead of
-  approval. This is covered by unit tests with a fake runner; **it has not been run against a real Docker daemon yet**.
-  With no network the image must already contain the repository's dependencies, otherwise the report says `error`. A
-  passing run still does not prove the fix is right.
+  approval. Unit tests use a fake runner; an opt-in test (`RUN_DOCKER_TESTS=1`) ran it against a real Docker daemon
+  (Docker Desktop on Windows, Linux containers): a real fix turned failing tests green, a regression was caught, and five
+  escape attempts written as tests (network, writes outside the tmpfs, root or capabilities, host secrets and the Docker
+  socket, a fork bomb) were all contained. That run also found a defect, now fixed: a bare `python:3.11-slim` has no pytest
+  and was misreported as failing tests. **Not yet run on a Linux host or in CI**, and with no network the image must already
+  contain the repository's dependencies, otherwise the report says `error`. A passing run still does not prove the fix is
+  right.
 - **No statistical claim.** There is no confidence interval anywhere, because the samples are too small for one.
 - **Audit is a report, not a ledger.** The review history is derived from rows the workflow updates in place; it is not
   tamper-evident.

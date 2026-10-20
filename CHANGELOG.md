@@ -6,6 +6,26 @@ All notable changes are listed here. Versions of behaviour-critical components a
 ## [Unreleased]
 
 ### Added
+- CI job `sandbox-docker`: runs `tests/integration/test_sandbox_docker.py` against the runner's real Docker daemon on
+  Linux (a real fix, a regression, a missing test runner and five escape attempts). Until it has run green once on GitHub,
+  the sandbox is only proven on Docker Desktop for Windows.
+
+### Fixed
+- A sandbox unit test split the mounted path on `:` and so failed on Windows (`C:\...`); the production code was fine.
+- Sandbox: the default `SANDBOX_IMAGE` (`python:3.11-slim`) has no pytest, so `python -m pytest` exits 1 with "No module
+  named pytest", and that was reported as `still_failing` ("tests fail both before and after the patch") instead of an
+  environment error. Found by running the sandbox against a real Docker daemon for the first time. A missing module or
+  program that shows up both before and after the patch is now `error` with a message pointing at `SANDBOX_IMAGE`; an import
+  error introduced only by the patch is still a `regression`.
+
+### Added
+- `tests/integration/test_sandbox_docker.py` (opt-in: `RUN_DOCKER_TESTS=1`): the sandbox against a real Docker daemon. It
+  shows a real fix turning failing tests green, a regression being caught, a missing test runner reported as an
+  environment error, and **five escape attempts written as tests** (network access, writing outside the tmpfs, running
+  as root or with capabilities, seeing host secrets or the Docker socket, a fork bomb) all contained. Run on Docker Desktop
+  for Windows (Linux containers); not yet run on a Linux host or in CI.
+
+### Added
 - **Optional sandboxed test run** (`SANDBOX_ENABLED`, default off). Before a patch is proposed, the target repository's
   tests run in a throwaway Docker container (no network, read-only root, `--cap-drop ALL`, unprivileged user, memory,
   CPU, process and time caps) with and without the patch. The result is stored in the analysis (`analysis.sandbox`),
