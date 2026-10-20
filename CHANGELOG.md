@@ -14,6 +14,10 @@ All notable changes are listed here. Versions of behaviour-critical components a
   `SANDBOX_MEMORY_MB`, `SANDBOX_MAX_REPO_MB`. Unit-tested with a fake runner; not yet run against a real Docker daemon.
 - `scripts/e2e_flow.py` can open its PR on a real test repository (`E2E_LIVE_GITHUB_REPO`, `GITHUB_TOKEN`).
 
+### Security
+- Request bodies over 1 MB are refused with 413 even when sent chunked (no `Content-Length`): the bytes are counted as
+  they arrive instead of being buffered first (`src/api/limits.py`).
+
 ### Fixed
 - `scripts/demo.py` and `scripts/e2e_flow.py` failed on macOS because the sandbox traceback printed the resolved
   `/private/var/...` path while the `/app/` rewrite used the symlinked one.
