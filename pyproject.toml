@@ -1,6 +1,6 @@
 [project]
 name = "opspulse-ai"
-version = "1.4.0"
+version = "1.5.0"
 description = "Incident investigation and root-cause analysis assistant with human-reviewed GitHub remediation"
 requires-python = ">=3.11"
 # Runtime dependencies are pinned in requirements.txt (used by Docker and CI).
