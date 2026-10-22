@@ -23,7 +23,7 @@ All notable changes are listed here. Versions of behaviour-critical components a
   shows a real fix turning failing tests green, a regression being caught, a missing test runner reported as an
   environment error, and **five escape attempts written as tests** (network access, writing outside the tmpfs, running
   as root or with capabilities, seeing host secrets or the Docker socket, a fork bomb) all contained. Run on Docker Desktop
-  for Windows (Linux containers); not yet run on a Linux host or in CI.
+  for Windows (Linux containers) and, via the new CI job, on a Linux runner.
 
 ### Added
 - **Optional sandboxed test run** (`SANDBOX_ENABLED`, default off). Before a patch is proposed, the target repository's
