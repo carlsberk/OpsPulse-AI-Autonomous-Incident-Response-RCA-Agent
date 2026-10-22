@@ -5,42 +5,54 @@ All notable changes are listed here. Versions of behaviour-critical components a
 
 ## [Unreleased]
 
-### Added
-- CI job `sandbox-docker`: runs `tests/integration/test_sandbox_docker.py` against the runner's real Docker daemon on
-  Linux (a real fix, a regression, a missing test runner and five escape attempts). Until it has run green once on GitHub,
-  the sandbox is only proven on Docker Desktop for Windows.
+## [1.5.0] - 2026-10-22
 
-### Fixed
-- A sandbox unit test split the mounted path on `:` and so failed on Windows (`C:\...`); the production code was fine.
-- Sandbox: the default `SANDBOX_IMAGE` (`python:3.11-slim`) has no pytest, so `python -m pytest` exits 1 with "No module
-  named pytest", and that was reported as `still_failing` ("tests fail both before and after the patch") instead of an
-  environment error. Found by running the sandbox against a real Docker daemon for the first time. A missing module or
-  program that shows up both before and after the patch is now `error` with a message pointing at `SANDBOX_IMAGE`; an import
-  error introduced only by the patch is still a `regression`.
+One new optional feature (a sandboxed test run, off by default), one security hardening, and the first time the sandbox was
+checked against a real Docker daemon, which found and fixed a defect. Versioned 1.5.0 rather than 1.4.1 because it adds a
+feature with its own settings, even though every default behaviour is unchanged.
 
-### Added
-- `tests/integration/test_sandbox_docker.py` (opt-in: `RUN_DOCKER_TESTS=1`): the sandbox against a real Docker daemon. It
-  shows a real fix turning failing tests green, a regression being caught, a missing test runner reported as an
-  environment error, and **five escape attempts written as tests** (network access, writing outside the tmpfs, running
-  as root or with capabilities, seeing host secrets or the Docker socket, a fork bomb) all contained. Run on Docker Desktop
-  for Windows (Linux containers) and, via the new CI job, on a Linux runner.
+### Upgrade notes
+- **No database migration.** Nothing changes unless you set `SANDBOX_ENABLED=true`.
+- New optional settings (all in `.env.example`): `SANDBOX_ENABLED` (default `false`), `SANDBOX_IMAGE`, `SANDBOX_COMMAND`,
+  `SANDBOX_TIMEOUT_SECONDS`, `SANDBOX_MEMORY_MB`, `SANDBOX_MAX_REPO_MB`. With the sandbox on you need Docker on the host
+  **and an image that already contains pytest and the repository's dependencies** (the container has no network); the
+  default `python:3.11-slim` has no pytest and is reported as an environment `error`.
+- Request bodies over 1 MB are now refused with 413 however they are sent.
 
 ### Added
 - **Optional sandboxed test run** (`SANDBOX_ENABLED`, default off). Before a patch is proposed, the target repository's
-  tests run in a throwaway Docker container (no network, read-only root, `--cap-drop ALL`, unprivileged user, memory,
-  CPU, process and time caps) with and without the patch. The result is stored in the analysis (`analysis.sandbox`),
-  shown to the reviewer and written into the PR text. A patch that breaks tests that passed before is routed to
-  `needs_review` and gets no approval. Settings: `SANDBOX_IMAGE`, `SANDBOX_COMMAND`, `SANDBOX_TIMEOUT_SECONDS`,
-  `SANDBOX_MEMORY_MB`, `SANDBOX_MAX_REPO_MB`. Unit-tested with a fake runner; not yet run against a real Docker daemon.
-- `scripts/e2e_flow.py` can open its PR on a real test repository (`E2E_LIVE_GITHUB_REPO`, `GITHUB_TOKEN`).
+  tests run in a throwaway Docker container (no network, read-only root, `--cap-drop ALL`, `no-new-privileges`,
+  unprivileged user, memory, CPU, process and time caps; the checkout is mounted read-only and copied to a size-capped
+  tmpfs) with and without the patch. The result is stored in the analysis (`analysis.sandbox`), shown to the reviewer and
+  written into the PR text. A patch that breaks tests that passed before is routed to `needs_review` and gets no approval.
+  A passing run still does not prove the fix is right.
+- **Sandbox integration tests against a real Docker daemon** (`tests/integration/test_sandbox_docker.py`, opt-in with
+  `RUN_DOCKER_TESTS=1`) and a CI job running them (`sandbox-docker`): a real fix turning failing tests green, a regression
+  being caught, a missing test runner reported as an environment error, and five escape attempts written as tests
+  (network access, writing outside the tmpfs, running as root or with capabilities, seeing host secrets or the Docker
+  socket, a fork bomb), all contained. Verified on Docker Desktop for Windows and on a Linux CI runner (green on `main`).
+- `scripts/e2e_flow.py` can open its pull request on a real test repository (`E2E_LIVE_GITHUB_REPO` and `GITHUB_TOKEN`).
+  One such run with the scripted (MOCK) model is recorded in `docs/LIMITATIONS.md`; it shows the GitHub plumbing works, not
+  the model's quality.
 
 ### Security
-- Request bodies over 1 MB are refused with 413 even when sent chunked (no `Content-Length`): the bytes are counted as
-  they arrive instead of being buffered first (`src/api/limits.py`).
+- Request bodies over 1 MB are refused with 413 even when sent chunked (no `Content-Length`): the bytes are counted as they
+  arrive instead of being buffered first (`src/api/limits.py`). Before, the limit could be bypassed by streaming a body.
 
 ### Fixed
+- **Sandbox: a missing test runner was reported as failing tests.** The default `SANDBOX_IMAGE` has no pytest, so
+  `python -m pytest` exits 1 ("No module named pytest") and the report said "tests fail both before and after the patch".
+  Found by running the sandbox against a real Docker daemon for the first time. A missing module or program that shows up
+  both before and after the patch is now `error` and points at `SANDBOX_IMAGE`; an import error introduced only by the patch
+  is still a `regression`.
 - `scripts/demo.py` and `scripts/e2e_flow.py` failed on macOS because the sandbox traceback printed the resolved
   `/private/var/...` path while the `/app/` rewrite used the symlinked one.
+- A sandbox unit test split the mounted path on a colon and so failed on Windows (drive letters); the production code was
+  fine.
+
+### Documentation
+- `docs/LIMITATIONS.md` now says what the sandbox has and has not been shown to do, and that the GitHub adapter has also been
+  run once against github.com (with a scripted model).
 
 ## [1.4.0] - 2026-10-19
 
