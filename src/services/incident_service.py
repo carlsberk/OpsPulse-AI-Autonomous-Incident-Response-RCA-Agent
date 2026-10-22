@@ -69,13 +69,25 @@ def get_graph() -> CompiledStateGraph[Any, Any, Any, Any]:
 
 
 def submit_incident(
-    incident_id: uuid.UUID, repo_name: str, error_message: str, stack_trace: str, submitted_by: str | None = None
+    incident_id: uuid.UUID,
+    repo_name: str,
+    error_message: str,
+    stack_trace: str,
+    submitted_by: str | None = None,
+    commit_sha: str | None = None,
 ) -> tuple[dict[str, Any], bool]:
     """Persist a new `queued` incident, or return the existing one for a repeated delivery."""
     fingerprint = compute_fingerprint(repo_name, error_message, stack_trace)
     try:
         row, created = repositories.create_incident(
-            incident_id, repo_name, fingerprint, error_message, stack_trace, submitted_by, request_id_var.get()
+            incident_id,
+            repo_name,
+            fingerprint,
+            error_message,
+            stack_trace,
+            submitted_by,
+            request_id_var.get(),
+            commit_sha,
         )
     except SQLAlchemyError as exc:
         logger.error("database unavailable while creating incident: %s", type(exc).__name__)
@@ -162,6 +174,7 @@ def run_incident_pipeline(
     stack_trace: str,
     graph: CompiledStateGraph[Any, Any, Any, Any] | None = None,
     claim_token: str | None = None,
+    commit_sha: str | None = None,
 ) -> dict[str, Any]:
     """Run the graph, persist the outcome, optionally propose/open a PR. Returns the stored incident.
 
@@ -178,7 +191,14 @@ def run_incident_pipeline(
         with incident_trace(str(incident_id), repo_name, fingerprint) as trace:
             try:
                 result = _run(
-                    incident_id, repo_name, error_message, stack_trace, fingerprint, graph or get_graph(), claim_token
+                    incident_id,
+                    repo_name,
+                    error_message,
+                    stack_trace,
+                    fingerprint,
+                    graph or get_graph(),
+                    claim_token,
+                    commit_sha,
                 )
             except repositories.ClaimLostError:
                 logger.warning("claim lost to another worker; discarding this run's result")
@@ -206,8 +226,9 @@ def _run(
     fingerprint: str,
     graph: CompiledStateGraph[Any, Any, Any, Any],
     claim_token: str | None = None,
+    commit_sha: str | None = None,
 ) -> dict[str, Any]:
-    state = initial_state(str(incident_id), error_message, stack_trace, repo_name)
+    state = initial_state(str(incident_id), error_message, stack_trace, repo_name, commit_sha)
     try:
         final = cast(
             IncidentState, graph.invoke(state, config=build_run_config(str(incident_id), repo_name, fingerprint))

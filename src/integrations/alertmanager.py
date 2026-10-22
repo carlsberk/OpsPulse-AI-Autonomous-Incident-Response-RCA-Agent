@@ -18,6 +18,8 @@ import uuid
 from dataclasses import dataclass
 from typing import Any
 
+from src.integrations.revision import normalize_commit_sha
+
 MAX_BODY_BYTES = 1_000_000
 MAX_ALERTS = 20  # per notification; Alertmanager groups alerts, a larger group is truncated (and reported)
 _NAMESPACE = uuid.UUID("2f6d9c1a-7b3e-4e5f-8a90-1c2d3e4f5a6b")
@@ -35,6 +37,7 @@ class AlertIncident:
     repo_name: str | None  # None when the label is missing or malformed
     error_message: str
     stack_trace: str
+    commit_sha: str | None = None
 
 
 def _text(value: Any, limit: int) -> str:
@@ -66,6 +69,7 @@ def to_incidents(payload: dict[str, Any], repo_label: str) -> tuple[list[AlertIn
                 repo_name=repo if _REPO_RE.match(repo) else None,
                 error_message=message[:20_000],
                 stack_trace=_text(annotations.get("stack_trace"), 100_000),
+                commit_sha=normalize_commit_sha(labels.get("commit_sha") or annotations.get("commit_sha")),
             )
         )
     return incidents, max(len(firing) - MAX_ALERTS, 0)

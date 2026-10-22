@@ -71,6 +71,21 @@ def extract_stack_trace_context(state: IncidentState) -> Update:
     return {"affected_file": affected, "failing_line": frame.line}
 
 
+def _fetch(fetch: ContextFetcher, state: IncidentState, path: str, line: int) -> SourceContext | None:
+    """Read source at the deployed commit when the incident carries one, else at the default branch head. A fetcher is
+    only given `ref` when there is a pin, so fetchers that predate pinning keep working."""
+    if state.get("commit_sha"):
+        return fetch(state["repo_name"], path, line, ref=state["commit_sha"])  # type: ignore[call-arg]
+    return fetch(state["repo_name"], path, line)
+
+
+def _not_found_note(state: IncidentState) -> str:
+    pinned = state.get("commit_sha")
+    if pinned:
+        return f"file not found at commit {pinned[:12]}"
+    return "file not found in the repository default branch"
+
+
 def make_retrieve_source_context(fetch: ContextFetcher) -> Callable[[IncidentState], Update]:
     def retrieve_source_context(state: IncidentState) -> Update:
         """Fetch a numbered source window. Any failure degrades to 'no context', never to invented context."""
@@ -78,7 +93,7 @@ def make_retrieve_source_context(fetch: ContextFetcher) -> Callable[[IncidentSta
             return {"context_status": "no_frame", "context_note": "no application frame in the stack trace"}
         with observe("retrieval.source_context", as_type="retriever") as span:
             try:
-                ctx = fetch(state["repo_name"], state["affected_file"], state["failing_line"])
+                ctx = _fetch(fetch, state, state["affected_file"], state["failing_line"])
             except GitHubError as exc:
                 logger.warning("source retrieval unavailable: %s", exc)
                 span.update(error=str(exc))
@@ -90,7 +105,7 @@ def make_retrieve_source_context(fetch: ContextFetcher) -> Callable[[IncidentSta
                 return {"context_status": "unavailable", "context_note": note}
             span.update(metadata={"found": ctx is not None})
         if ctx is None:
-            return {"context_status": "not_found", "context_note": "file not found in the repository default branch"}
+            return {"context_status": "not_found", "context_note": _not_found_note(state)}
         return {
             "context_status": "retrieved",
             "context_note": None,
@@ -116,7 +131,7 @@ def _caller_context(fetch: ContextFetcher, state: IncidentState, trigger_ctx: So
         if len(blocks) >= settings.caller_frames:
             break
         try:
-            ctx = fetch(state["repo_name"], normalize_path(frame.path), frame.line)
+            ctx = _fetch(fetch, state, normalize_path(frame.path), frame.line)
         except (GitHubError, *TRANSPORT_ERRORS) as exc:
             logger.info("caller context skipped: %s", type(exc).__name__)
             continue

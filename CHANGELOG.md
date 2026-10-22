@@ -5,6 +5,14 @@ All notable changes are listed here. Versions of behaviour-critical components a
 
 ## [Unreleased]
 
+### Added
+- **Analyse the code that was deployed.** An incident can carry the deployed `commit_sha` (API field; Alertmanager label or
+  annotation `commit_sha`; Sentry `release` when it is a git SHA). Source and caller windows are then read at that commit
+  instead of the default branch head, which matters when the deployed code differs from the head (the case
+  `ho-drift-attribute` is about). An unreadable commit sends the incident to review with that reason; it is never silently
+  replaced by the head. Migration 0008 adds `incidents.commit_sha` (nullable). The patch is still applied to the current
+  head when the PR is opened, and refused if it no longer applies.
+
 ## [1.5.0] - 2026-10-22
 
 One new optional feature (a sandboxed test run, off by default), one security hardening, and the first time the sandbox was

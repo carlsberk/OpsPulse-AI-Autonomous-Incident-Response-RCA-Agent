@@ -756,6 +756,23 @@ time: Alertmanager's repeat notifications do not create new analyses, and a 503 
 **An alert without a stack trace usually ends as "insufficient evidence"** - the agent does not invent a cause from
 a metric threshold.
 
+## Analysing the code that actually failed
+
+The code that crashed in production is the code that was *deployed*, which may not be the default branch head (a hotfix
+branch, a canary, a head that has moved on since). Report the deployed commit and the source is read **at that commit**
+instead of the head:
+
+- API: `"commit_sha": "<7-40 hex characters>"` in the incident request (stored, returned, shown to the model as the
+  `COMMIT:` line of its source window).
+- Alertmanager: a `commit_sha` label or annotation on the alert.
+- Sentry: the event's `release`, **only when it is a git SHA** (a version string such as `my-app@1.4.2` is ignored).
+
+A commit that cannot be read (unknown, or the token cannot see it) sends the incident to review with that reason. It is
+**never replaced by the head**, because analysing the wrong code would look like a grounded analysis. The quality gate
+checks the patch against the file as it was at that commit; when the pull request is opened, the patch is applied to the
+**current** default branch head, and if the head has moved so that it no longer applies, the PR step refuses with that
+message instead of opening a wrong PR.
+
 ## Reviewer notifications
 
 Set `NOTIFY_WEBHOOK_URL` (an `https://` incoming-webhook URL; Slack and Mattermost accept the `{"text": ...}`

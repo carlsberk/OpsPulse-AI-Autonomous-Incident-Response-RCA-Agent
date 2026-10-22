@@ -20,6 +20,8 @@ import uuid
 from dataclasses import dataclass
 from typing import Any
 
+from src.integrations.revision import normalize_commit_sha
+
 SUPPORTED_RESOURCES = frozenset({"event_alert", "error"})
 MAX_BODY_BYTES = 1_000_000
 MAX_FRAMES = 60
@@ -36,6 +38,7 @@ class SentryIncident:
     project_id: str
     error_message: str
     stack_trace: str
+    commit_sha: str | None = None
 
 
 def signature_is_valid(secret: str, raw_body: bytes, provided: str | None) -> bool:
@@ -113,4 +116,5 @@ def to_incident(payload: dict[str, Any]) -> SentryIncident:
         project_id=str(event.get("project") or ""),
         error_message=message[:20_000],
         stack_trace="\n".join(lines)[:100_000],
+        commit_sha=normalize_commit_sha(event.get("release")),
     )
