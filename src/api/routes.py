@@ -125,7 +125,12 @@ def submit_incident(
     incident_id = payload.incident_id or uuid.uuid4()
     try:
         row, created = incident_service.submit_incident(
-            incident_id, payload.repo_name, payload.error_message, payload.stack_trace, submitted_by=principal.name
+            incident_id,
+            payload.repo_name,
+            payload.error_message,
+            payload.stack_trace,
+            submitted_by=principal.name,
+            commit_sha=payload.commit_sha,
         )
     except IncidentConflictError as exc:
         raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
@@ -141,7 +146,12 @@ def submit_incident(
             if not claim:  # a worker was faster
                 return IncidentAccepted(incident_id=str(incident_id), status="processing")
             result = incident_service.run_incident_pipeline(
-                incident_id, payload.repo_name, payload.error_message, payload.stack_trace, claim_token=claim
+                incident_id,
+                payload.repo_name,
+                payload.error_message,
+                payload.stack_trace,
+                claim_token=claim,
+                commit_sha=payload.commit_sha,
             )
         except DatabaseUnavailableError as exc:
             raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "database unavailable") from exc

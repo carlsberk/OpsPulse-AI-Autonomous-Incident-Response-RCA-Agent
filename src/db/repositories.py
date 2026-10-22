@@ -49,6 +49,7 @@ def incident_to_dict(row: Incident) -> dict[str, Any]:
         "error_message": row.error_message,
         "submitted_by": row.submitted_by,
         "request_id": row.request_id,
+        "commit_sha": row.commit_sha,
         "job_attempts": row.job_attempts,
         "available_at": _iso(_aware(row.available_at)) if row.available_at else None,
         "affected_file": row.affected_file,
@@ -91,6 +92,7 @@ def create_incident(
     stack_trace: str,
     submitted_by: str | None = None,
     request_id: str | None = None,
+    commit_sha: str | None = None,
 ) -> tuple[dict[str, Any], bool]:
     """Insert a `processing` row. Idempotent per id: returns (row, created)."""
     try:
@@ -107,6 +109,7 @@ def create_incident(
                 status="queued",
                 submitted_by=submitted_by,
                 request_id=request_id,
+                commit_sha=commit_sha,
             )
             session.add(row)
             session.flush()
@@ -356,6 +359,7 @@ def claim_next(lease: timedelta, scan: int = 10) -> dict[str, Any] | None:
                         "repo_name": row.repo_name,
                         "error_message": row.error_message,
                         "stack_trace": row.stack_trace,
+                        "commit_sha": row.commit_sha,
                         "job_attempts": row.job_attempts,
                     }
     return None

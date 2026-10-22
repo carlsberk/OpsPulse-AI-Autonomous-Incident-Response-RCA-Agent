@@ -74,7 +74,12 @@ async def sentry_webhook(request: Request) -> Response:
 
     try:
         row, created = incident_service.submit_incident(
-            incident.incident_id, repo_name, incident.error_message, incident.stack_trace, submitted_by=SENTRY_IDENTITY
+            incident.incident_id,
+            repo_name,
+            incident.error_message,
+            incident.stack_trace,
+            submitted_by=SENTRY_IDENTITY,
+            commit_sha=incident.commit_sha,
         )
     except IncidentConflictError as exc:
         raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
@@ -141,6 +146,7 @@ async def alertmanager_webhook(
                 alert.error_message,
                 alert.stack_trace,
                 submitted_by=principal.name,
+                commit_sha=alert.commit_sha,
             )
         except IncidentConflictError:
             outcomes.append(

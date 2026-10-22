@@ -47,6 +47,7 @@ The incident is queued and analysed by a worker (poll `GET /incidents/{id}`), or
 | `repo_name` | string | yes | GitHub 'owner/repo'. Must be listed in ALLOWED_REPOSITORIES. |
 | `error_message` | string | yes |  |
 | `stack_trace` | string |  |  |
+| `commit_sha` | string or null |  | Git commit the failing code was deployed from. When given, source is read at this commit instead of the default branch head (the deployed code may differ from it). A commit that cannot be read sends the incident to review; it is never replaced by the head. |
 | `incident_id` | string or null |  | Optional client-generated id. Re-sending the same id is idempotent (no re-analysis). |
 
 | Status | Meaning |

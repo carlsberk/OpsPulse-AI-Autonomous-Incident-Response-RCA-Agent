@@ -161,14 +161,25 @@ def _recent_commits(repo: Repository, path: str, limit: int = 5) -> list[str]:
         return []
 
 
-def fetch_source_context(repo_name: str, runtime_path: str, failing_line: int) -> SourceContext | None:
-    """Numbered window of +/- CODE_CONTEXT_RADIUS lines around the failing line on the default branch.
+def fetch_source_context(
+    repo_name: str, runtime_path: str, failing_line: int, ref: str | None = None
+) -> SourceContext | None:
+    """Numbered window of +/- CODE_CONTEXT_RADIUS lines around the failing line, at `ref` (the deployed commit) when
+    given, else on the default branch head.
 
-    Returns None when the file cannot be located. Raises GitHubError / TRANSPORT_ERRORS on API failures.
+    Returns None when the file cannot be located. Raises GitHubError / TRANSPORT_ERRORS on API failures. A `ref` that
+    cannot be read is an error, never a silent fallback to the default branch: the code that failed in production may
+    differ from the head, and analysing the wrong code would look like a grounded analysis.
     """
     repo = get_repo(repo_name)
     try:
-        commit_sha = repo.get_branch(repo.default_branch).commit.sha
+        if ref:
+            try:
+                commit_sha = repo.get_commit(ref).sha
+            except GithubException as exc:
+                raise api_error(exc, f"commit {ref[:12]} could not be read: ") from exc
+        else:
+            commit_sha = repo.get_branch(repo.default_branch).commit.sha
         path = resolve_repo_path(repo, runtime_path, commit_sha)
         if path is None:
             return None

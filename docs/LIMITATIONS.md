@@ -33,6 +33,10 @@ provider failures excluded from every rate).
 - **Ambiguous labels.** `ho-pool-timeout` (`httpx.PoolTimeout`) is both a pool-size setting and a slow provider, so two
   categories are accepted. `ho-drift-attribute` has a clear label (the deployed code and the trace disagree, so the right
   answer is to abstain) but is hard to measure because of provider rate limits.
+- **Pinning to the deployed commit needs the reporter to know it.** Without `commit_sha` the source is the default branch
+  head, and a head that differs from what is deployed can make a correct diagnosis look ungrounded or a wrong one look
+  grounded. The patch is checked at the pinned commit but applied to the current head when the PR is opened; if the head
+  moved, the PR step refuses rather than guessing. This feature is unit-tested with a fake GitHub only.
 - **A passing gate is not a correct fix.** The gate proves structure: grounded quotes, a diff that applies, a patch that
   changes something. It does **not** run the target repository's tests. The PR text says so, and the reviewer decides.
 - **The model sometimes patches the symptom.** When the evidence quotes only a caller, `fix_location` warns but does not

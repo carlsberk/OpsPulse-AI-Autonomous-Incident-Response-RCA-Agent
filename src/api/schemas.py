@@ -121,6 +121,15 @@ class IncidentRequest(BaseModel):
     )
     error_message: str = Field(..., min_length=1, max_length=20_000)
     stack_trace: str = Field("", max_length=100_000)
+    commit_sha: str | None = Field(
+        None,
+        pattern=r"^[0-9a-fA-F]{7,40}$",
+        description=(
+            "Git commit the failing code was deployed from. When given, source is read at this commit instead of "
+            "the default branch head (the deployed code may differ from it). A commit that cannot be read sends the "
+            "incident to review; it is never replaced by the head."
+        ),
+    )
     incident_id: uuid.UUID | None = Field(
         None, description="Optional client-generated id. Re-sending the same id is idempotent (no re-analysis)."
     )
@@ -158,6 +167,7 @@ class RemediationDecision(BaseModel):
 class IncidentResult(BaseModel):
     incident_id: str
     request_id: str | None = Field(None, description="X-Request-ID of the submitting request")
+    commit_sha: str | None = Field(None, description="Deployed commit the analysis was pinned to, if reported")
     repo_name: str
     status: IncidentStatus
     status_reason: str | None = None
