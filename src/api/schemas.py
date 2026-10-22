@@ -205,6 +205,9 @@ class TraceResponse(BaseModel):
     status: str | None = None
     error_category: str | None = None
     versions: dict[str, Any] = Field(description="Model, prompt, quality-gate and retrieval versions of the run")
+    source_revision: dict[str, Any] | None = Field(
+        None, description="The commit the analysis read and whether the incident pinned it (deployed commit)"
+    )
     attempts: list[dict[str, Any]] = Field(description="Per LLM attempt: latency, tokens, gate verdict and decision")
     totals: dict[str, Any] = Field(
         description="Sums over attempts; estimated_cost_usd needs both LLM_COST_*_PER_MTOK prices, else null"

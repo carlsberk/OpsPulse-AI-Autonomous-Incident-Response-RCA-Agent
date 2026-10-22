@@ -120,10 +120,16 @@ def test_version_strings_and_other_values_are_not_shas(raw):
     assert normalize_commit_sha(raw) is None
 
 
+def _pin_aware_fetch(repo, path, line, ref=None):
+    return SOURCE_CONTEXT
+
+
 def test_the_api_stores_and_returns_the_commit_and_rejects_nonsense(client, fake_llm, source_fetch):
+    source_fetch(_pin_aware_fetch)
     fake_llm([make_analysis()])
     ok = client.post("/webhook/incident?wait=true", json=incident_payload(commit_sha=SHA), headers=API_HEADERS)
     assert ok.status_code == 200 and ok.json()["commit_sha"] == SHA
+    assert ok.json()["status"] != "failed", ok.json()["status_reason"]  # the pin must not break the analysis
     stored = client.get(f"/incidents/{ok.json()['incident_id']}", headers=REPORTER_HEADERS).json()
     assert stored["commit_sha"] == SHA
     bad = client.post("/webhook/incident", json=incident_payload(commit_sha="main"), headers=API_HEADERS)
@@ -183,3 +189,43 @@ def test_sentry_uses_the_release_only_when_it_is_a_git_sha():
     assert to_incident(_sentry_event(SHA)).commit_sha == SHA
     assert to_incident(_sentry_event("my-app@1.4.2")).commit_sha is None
     assert to_incident(_sentry_event(None)).commit_sha is None
+
+
+# ------------------------------------------------------------------ the reviewer can see which code was analysed
+
+
+def test_the_analysis_records_the_revision_it_read_and_whether_it_was_pinned(client, fake_llm, source_fetch):
+    source_fetch(_pin_aware_fetch)
+    fake_llm([make_analysis(), make_analysis()])
+    pinned = client.post("/webhook/incident?wait=true", json=incident_payload(commit_sha=SHA), headers=API_HEADERS)
+    head = client.post("/webhook/incident?wait=true", json=incident_payload(), headers=API_HEADERS)
+    pinned_trace = client.get(f"/incidents/{pinned.json()['incident_id']}/trace", headers=REPORTER_HEADERS).json()
+    head_trace = client.get(f"/incidents/{head.json()['incident_id']}/trace", headers=REPORTER_HEADERS).json()
+    assert pinned_trace["source_revision"] == {"commit": "abc123456789", "pinned": True}
+    assert head_trace["source_revision"] == {"commit": "abc123456789", "pinned": False}
+
+
+def test_the_pull_request_text_says_which_commit_was_analysed_and_where_it_came_from():
+    from src.services.remediation_service import ProposedFix, build_pull_request_body
+
+    def body(revision):
+        analysis = make_analysis()
+        if revision is not None:
+            analysis["source_revision"] = revision
+        fix = ProposedFix("00000000-0000-0000-0000-000000000001", "o/r", "f", "src/app.py", "diff", analysis, 0.9, 1)
+        return build_pull_request_body(fix)
+
+    pinned = body({"commit": SHA[:12], "pinned": True})
+    assert f"**Analysed at commit:** `{SHA[:12]}` (the deployed commit reported with the incident)" in pinned
+    head = body({"commit": SHA[:12], "pinned": False})
+    assert "default branch head when the incident was analysed (it may have moved since)" in head
+    for absent in (body(None), body({"commit": None, "pinned": False}), body("not a dict")):
+        assert "Analysed at commit" not in absent
+
+
+def test_a_patch_that_no_longer_applies_to_a_moved_head_tells_the_reporter_what_to_do():
+    from src.services.guidance import CATEGORY_GUIDE
+
+    _, steps = CATEGORY_GUIDE["remediation_policy_violation"]
+    text = " ".join(step[2] for step in steps)
+    assert "does not apply to the default branch head" in text and "commit_sha" in text

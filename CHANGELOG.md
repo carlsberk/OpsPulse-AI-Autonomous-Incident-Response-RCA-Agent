@@ -6,6 +6,13 @@ All notable changes are listed here. Versions of behaviour-critical components a
 ## [Unreleased]
 
 ### Added
+- **The reviewer can see which code the analysis read.** The analysis records `source_revision` (the commit shown to the
+  model, and whether the incident pinned it), `GET /incidents/{id}/trace` returns it, and the pull request text says
+  "Analysed at commit `...`" with its origin (the deployed commit, or the default branch head at analysis time, which may
+  have moved). The guidance for a patch that no longer applies to a moved head now tells the reporter to re-submit with the
+  current `commit_sha`.
+
+### Added
 - **Analyse the code that was deployed.** An incident can carry the deployed `commit_sha` (API field; Alertmanager label or
   annotation `commit_sha`; Sentry `release` when it is a git SHA). Source and caller windows are then read at that commit
   instead of the default branch head, which matters when the deployed code differs from the head (the case

@@ -23,6 +23,7 @@ everything needed to resume (the analysis, the patch, the pending approval) is p
 from __future__ import annotations
 
 import logging
+import re
 import time
 import uuid
 from dataclasses import replace
@@ -254,6 +255,7 @@ def _run(
             **(final["root_cause_analysis"] or {}),
             "attempts": final["attempts"],
             "source_windows": source_windows(final),
+            "source_revision": source_revision(final),
         },
         suggested_patch=final["suggested_patch"],
         quality_score=final["quality_score"],
@@ -274,6 +276,7 @@ def _run(
                     **(final["root_cause_analysis"] or {}),
                     "attempts": final["attempts"],
                     "source_windows": source_windows(final),
+                    "source_revision": source_revision(final),
                     "sandbox": report.as_dict(),
                 },
             )
@@ -330,6 +333,16 @@ def source_windows(final: IncidentState) -> dict[str, str]:
     return {
         key: redact(str(final[key]))[:_WINDOW_LIMIT] for key in ("code_context", "caller_context") if final.get(key)
     }
+
+
+_COMMIT_LINE = re.compile(r"^COMMIT: ([0-9a-f]{7,40})", re.MULTILINE)
+
+
+def source_revision(final: IncidentState) -> dict[str, Any]:
+    """Which revision of the code the analysis read: the commit shown to the model, and whether the incident pinned it
+    (the deployed commit) or it was the default branch head at analysis time (which may have moved since)."""
+    match = _COMMIT_LINE.search(final.get("code_context") or "")
+    return {"commit": match.group(1) if match else None, "pinned": bool(final.get("commit_sha"))}
 
 
 def get_audit(incident_id: uuid.UUID) -> dict[str, Any] | None:

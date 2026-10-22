@@ -63,7 +63,7 @@
   },
   "trace": {
     "incident_id": "cc4f639d-3ba2-55ac-b190-89392f7e6f40",
-    "request_id": "85c76db13cd940bd8084a6e5326c17dd",
+    "request_id": "436612d9af834fcd828b8e68e6487b71",
     "status": "awaiting_approval",
     "error_category": null,
     "versions": {
@@ -72,6 +72,10 @@
       "evaluator_version": "quality-gate-v8",
       "retrieval_strategy": "lexical-v1",
       "model": "openai/gpt-oss-120b"
+    },
+    "source_revision": {
+      "commit": null,
+      "pinned": false
     },
     "attempts": [
       {
@@ -196,34 +200,34 @@
     "incident_id": "cc4f639d-3ba2-55ac-b190-89392f7e6f40",
     "events": [
       {
-        "at": "2026-10-22T19:04:27.140589",
+        "at": "2026-10-22T19:26:41.976557",
         "event": "submitted",
         "actor": "alice",
         "detail": "incident reported for demo/inventory"
       },
       {
-        "at": "2026-10-22T19:04:27.190661",
+        "at": "2026-10-22T19:26:42.053342",
         "event": "analysed",
         "actor": "agent",
         "detail": "gate score 0.985, 1 attempt(s); model openai/gpt-oss-120b, prompt rca-prompt-v6.1, gate quality-gate-v8"
       },
       {
-        "at": "2026-10-22T19:04:27.190661",
+        "at": "2026-10-22T19:26:42.053342",
         "event": "proposed",
         "actor": "agent",
         "detail": "open a draft PR changing inventory.py",
         "patch_sha256": "b46e89c61c2beffc4138eb8f2faeef36f58dff1f2632a9220c16152972fd7543",
-        "expires_at": "2026-10-25T19:04:27.190661+00:00"
+        "expires_at": "2026-10-25T19:26:42.053342+00:00"
       },
       {
-        "at": "2026-10-22T19:04:27.292334",
+        "at": "2026-10-22T19:26:42.170941",
         "event": "approved",
         "actor": "bob",
         "detail": "guard matches the existing contract",
         "patch_sha256": "b46e89c61c2beffc4138eb8f2faeef36f58dff1f2632a9220c16152972fd7543"
       },
       {
-        "at": "2026-10-22T19:04:27.292334",
+        "at": "2026-10-22T19:26:42.170941",
         "event": "pr_opened",
         "actor": "system",
         "detail": "draft PR on branch opspulse/fix-e2e: https://github.com/demo/inventory/pull/1"
