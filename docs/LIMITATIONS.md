@@ -53,8 +53,9 @@ provider failures excluded from every rate).
   (Docker Desktop on Windows, Linux containers): a real fix turned failing tests green, a regression was caught, and five
   escape attempts written as tests (network, writes outside the tmpfs, root or capabilities, host secrets and the Docker
   socket, a fork bomb) were all contained. That run also found a defect, now fixed: a bare `python:3.11-slim` has no pytest
-  and was misreported as failing tests. **Not yet run on a Linux host or in CI**, and with no network the image must already
-  contain the repository's dependencies, otherwise the report says `error`. A passing run still does not prove the fix is
+  and was misreported as failing tests. The same tests now run in CI on a Linux runner's Docker daemon (job "Sandbox against a real
+  Docker daemon", green on `main` at commit `3564d2b`). With no network the image must already contain the repository's
+  dependencies, otherwise the report says `error`. A passing run still does not prove the fix is
   right.
 - **No statistical claim.** There is no confidence interval anywhere, because the samples are too small for one.
 - **Audit is a report, not a ledger.** The review history is derived from rows the workflow updates in place; it is not
