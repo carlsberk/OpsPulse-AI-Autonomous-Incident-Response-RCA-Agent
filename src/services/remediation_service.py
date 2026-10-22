@@ -111,6 +111,22 @@ def _untrusted(text: Any, limit: int = 2000) -> str:
     return value if len(value) <= limit else value[:limit] + " ..."
 
 
+def _revision_line(analysis: dict[str, Any]) -> str:
+    """Which code the analysis and the quality gate saw. The PR itself is built on the *current* default branch head."""
+    revision = analysis.get("source_revision")
+    if not isinstance(revision, dict):
+        return ""
+    commit = revision.get("commit")
+    if not isinstance(commit, str) or not commit:
+        return ""
+    origin = (
+        "the deployed commit reported with the incident"
+        if revision.get("pinned")
+        else "the default branch head when the incident was analysed (it may have moved since)"
+    )
+    return f"- **Analysed at commit:** `{_untrusted(commit, 40)}` ({origin})"
+
+
 def build_pull_request_title(analysis: dict[str, Any]) -> str:
     title = (analysis.get("incident_summary") or {}).get("title") or "Proposed incident fix"
     return "[OpsPulse] " + " ".join(_untrusted(title, 120).split())
@@ -152,6 +168,7 @@ def build_pull_request_body(fix: ProposedFix, reviewer: str | None = None) -> st
             "> Review the reasoning, run the test suite and decide whether to merge.",
             "",
             f"- **Incident ID:** `{fix.incident_id}`",
+            _revision_line(analysis),
             f"- **Title:** {_untrusted(summary.get('title'), 200)}",
             f"- **Root-cause category (model-assigned):** {_untrusted(analysis.get('root_cause_category'), 40)}",
             f"- **Trigger frame:** `{_untrusted(summary.get('trigger_frame'), 200)}`",
