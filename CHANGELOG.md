@@ -5,20 +5,37 @@ All notable changes are listed here. Versions of behaviour-critical components a
 
 ## [Unreleased]
 
-### Added
-- **The reviewer can see which code the analysis read.** The analysis records `source_revision` (the commit shown to the
-  model, and whether the incident pinned it), `GET /incidents/{id}/trace` returns it, and the pull request text says
-  "Analysed at commit `...`" with its origin (the deployed commit, or the default branch head at analysis time, which may
-  have moved). The guidance for a patch that no longer applies to a moved head now tells the reporter to re-submit with the
-  current `commit_sha`.
+## [1.6.0] - 2026-10-22
+
+Analyse the code that was actually deployed, and show the reviewer which code that was. One feature, backward compatible:
+without a `commit_sha` everything behaves as before.
+
+### Upgrade notes
+- **Run the migrations** (`alembic upgrade head`; the Docker image does it on start). Migration 0008 adds
+  `incidents.commit_sha` (nullable, no backfill).
+- Nothing to configure. To use the feature, send the deployed commit (see below); existing reporters keep working unchanged.
 
 ### Added
 - **Analyse the code that was deployed.** An incident can carry the deployed `commit_sha` (API field; Alertmanager label or
-  annotation `commit_sha`; Sentry `release` when it is a git SHA). Source and caller windows are then read at that commit
-  instead of the default branch head, which matters when the deployed code differs from the head (the case
-  `ho-drift-attribute` is about). An unreadable commit sends the incident to review with that reason; it is never silently
-  replaced by the head. Migration 0008 adds `incidents.commit_sha` (nullable). The patch is still applied to the current
-  head when the PR is opened, and refused if it no longer applies.
+  annotation `commit_sha`; Sentry `release`, only when it is a git SHA, so `my-app@1.4.2` is ignored). Source and caller
+  windows are then read **at that commit** instead of the default branch head, which matters when the deployed code
+  differs from the head (the situation `ho-drift-attribute` is about). A commit that cannot be read (unknown, or not
+  visible to the token) sends the incident to review with that reason; it is **never silently replaced by the head**,
+  because analysing the wrong code would look like a grounded analysis. A pin reaches the worker through the stored row.
+- **The reviewer can see which code the analysis read.** The analysis records `source_revision` (the commit shown to the
+  model, and whether the incident pinned it); `GET /incidents/{id}/trace` returns it; the pull request text says
+  "Analysed at commit `...`" with its origin (the deployed commit, or the default branch head at analysis time, which may
+  have moved). The guidance for a patch that no longer applies to a moved head tells the reporter to re-submit with the
+  current `commit_sha`.
+
+### Good to know
+- The quality gate checks the patch against the file **as it was at the pinned commit**, but when the pull request is
+  opened the patch is applied to the **current** default branch head. If the head moved so that it no longer applies, the PR
+  step refuses with that message instead of opening a wrong PR. Rebasing the patch is not done.
+- Unit-tested with a fake GitHub only; not yet run against github.com. Without a reported `commit_sha` the head is used, so
+  a head that differs from what is deployed can still mislead the analysis.
+- Test-only: an API test of the pinning feature asserted nothing about the outcome, so an analysis that crashed inside would
+  still have passed it. It now asserts the incident did not fail.
 
 ## [1.5.0] - 2026-10-22
 
