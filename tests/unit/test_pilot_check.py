@@ -101,12 +101,26 @@ def test_no_secret_is_ever_printed():
 # ------------------------------------------------------------------ database
 
 
-def test_unmigrated_database_blocks_with_the_fix():
+@pytest.fixture
+def no_version_table():
+    """The test database may already carry an `alembic_version` table (the PostgreSQL CI job migrates it before the
+    tests run); the models' `drop_all` does not touch it, so these tests start from a known state."""
+
+    def drop():
+        with get_engine().begin() as connection:
+            connection.execute(text("DROP TABLE IF EXISTS alembic_version"))
+
+    drop()
+    yield
+    drop()
+
+
+def test_unmigrated_database_blocks_with_the_fix(no_version_table):
     (finding,) = pilot_check.database()
     assert finding.level == FAIL and "alembic upgrade head" in finding.message
 
 
-def test_migrated_database_is_ok():
+def test_migrated_database_is_ok(no_version_table):
     from alembic.config import Config
     from alembic.script import ScriptDirectory
 

@@ -9,6 +9,8 @@ All notable changes are listed here. Versions of behaviour-critical components a
 - `python -m scripts.pilot_check [--online]`: tells you what blocks a first pilot (missing token, remediation or approval
   switched off, no reviewer identity, repository not allow-listed, unmigrated database, a token that cannot push, no Docker
   image for the sandbox) and what is only a warning. It prints setting names, never values; exit 1 while something blocks.
+- Runbook: a checklist for a first real pilot on a test repository (token scope, configuration, how many failures to report,
+  deciding them as a reviewer, and the two commands that measure the result).
 
 ### Changed
 - CI hardening: every workflow action is pinned to a full commit SHA (the tag stays in a comment; Dependabot updates both),
@@ -17,11 +19,9 @@ All notable changes are listed here. Versions of behaviour-critical components a
 - README brought up to 1.8.0: current gate, features (sandbox, commit pinning, reviewer memory, audit chain), live results and
   limits in the "At a glance" table, CI jobs, coverage and verified versions.
 
-### Added
-- Runbook: a checklist for a first real pilot on a test repository (token scope, configuration, how many failures to report,
-  deciding them as a reviewer, and the two commands that measure the result).
-
 ### Fixed
+- The PostgreSQL CI job failed on the pilot-check tests (merged in #37): that job migrates the test database before the tests
+  run, so an `alembic_version` table already existed and two tests assumed it did not. They now start from a known state.
 - Documentation: the README quoted 245 and 320 tests and the 1.8.0 notes said the audit log was not run on PostgreSQL. The
   CI "postgres" job runs migration `0009`, its downgrade round trip and the whole suite (including the audit chain tests)
   on PostgreSQL 16; what has not been run is a managed or production database.
