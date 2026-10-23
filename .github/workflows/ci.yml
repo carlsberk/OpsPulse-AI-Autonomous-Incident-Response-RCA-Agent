@@ -15,7 +15,7 @@ concurrency:
 jobs:
   quality:
     name: Lint, types, tests, offline evaluation
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     # No secrets are used: unit tests, migrations and the mock evaluation run fully offline.
     env:
@@ -86,7 +86,7 @@ jobs:
 
   python-versions:
     name: Unit tests on Python ${{ matrix.python }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -110,7 +110,7 @@ jobs:
 
   postgres:
     name: Migrations and tests on PostgreSQL 16
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     services:
       postgres:
@@ -154,7 +154,7 @@ jobs:
 
   docker:
     name: Docker image and Compose stack
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -176,7 +176,7 @@ jobs:
 
   sandbox-docker:
     name: Sandbox against a real Docker daemon
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7

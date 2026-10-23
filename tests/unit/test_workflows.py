@@ -48,3 +48,13 @@ def test_test_workflows_do_not_keep_the_checkout_token():
         for step in _steps(document):
             if str(step.get("uses", "")).startswith("actions/checkout@"):
                 assert (step.get("with") or {}).get("persist-credentials") is False, name
+
+
+def test_runner_image_is_a_pinned_version_not_latest():
+    """`ubuntu-latest` moves on GitHub's own schedule and changes Python, Docker and tooling under every job."""
+    for path in WORKFLOWS:
+        document = yaml.safe_load(path.read_text(encoding="utf-8"))
+        for name, job in document["jobs"].items():
+            assert re.fullmatch(r"ubuntu-\d\d\.\d\d", str(job["runs-on"])), (
+                f"{path.name}:{name} runs on {job['runs-on']}"
+            )
