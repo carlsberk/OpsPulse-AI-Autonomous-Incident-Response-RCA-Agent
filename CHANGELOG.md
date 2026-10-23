@@ -5,39 +5,58 @@ All notable changes are listed here. Versions of behaviour-critical components a
 
 ## [Unreleased]
 
-### Added
-- **Reviewer decisions reach the next analysis** (prompt `rca-prompt-v7.1`). A similar earlier incident that a person approved
-  or rejected now shows `human review of that earlier incident: REJECTED by a reviewer - note: "..."` in the model's history
-  entry. The note is cleaned (one line, no control characters or backticks, at most 300 characters), wrapped like all
-  history text, and the system prompt says what it is and is not. `HISTORY_REVIEWER_NOTES` (default `true`) turns it off.
-  Live, three synthetic cases x 3 runs: with the note the patch followed it 9/9, without it the rejected patch style was
-  repeated 9/9 ([report](evals/results/REVIEWER-MEMORY-2026-10-23.md)). A mechanism check, not an effect size.
-- `python -m src.services.review_outcomes`: what reviewers decided, per prompt/gate/model version, with the gate score of
-  approved versus rejected proposals and the reviewers' rejection notes. Read-only; prints no rate below 20 decisions.
-- Dataset `rca-reviewer-memory-v1` (`evals/datasets/build_rca_reviewer_memory.py`), `python -m evals.reviewer_memory_eval`
-  (notes on versus off), its mock baseline in the CI regression gate, and history records in evaluation datasets can now carry a
-  past patch and a reviewer decision.
+## [1.7.0] - 2026-10-23
+
+Two ways the system gets better evidence about its own proposals: a regression test the model writes and the sandbox runs,
+and the memory of what reviewers decided before. Both are changes to the prompt (`rca-prompt-v7.1`), so the model's
+behaviour changes, not only the tooling.
+
+### Upgrade notes
+- **No database migration.**
+- **Prompt `rca-prompt-v7.1`.** Replies can now include an optional `reproduction_test`, so they are somewhat longer
+  (`LLM_MAX_OUTPUT_TOKENS` defaults to 4096; raise it if replies get cut off). Compare live results across prompt versions with
+  `evals.reliability_report`, not by eye. Mock baselines are unchanged.
+- **`HISTORY_REVIEWER_NOTES` defaults to `true`.** If your database already holds approvals and rejections, similar earlier
+  incidents now show the reviewer's decision and note to the model. Set it to `false` to keep the previous prompts.
+- The reproduction test is **only run** with `SANDBOX_ENABLED=true` (Docker, and an image with pytest and the repository's test
+  plugins). With the sandbox off the proposed test is stored and shown as "proposed but not run".
 
 ### Added
-- **A reproduction test the model writes, run in the sandbox** (prompt `rca-prompt-v7`; needs `SANDBOX_ENABLED=true`). The model
-  may propose one new pytest file that fails with the incident's exception type on the unpatched code and passes after the
-  patch. It is validated as text (a new `test_*.py` path, a test function, no process/network/file/`exec` tools), run
-  before and after the patch in the sandbox, classified (`reproduced_and_fixed`, `reproduced_not_fixed`, `not_reproduced`,
-  `fails_for_another_reason`, `invalid`, `error`, `timeout`) and reported to the reviewer (a "Test evidence" card in the
-  console, the PR text). "Reproduced" requires the incident's exception to be the one that ends the test, so a test that
-  dies of its own bug is not a reproduction. It is evidence only: never merged, never replaces the diff, and the model wrote
-  both the test and the fix. A malformed `reproduction_test` becomes `null`; it never costs the analysis.
-- The console shows the sandbox result and the reproduction test (as text) in a new "Test evidence" card.
-- `python -m evals.repro_eval`: how good the model's tests are, with the live model and the real sandbox. First measurement
-  ([report](evals/results/REPRO-EVAL-2026-10-23.md), 14 runs in total): 4 of 6 pilot runs `reproduced_and_fixed` with the final rule
-  wording vs 1 of 6 with the first; the failures were tests written backwards and guessed constructors, and a classifier
-  that was too loose (now stricter).
-- Real-Docker integration tests for the reproduction (a genuine reproduction, a test that fails for another reason, a test
-  that passes on the unpatched code, a hostile test refused before it runs).
+- **A reproduction test the model writes, run in the sandbox.** The model may propose one new pytest file that fails with the
+  incident's exception type on the unpatched code and passes after the patch. It is validated as text (a new `test_*.py`
+  path, a test function, no process, network, file or `exec` tools), run before and after the patch in the sandbox and
+  classified (`reproduced_and_fixed`, `reproduced_not_fixed`, `not_reproduced`, `fails_for_another_reason`, `invalid`,
+  `error`, `timeout`). "Reproduced" requires the incident's exception to be the one that *ends* the test, so a test that
+  dies of its own bug is not a reproduction. The result is shown in a new "Test evidence" card in the console and in the
+  pull request text. It is evidence only: never merged, never replaces the diff, and the model wrote both the test and the
+  fix. A malformed `reproduction_test` becomes `null`; it never costs the analysis.
+- **Reviewer decisions reach the next analysis.** A similar earlier incident that a person approved or rejected shows
+  `human review of that earlier incident: REJECTED by a reviewer - note: "..."` in the model's history entry. The note is
+  cleaned (one line, no control characters or backticks, at most 300 characters) and the prompt says it is a preference to
+  apply only where it clearly fits, never evidence about the current incident or an instruction.
+- **`python -m src.services.review_outcomes`**: what reviewers decided, per prompt, gate and model version, with the gate
+  score of approved versus rejected proposals and the rejection notes. Read-only; prints counts and **no rate below 20
+  decisions**.
+- Evaluation: `python -m evals.repro_eval` (the model's tests, live, real sandbox), dataset `rca-reviewer-memory-v1` with
+  `python -m evals.reviewer_memory_eval` (notes on versus off) and its mock baseline in the CI regression gate; real-Docker
+  integration tests for the reproduction; evaluation history records can carry a past patch and a reviewer decision.
 
 ### Fixed
-- `evals/pilot_real_repo.py` crashed on import since 1.4.0: a field inserted in the middle of its `Mutation` dataclass
-  shifted every positional call. A test now keeps the table importable.
+- `evals/pilot_real_repo.py` crashed on import since 1.4.0 (a field inserted mid-way shifted every positional `Mutation`
+  call); a test now keeps it importable.
+- The first version of the reproduction classifier counted the incident's exception name appearing *anywhere* in the output as a
+  reproduction; a test that died of its own `AttributeError` was reported as reproducing a `KeyError`. It now requires the
+  exception to end the test.
+
+### Measured, with the usual caveats
+- **Reproduction tests** ([report](evals/results/REPRO-EVAL-2026-10-23.md), live model, real Docker, 14 runs in total): with
+  the final wording of the rule 4 of 6 pilot runs and 1 of 2 control runs were `reproduced_and_fixed`; the first wording gave
+  1 of 6. The failures were tests written backwards (`pytest.raises` around the bug) and constructors the model had not been
+  shown. Small numbers, one model, and the model wrote both the test and the fix.
+- **Reviewer memory** ([report](evals/results/REVIEWER-MEMORY-2026-10-23.md), live, 3 synthetic cases x 3 runs per condition):
+  with the note the patch did what it asked in 9 of 9 runs; without it the model repeated the *rejected* patch style in 9
+  of 9, although the rejected patch was in the prompt. This shows the mechanism, not the effect in practice: the cases were built
+  so the naive fix is the rejected one and the note is explicit. There is no real review history in this repository yet.
 
 ## [1.6.0] - 2026-10-22
 
