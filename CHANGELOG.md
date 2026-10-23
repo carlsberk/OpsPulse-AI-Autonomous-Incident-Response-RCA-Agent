@@ -13,6 +13,8 @@ All notable changes are listed here. Versions of behaviour-critical components a
   deciding them as a reviewer, and the two commands that measure the result).
 
 ### Changed
+- CI runs on `ubuntu-24.04` instead of `ubuntu-latest` (GitHub is migrating `latest` to Ubuntu 26, which would change Python,
+  Docker and tooling under every job without a commit here); a test fails if a job uses a floating label.
 - CI hardening: every workflow action is pinned to a full commit SHA (the tag stays in a comment; Dependabot updates both),
   test workflows no longer keep the checkout token (`persist-credentials: false`), and `tests/unit/test_workflows.py` fails if
   an action is unpinned or a workflow loses its `permissions`. CONTRIBUTING lists the repository settings the code cannot enforce.

@@ -49,3 +49,5 @@ binding rather than advisory:
 
 Workflow actions are pinned to full commit SHAs (a test fails otherwise); Dependabot proposes the updates and keeps the
 version in the trailing comment.
+The runner image is pinned too (`ubuntu-24.04`, not `ubuntu-latest`, which GitHub moves to a new major version on its own
+schedule). Dependabot does not update it: move it deliberately, run the whole CI, and change the pin everywhere in one PR.
