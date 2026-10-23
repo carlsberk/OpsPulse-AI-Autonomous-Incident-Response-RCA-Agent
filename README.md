@@ -89,7 +89,7 @@ publishes a GitHub Release using that version's section of `CHANGELOG.md` as its
 | Persistence | PostgreSQL/Neon via SQLAlchemy 2, Alembic migrations, failure taxonomy (`error_category`) |
 | Observability | Structured JSON logs with incident correlation and secret redaction; Langfuse v4 traces with content masking by default; Prometheus `/metrics` (content-free labels) |
 | Evaluation | 26-case synthetic RCA dataset, deterministic metrics, mock and live modes; labelled retrieval dataset comparing two ranking strategies |
-| Delivery | 245 offline unit tests (SQLite locally, PostgreSQL 16 in CI), opt-in live tests, GitHub Actions, Dockerfile + Compose, reproducible demo, ADRs |
+| Delivery | about 680 offline unit tests (SQLite locally, the same suite and the migrations on PostgreSQL 16 in CI), opt-in live tests, GitHub Actions, Dockerfile + Compose, reproducible demo, ADRs |
 
 ## Architecture
 
@@ -1030,7 +1030,7 @@ stack traces or connection strings. Re-sending a request with the same `incident
 ## Testing and CI
 
 ```bash
-pytest                               # 320 offline tests (SQLite, fakes for Groq/GitHub/Langfuse; includes property-based tests)
+pytest                               # about 680 offline tests (SQLite, fakes for Groq/GitHub/Langfuse; includes property-based tests)
 pytest --cov=src --cov=evals         # coverage (86% total at time of writing; CI enforces a floor of 84%)
 python -m evals.ask_eval --mode mock # incident-assistant evaluation (offline)
 ruff check src tests evals scripts migrations && ruff format --check src tests evals scripts migrations
