@@ -6,7 +6,7 @@ All notable changes are listed here. Versions of behaviour-critical components a
 ## [Unreleased]
 
 ### Fixed
-- Documentation: the README quoted 245 and 320 tests and LIMITATIONS said the 1.8.0 audit log was not run on PostgreSQL. The
+- Documentation: the README quoted 245 and 320 tests and the 1.8.0 notes said the audit log was not run on PostgreSQL. The
   CI "postgres" job runs migration `0009`, its downgrade round trip and the whole suite (including the audit chain tests)
   on PostgreSQL 16; what has not been run is a managed or production database.
 
