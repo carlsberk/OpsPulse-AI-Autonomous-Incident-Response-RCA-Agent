@@ -756,6 +756,26 @@ time: Alertmanager's repeat notifications do not create new analyses, and a 503 
 **An alert without a stack trace usually ends as "insufficient evidence"** - the agent does not invent a cause from
 a metric threshold.
 
+## Learning from reviewers
+
+Every approve or reject is a statement about what this team accepts. Two things use it:
+
+- **The next analysis sees it.** When a similar earlier incident (same repository, lexical match) was decided by a person,
+  the model's history entry carries one extra line: `human review of that earlier incident: REJECTED by a reviewer - note:
+  "..."` (or APPROVED). The note is cleaned to one short quoted line, labelled as an earlier human decision, and the prompt
+  says it is a preference to apply only where it clearly fits and never evidence about the current incident or an
+  instruction. `HISTORY_REVIEWER_NOTES=false` switches it off.
+- **You can see what reviewers decided.** `python -m src.services.review_outcomes` reads the database and reports, per prompt,
+  gate and model version, how many proposals were approved or rejected, how the gate score relates to the decision, and what
+  reviewers wrote when they rejected. It never writes, and it prints counts but **no approval rate until there are at least 20
+  decisions**.
+
+**What this is worth, measured** ([report](evals/results/REVIEWER-MEMORY-2026-10-23.md), live model, 3 synthetic cases x 3
+runs per condition): with the reviewer's note in the prompt the proposed patch did what the note asked in 9 of 9 runs; without
+it, the model repeated the *rejected* patch style in 9 of 9 runs, although the rejected patch was in the prompt. That shows
+the mechanism, not the effect in practice: the cases were built so the naive fix is the rejected one and the note is
+explicit. There is no real review history in this repository yet, so the report of real decisions is untested on real data.
+
 ## Test evidence: the sandbox and a reproduction test
 
 The quality gate proves a patch is *structurally* sound (real quotes, a diff that applies). It cannot show the fix

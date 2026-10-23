@@ -26,6 +26,7 @@ from src.integrations.github import SourceContext
 from src.integrations.llm import ModelFactory
 from src.integrations.observability import build_run_config
 from src.retrieval.history import HistoryCandidate, HistoryQuery, rank_lexical, to_prompt_records
+from src.retrieval.review_notes import decision_record
 
 # ------------------------------------------------------------------ local retrieval
 
@@ -54,7 +55,14 @@ def local_history(case: EvalCase) -> Callable[[HistoryQuery, str], list[dict[str
             error_message=h.error_message,
             stack_trace=h.stack_trace,
             affected_file=h.affected_file,
-            extra={"root_cause_summary": h.root_cause_summary, "status": h.status, "suggested_patch": ""},
+            extra={
+                "root_cause_summary": h.root_cause_summary,
+                "status": h.status,
+                "suggested_patch": h.suggested_patch,
+                "reviewer_decision": (
+                    decision_record(h.reviewer_decision, h.reviewer_note) if settings.history_reviewer_notes else None
+                ),
+            },
         )
         for i, h in enumerate(case.history)
     ]
