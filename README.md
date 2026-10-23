@@ -756,6 +756,29 @@ time: Alertmanager's repeat notifications do not create new analyses, and a 503 
 **An alert without a stack trace usually ends as "insufficient evidence"** - the agent does not invent a cause from
 a metric threshold.
 
+## Test evidence: the sandbox and a reproduction test
+
+The quality gate proves a patch is *structurally* sound (real quotes, a diff that applies). It cannot show the fix
+*works*. With `SANDBOX_ENABLED=true` (off by default; needs Docker on the host and an image that already contains pytest
+and the repository's dependencies, because the container has no network) the service adds two kinds of evidence, both
+produced in a throwaway container (no network, read-only root, no capabilities, unprivileged user, memory, CPU, process and
+time caps):
+
+- **The repository's own tests, before and after the patch.** A patch that breaks tests that passed is routed to review.
+- **A reproduction test written by the model.** The model may propose one *new* pytest file that, on the unpatched code,
+  fails with the **same exception type as the incident**, and passes after the patch. It is validated as text first (a new
+  `test_*.py` path, a test function, no process, network, file or `exec` tools) and is never merged: it is evidence in the
+  PR text and the console, not part of the pull request. Outcomes: `reproduced_and_fixed`, `reproduced_not_fixed`,
+  `not_reproduced` (it passes on the unpatched code, so it proves nothing), `fails_for_another_reason` (a test that dies of
+  its own bug is **not** called a reproduction: the incident's exception must be the one that ends the test), `invalid`,
+  `error`, `timeout`.
+
+**What this is worth, measured** ([report](evals/results/REPRO-EVAL-2026-10-23.md), live model, real Docker, 14 runs in total): with
+the final wording of the rule, 4 of 6 pilot runs and 1 of 2 control runs ended `reproduced_and_fixed`; the first wording gave
+1 of 6, mostly because the model wrote the test backwards (`pytest.raises` around the bug) or guessed constructors it had not
+been shown. Small numbers, one model. **The model wrote both the test and the fix**, so a green pair means the fix does what
+the model meant, not that what it meant is right; the reviewer reads the test like any other claim.
+
 ## Analysing the code that actually failed
 
 The code that crashed in production is the code that was *deployed*, which may not be the default branch head (a hotfix

@@ -1,0 +1,32 @@
+{
+  "run_at": "2026-10-23T09:58:22.214112+00:00",
+  "dataset": "callers",
+  "run_metadata": {
+    "agent_version": "1.6.0-opspulse",
+    "prompt_version": "rca-prompt-v7",
+    "evaluator_version": "quality-gate-v8",
+    "retrieval_strategy": "lexical-v1",
+    "model": "openai/gpt-oss-120b",
+    "quality_threshold": 0.85,
+    "max_analysis_iterations": 3,
+    "max_output_tokens": 4096
+  },
+  "counts": {
+    "reproduced_not_fixed": 1
+  },
+  "rows": [
+    {
+      "case_id": "control-cause-in-trigger",
+      "workflow_status": "accepted",
+      "patch": true,
+      "wall_ms": 11079,
+      "reproduction_test": {
+        "path": "tests/test_safe_mean.py",
+        "content": "import pytest\nfrom app.stats import safe_mean\n\ndef test_safe_mean_empty_list_raises_before_fix():\n    # Before the patch this call raises ZeroDivisionError\n    with pytest.raises(ZeroDivisionError):\n        safe_mean([])\n\ndef test_safe_mean_empty_list_returns_zero_after_fix():\n    assert safe_mean([]) == 0"
+      },
+      "outcome": "reproduced_not_fixed",
+      "summary": "the test raises the incident's ZeroDivisionError, and still fails after the patch",
+      "before_tail": "(values)\n               ^^^^^^^^^^^^^^^^^^^^^^^^^\nE       ZeroDivisionError: division by zero\n\napp/stats.py:2: ZeroDivisionError\n=========================== short test summary info ============================\nFAILED tests/test_safe_mean.py::test_safe_mean_empty_list_returns_zero_after_fix\n!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!\n1 failed, 1 passed in 0.02s\n"
+    }
+  ]
+}

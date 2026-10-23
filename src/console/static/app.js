@@ -335,7 +335,9 @@ function resetDetail() {
   state.current = null;
   $("d-title").textContent = "Loading incident…";
   document.title = "Loading incident - OpsPulse";
-  for (const id of ["guide", "trail", "audit", "approval", "retry", "d-pr", "d-severity", "d-reason"]) $(id).hidden = true;
+  for (const id of ["guide", "tests-card", "trail", "audit", "approval", "retry", "d-pr", "d-severity", "d-reason"]) {
+    $(id).hidden = true;
+  }
   for (const id of ["d-evidence", "d-checks", "d-attempts", "d-patch", "d-uncertainties", "d-tests"]) {
     $(id).replaceChildren();
   }
@@ -448,6 +450,7 @@ function renderDetail(incident) {
 
   $("retry").hidden = incident.status !== "failed";
   renderAsk(incident);
+  renderTests(analysis);
   loadGuidance(incident);
   loadTrail(incident);
   loadAudit(incident);
@@ -593,6 +596,50 @@ function renderGuidance(guide) {
   const facts = $("guide-facts");
   facts.replaceChildren();
   for (const fact of guide.facts || []) facts.append(el("li", fact));
+}
+
+// ------------------------------------------------------------------ test evidence (sandbox + reproduction)
+
+const SANDBOX_TONE = {
+  fixes_failing_tests: "s-ok", no_regression: "s-ok", regression: "s-bad", still_failing: "s-warn",
+  reproduced_and_fixed: "s-ok", reproduced_not_fixed: "s-bad", not_reproduced: "s-warn", fails_for_another_reason: "s-warn",
+};
+
+function renderTests(analysis) {
+  const sandbox = analysis && analysis.sandbox;
+  const test = analysis && analysis.reproduction_test;
+  const card = $("tests-card");
+  card.hidden = !(sandbox || test);
+  if (card.hidden) return;
+  const list = $("tests-list");
+  list.replaceChildren();
+  let headline = null;
+  const reproduction = sandbox && sandbox.reproduction;
+  if (reproduction) {
+    headline = reproduction;
+    const item = el("li");
+    item.append(el("span", humanize(reproduction.status), `chip ${SANDBOX_TONE[reproduction.status] || "s-neutral"}`));
+    item.append(el("span", ` Reproduction test: ${reproduction.summary}`));
+    list.append(item);
+  } else if (test) {
+    list.append(el("li", "A reproduction test was proposed but not run (the sandbox is off or could not run it)."));
+  }
+  if (sandbox) {
+    headline = headline || sandbox;
+    const item = el("li");
+    item.append(el("span", humanize(sandbox.status), `chip ${SANDBOX_TONE[sandbox.status] || "s-neutral"}`));
+    item.append(el("span", ` The repository's own tests: ${sandbox.summary}`));
+    list.append(item);
+  }
+  const badge = $("tests-badge");
+  badge.textContent = headline ? humanize(headline.status) : "not run";
+  badge.className = `badge ${(headline && SANDBOX_TONE[headline.status]) || "s-neutral"}`;
+  const details = $("repro-details");
+  details.hidden = !(test && test.content);
+  if (!details.hidden) {
+    $("repro-path").textContent = String(test.path || "");
+    $("repro-code").textContent = String(test.content || "");
+  }
 }
 
 // ------------------------------------------------------------------ evidence trail

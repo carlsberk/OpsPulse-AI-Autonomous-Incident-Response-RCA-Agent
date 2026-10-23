@@ -37,6 +37,10 @@ provider failures excluded from every rate).
   head, and a head that differs from what is deployed can make a correct diagnosis look ungrounded or a wrong one look
   grounded. The patch is checked at the pinned commit but applied to the current head when the PR is opened; if the head
   moved, the PR step refuses rather than guessing. This feature is unit-tested with a fake GitHub only.
+- **A reproduction test is the model's own idea of correct.** It is written by the same model as the fix, runs only when the
+  sandbox is on, and needs an image with pytest and the repository's test plugins. In the 8 live runs with the final wording of the rule, 5 ended
+  `reproduced_and_fixed` (4 of 6 on the pilot cases), the rest were tests written backwards, built on guessed constructors,
+  or not proposed. A green pair is stronger evidence than "the diff applies"; it is still not proof.
 - **A passing gate is not a correct fix.** The gate proves structure: grounded quotes, a diff that applies, a patch that
   changes something. It does **not** run the target repository's tests. The PR text says so, and the reviewer decides.
 - **The model sometimes patches the symptom.** When the evidence quotes only a caller, `fix_location` warns but does not

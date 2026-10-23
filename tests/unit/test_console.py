@@ -173,3 +173,15 @@ def test_log_lines_carry_the_request_id():
     finally:
         request_id_var.reset(token)
     assert "request_id" not in json.loads(JsonFormatter().format(record))
+
+
+def test_console_shows_the_test_evidence_card_with_text_nodes_only():
+    """The sandbox result and the model's reproduction test are shown to the reviewer, and the test text (written by a
+    model) is only ever put into the page as text."""
+    html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    script = (STATIC_DIR / "app.js").read_text(encoding="utf-8")
+    for element in ("tests-card", "tests-badge", "tests-list", "repro-details", "repro-path", "repro-code"):
+        assert f'id="{element}"' in html, element
+    assert "function renderTests(" in script and "renderTests(analysis);" in script
+    code = "\n".join(line for line in script.splitlines() if not line.strip().startswith("//"))
+    assert '$("repro-code").textContent' in code and "innerHTML" not in code

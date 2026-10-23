@@ -1,0 +1,59 @@
+{
+  "run_at": "2026-10-23T10:00:55.720121+00:00",
+  "dataset": "pilot.json",
+  "run_metadata": {
+    "agent_version": "1.6.0-opspulse",
+    "prompt_version": "rca-prompt-v7",
+    "evaluator_version": "quality-gate-v8",
+    "retrieval_strategy": "lexical-v1",
+    "model": "openai/gpt-oss-120b",
+    "quality_threshold": 0.85,
+    "max_analysis_iterations": 3,
+    "max_output_tokens": 4096
+  },
+  "counts": {
+    "reproduced_and_fixed": 2,
+    "fails_for_another_reason": 1
+  },
+  "rows": [
+    {
+      "case_id": "finding-codes-missing-key",
+      "workflow_status": "accepted",
+      "patch": true,
+      "wall_ms": 16323,
+      "reproduction_test": {
+        "path": "tests/test_finding_codes_missing_key.py",
+        "content": "import pytest\nfrom types import SimpleNamespace\nfrom app.evaluators.deterministic.finding_codes import FindingCodesCorrectnessEvaluator\n\n@pytest.mark.asyncio\nasync def test_missing_findings_key():\n    evaluator = FindingCodesCorrectnessEvaluator()\n    case = SimpleNamespace(expected_output={\"must_include_finding_codes\": [\"CODE1\"]})\n    execution = SimpleNamespace(output={})  # no \"findings\" key\n    result = await evaluator.evaluate(case, execution)\n    assert result.passed is False\n    assert result.reason is not None\n    assert \"missing expected findings\" in result.reason"
+      },
+      "outcome": "reproduced_and_fixed",
+      "summary": "the test raises the incident's KeyError before the patch and passes after it",
+      "before_tail": "                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE       KeyError: 'findings'\n\napp/evaluators/deterministic/finding_codes.py:41: KeyError\n=========================== short test summary info ============================\nFAILED tests/test_finding_codes_missing_key.py::test_missing_findings_key - K...\n!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!\n1 failed in 0.12s\n"
+    },
+    {
+      "case_id": "field-accuracy-empty-division",
+      "workflow_status": "accepted",
+      "patch": true,
+      "wall_ms": 22485,
+      "reproduction_test": {
+        "path": "tests/test_field_accuracy_zero_total.py",
+        "content": "import pytest\nimport asyncio\nfrom app.evaluators.deterministic.field_accuracy import DocumentFieldAccuracyEvaluator\nfrom types import SimpleNamespace\n\n@pytest.mark.asyncio\nasync def test_evaluate_handles_empty_fields():\n    evaluator = DocumentFieldAccuracyEvaluator()\n    evaluator.config = {}\n    case = SimpleNamespace(expected_output={})\n    execution = SimpleNamespace(output={})\n    result = await evaluator.evaluate(case, execution)\n    assert result.score == 0.0\n    assert result.passed is False"
+      },
+      "outcome": "reproduced_and_fixed",
+      "summary": "the test raises the incident's ZeroDivisionError before the patch and passes after it",
+      "before_tail": "       ^^^^^^^^^^^^^^^\nE       ZeroDivisionError: division by zero\n\napp/evaluators/deterministic/field_accuracy.py:34: ZeroDivisionError\n=========================== short test summary info ============================\nFAILED tests/test_field_accuracy_zero_total.py::test_evaluate_handles_empty_fields\n!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!\n1 failed in 0.10s\n"
+    },
+    {
+      "case_id": "retrieval-k-default-dropped",
+      "workflow_status": "accepted",
+      "patch": true,
+      "wall_ms": 36374,
+      "reproduction_test": {
+        "path": "tests/test_recall_at_k_missing_k.py",
+        "content": "from app.evaluators.deterministic.retrieval_metrics import RecallAtKEvaluator, EvaluationCase, SystemExecution, EvaluationResult\n\n\ndef test_recall_at_k_uses_default_when_k_missing():\n    # Minimal stubs for required schemas\n    case = EvaluationCase(expected_output={\"relevant_document_ids\": [\"doc1\"]})\n    execution = SystemExecution(output={\"retrieved_documents\": [{\"id\": \"doc1\"}]})\n    evaluator = RecallAtKEvaluator(config={})\n    # Should not raise TypeError even though \"k\" is missing\n    result: EvaluationResult = await evaluator.evaluate(case, execution)  # type: ignore[await-outside-async]\n    assert isinstance(result, EvaluationResult)"
+      },
+      "outcome": "fails_for_another_reason",
+      "summary": "the test fails on the unpatched code, but not with the incident's TypeError",
+      "before_tail": "        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   SyntaxError: 'await' outside async function\n=========================== short test summary info ============================\nERROR tests/test_recall_at_k_missing_k.py\n!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!\n!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n1 error in 0.18s\n"
+    }
+  ]
+}

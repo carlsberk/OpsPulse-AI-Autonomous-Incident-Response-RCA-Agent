@@ -1,0 +1,49 @@
+{
+  "run_at": "2026-10-23T09:57:59.030821+00:00",
+  "dataset": "pilot.json",
+  "run_metadata": {
+    "agent_version": "1.6.0-opspulse",
+    "prompt_version": "rca-prompt-v7",
+    "evaluator_version": "quality-gate-v8",
+    "retrieval_strategy": "lexical-v1",
+    "model": "openai/gpt-oss-120b",
+    "quality_threshold": 0.85,
+    "max_analysis_iterations": 3,
+    "max_output_tokens": 4096
+  },
+  "counts": {
+    "reproduced_and_fixed": 1,
+    "no_test": 2
+  },
+  "rows": [
+    {
+      "case_id": "finding-codes-missing-key",
+      "workflow_status": "accepted",
+      "patch": true,
+      "wall_ms": 20092,
+      "reproduction_test": {
+        "path": "tests/test_finding_codes_missing_key.py",
+        "content": "import asyncio\nimport pytest\nfrom app.evaluators.deterministic.finding_codes import FindingCodesCorrectnessEvaluator\n\nclass DummyCase:\n    def __init__(self, expected_output):\n        self.expected_output = expected_output\n\nclass DummyExec:\n    def __init__(self, output):\n        self.output = output\n\n@pytest.mark.asyncio\nasync def test_evaluator_handles_missing_findings_key():\n    case = DummyCase(expected_output={\"must_include_finding_codes\": []})\n    exec_obj = DummyExec(output={})  # 'findings' key absent\n    evaluator = FindingCodesCorrectnessEvaluator()\n    result = await evaluator.evaluate(case, exec_obj)\n    assert result.passed is True"
+      },
+      "outcome": "reproduced_and_fixed",
+      "summary": "the test raises the incident's KeyError before the patch and passes after it",
+      "before_tail": "          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE       KeyError: 'findings'\n\napp/evaluators/deterministic/finding_codes.py:41: KeyError\n=========================== short test summary info ============================\nFAILED tests/test_finding_codes_missing_key.py::test_evaluator_handles_missing_findings_key\n!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!\n1 failed in 0.10s\n"
+    },
+    {
+      "case_id": "field-accuracy-empty-division",
+      "workflow_status": "accepted",
+      "patch": true,
+      "wall_ms": 26988,
+      "reproduction_test": null,
+      "outcome": "no_test"
+    },
+    {
+      "case_id": "retrieval-k-default-dropped",
+      "workflow_status": "accepted",
+      "patch": true,
+      "wall_ms": 37896,
+      "reproduction_test": null,
+      "outcome": "no_test"
+    }
+  ]
+}

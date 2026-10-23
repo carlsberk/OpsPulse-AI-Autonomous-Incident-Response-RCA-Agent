@@ -37,6 +37,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from src import metrics
 from src.agent.graph import build_graph
 from src.agent.parsing import compute_fingerprint
+from src.agent.reproduction import ReproductionSpec, expected_error_name
 from src.agent.state import IncidentState, initial_state
 from src.config import settings
 from src.db import repositories
@@ -266,7 +267,9 @@ def _run(
         # Only this service writes `sandbox`; never trust a key of that name that came from the model.
         fix = replace(fix, analysis={k: v for k, v in fix.analysis.items() if k != "sandbox"})
         if settings.sandbox_enabled and fix.patch and fix.target_file:
-            report = run_patch_in_sandbox(fix.repo_name, fix.target_file, fix.patch)
+            report = run_patch_in_sandbox(
+                fix.repo_name, fix.target_file, fix.patch, reproduction=_reproduction_spec(final)
+            )
             logger.info("sandbox run: %s", report.status)
             fix = replace(fix, analysis={**fix.analysis, "sandbox": report.as_dict()})
             _persist_or_raise(
@@ -343,6 +346,14 @@ def source_revision(final: IncidentState) -> dict[str, Any]:
     (the deployed commit) or it was the default branch head at analysis time (which may have moved since)."""
     match = _COMMIT_LINE.search(final.get("code_context") or "")
     return {"commit": match.group(1) if match else None, "pinned": bool(final.get("commit_sha"))}
+
+
+def _reproduction_spec(final: IncidentState) -> ReproductionSpec | None:
+    """The model's optional regression test, as the sandbox will receive it (text only; nothing is run here)."""
+    test = (final["root_cause_analysis"] or {}).get("reproduction_test")
+    if not isinstance(test, dict) or not isinstance(test.get("path"), str) or not isinstance(test.get("content"), str):
+        return None
+    return ReproductionSpec(test["path"], test["content"], expected_error_name(final["error_message"]))
 
 
 def get_audit(incident_id: uuid.UUID) -> dict[str, Any] | None:

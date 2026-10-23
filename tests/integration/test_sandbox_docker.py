@@ -149,3 +149,47 @@ def test_an_image_without_pytest_is_an_environment_error_not_a_test_failure(conf
     )
     assert report.status == "error" and "SANDBOX_IMAGE" in report.summary, report
     assert sandbox.classify(report.before, report.after)[0] == "error"
+
+
+# ------------------------------------------------------------------ the model's reproduction test, for real
+
+
+def _spec(content, path="test_regression_incident.py", error="TypeError"):
+    from src.agent.reproduction import ReproductionSpec
+
+    return ReproductionSpec(path, content, error)
+
+
+def _repro(content, **kwargs):
+    return run_patch_in_sandbox(
+        "o/r",
+        "inventory.py",
+        _diff(SERVICE / "inventory.py", BAD, GOOD),
+        snapshot=_snapshot(SERVICE),
+        reproduction=_spec(content, **kwargs),
+    ).reproduction
+
+
+def test_a_reproduction_that_raises_the_incidents_exception_before_and_passes_after_is_shown_as_such(configured):
+    report = _repro('from inventory import reserve\n\n\ndef test_reproduces():\n    reserve("banana", 1)\n')
+    assert report.status == "reproduced_and_fixed", report
+    assert "TypeError" in report.before.output_tail and report.after.exit_code == 0
+
+
+def test_a_test_that_fails_for_another_reason_is_not_counted_as_a_reproduction(configured):
+    wrong_import = _repro("from inventory import does_not_exist\n\n\ndef test_x():\n    pass\n")
+    assert wrong_import.status == "fails_for_another_reason", wrong_import
+    wrong_error = _repro(
+        'from inventory import reserve\n\n\ndef test_x():\n    reserve("banana", 1)\n', error="KeyError"
+    )
+    assert wrong_error.status == "fails_for_another_reason", wrong_error
+
+
+def test_a_test_that_passes_on_the_unpatched_code_does_not_reproduce_anything(configured):
+    report = _repro('from inventory import reserve\n\n\ndef test_x():\n    assert reserve("apple", 1) is True\n')
+    assert report.status == "not_reproduced", report
+
+
+def test_a_hostile_reproduction_test_is_refused_before_it_runs(configured):
+    report = _repro("import subprocess\n\n\ndef test_x():\n    subprocess.run(['id'])\n")
+    assert report.status == "invalid" and report.before is None
