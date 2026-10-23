@@ -101,6 +101,10 @@ code with real review decisions. Use a repository you own and can throw away; no
    `REQUIRE_REMEDIATION_APPROVAL=true`, `GITHUB_PR_DRAFT=true`, `ALLOW_SELF_APPROVAL=false`, a reporter key and a reviewer key
    in `API_KEYS` (two identities, so the four-eyes rule applies), and optionally `SANDBOX_ENABLED=true` with an image that
    contains your project's dependencies.
+   Then run `python -m scripts.pilot_check` (configuration and database only) and, once the token is in `.env`,
+   `python -m scripts.pilot_check --online`, which also makes read-only GitHub calls (is the repository reachable, can the token
+   push, is it archived) and checks Docker when the sandbox is on. It names the setting, never its value, and exits 1 while
+   something blocks the pilot.
 3. **Report real failures.** Break something in the test repository, let it raise, and send the trace through
    `POST /webhook/incident` (or Alertmanager or Sentry). Aim for 15 to 20 distinct failures of different kinds, including
    two or three where the right answer is "not enough evidence".

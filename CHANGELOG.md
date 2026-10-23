@@ -5,6 +5,11 @@ All notable changes are listed here. Versions of behaviour-critical components a
 
 ## [Unreleased]
 
+### Added
+- `python -m scripts.pilot_check [--online]`: tells you what blocks a first pilot (missing token, remediation or approval
+  switched off, no reviewer identity, repository not allow-listed, unmigrated database, a token that cannot push, no Docker
+  image for the sandbox) and what is only a warning. It prints setting names, never values; exit 1 while something blocks.
+
 ### Changed
 - CI hardening: every workflow action is pinned to a full commit SHA (the tag stays in a comment; Dependabot updates both),
   test workflows no longer keep the checkout token (`persist-credentials: false`), and `tests/unit/test_workflows.py` fails if
