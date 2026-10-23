@@ -63,12 +63,12 @@
   },
   "trace": {
     "incident_id": "cc4f639d-3ba2-55ac-b190-89392f7e6f40",
-    "request_id": "e3be2caa87f340a3a30f19977d2ff319",
+    "request_id": "d553b5063ecd4ec99e69814df8f9f159",
     "status": "awaiting_approval",
     "error_category": null,
     "versions": {
-      "agent_version": "1.6.0-opspulse",
-      "prompt_version": "rca-prompt-v6.1",
+      "agent_version": "1.7.0-opspulse",
+      "prompt_version": "rca-prompt-v7.1",
       "evaluator_version": "quality-gate-v8",
       "retrieval_strategy": "lexical-v1",
       "model": "openai/gpt-oss-120b"
@@ -200,34 +200,34 @@
     "incident_id": "cc4f639d-3ba2-55ac-b190-89392f7e6f40",
     "events": [
       {
-        "at": "2026-10-22T19:32:52.184693",
+        "at": "2026-10-23T11:02:11.481790",
         "event": "submitted",
         "actor": "alice",
         "detail": "incident reported for demo/inventory"
       },
       {
-        "at": "2026-10-22T19:32:52.240867",
+        "at": "2026-10-23T11:02:11.529132",
         "event": "analysed",
         "actor": "agent",
-        "detail": "gate score 0.985, 1 attempt(s); model openai/gpt-oss-120b, prompt rca-prompt-v6.1, gate quality-gate-v8"
+        "detail": "gate score 0.985, 1 attempt(s); model openai/gpt-oss-120b, prompt rca-prompt-v7.1, gate quality-gate-v8"
       },
       {
-        "at": "2026-10-22T19:32:52.240867",
+        "at": "2026-10-23T11:02:11.529132",
         "event": "proposed",
         "actor": "agent",
         "detail": "open a draft PR changing inventory.py",
         "patch_sha256": "b46e89c61c2beffc4138eb8f2faeef36f58dff1f2632a9220c16152972fd7543",
-        "expires_at": "2026-10-25T19:32:52.240867+00:00"
+        "expires_at": "2026-10-26T11:02:11.529132+00:00"
       },
       {
-        "at": "2026-10-22T19:32:52.339289",
+        "at": "2026-10-23T11:02:11.592075",
         "event": "approved",
         "actor": "bob",
         "detail": "guard matches the existing contract",
         "patch_sha256": "b46e89c61c2beffc4138eb8f2faeef36f58dff1f2632a9220c16152972fd7543"
       },
       {
-        "at": "2026-10-22T19:32:52.339289",
+        "at": "2026-10-23T11:02:11.592075",
         "event": "pr_opened",
         "actor": "system",
         "detail": "draft PR on branch opspulse/fix-e2e: https://github.com/demo/inventory/pull/1"
