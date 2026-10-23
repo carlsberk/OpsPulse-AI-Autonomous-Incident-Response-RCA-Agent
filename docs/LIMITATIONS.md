@@ -11,7 +11,7 @@ caveats**, and what it has **not shown at all**.
 - **Totality under hostile input**: structure-aware fuzzing of the schema check, the quality gate, the workflow, the
   assistant and the console helpers found no unhandled state in the final code. It did find real defects earlier, which are
   fixed and listed in the [changelog](../CHANGELOG.md).
-- 513 tests, about 95.7 % line coverage, strict type checking.
+- 674 tests, about 95 % line coverage, strict type checking.
 
 ## Measured, with caveats
 
@@ -70,8 +70,12 @@ provider failures excluded from every rate).
   dependencies, otherwise the report says `error`. A passing run still does not prove the fix is
   right.
 - **No statistical claim.** There is no confidence interval anywhere, because the samples are too small for one.
-- **Audit is a report, not a ledger.** The review history is derived from rows the workflow updates in place; it is not
-  tamper-evident.
+- **The audit chain detects partial tampering, not a determined administrator.** Proposals and decisions are chained by
+  SHA-256 per incident and cross-checked against the approval rows, so editing or deleting an entry, or changing a status
+  without a chain entry, is reported. Someone who can rewrite the whole table can recompute a consistent chain, and removing
+  the newest entries leaves a valid shorter chain; only a head hash stored outside the database (the audit response and
+  `python -m src.services.audit_chain` print it) would show that. Nothing stores it for you. The `events` timeline itself is
+  still derived from rows updated in place, and decisions made before the log existed have no chain.
 - **Cost is `null` unless you set prices.** `LLM_COST_INPUT_PER_MTOK` and `LLM_COST_OUTPUT_PER_MTOK` fill it in; no price is
   assumed.
 - **Measured on Python only.** The parser also recognises Java, Go and JavaScript traces (unit-tested), but every dataset and

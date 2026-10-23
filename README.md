@@ -678,6 +678,24 @@ Enforced in code (`src/services/remediation_service.py`), never by the model:
 *Limitation:* identities are API keys, not people - whoever holds the reviewer key can approve. Use one key per
 person or system and rotate keys you suspect were shared.
 
+### A tamper-evident record of who decided what
+
+Every proposal and decision is also written to an append-only log (`audit_entries`, migration `0009`) as a hash chain, in
+the same transaction as the state change: each entry stores the SHA-256 of its own fields and of the entry before it.
+`GET /incidents/{id}/audit` returns the check as `chain`, and `python -m src.services.audit_chain` checks every incident
+(exit code 1 on a problem):
+
+| status | meaning |
+|---|---|
+| `intact` | no entry was edited, removed from the middle or reordered, and the approval rows agree with the chain |
+| `broken` | an entry does not match its hash or the one before it; `broken_at` says where |
+| `inconsistent` | the chain is fine but an approval row says something it does not (a status changed in place) |
+| `none` | decided before the log existed (or never proposed): nothing to check, **not** a pass |
+
+This detects someone who changes some rows and not all of them. It does not stop a database administrator who rewrites the
+whole table, and removing the newest entries leaves a valid shorter chain: store the `head` hash outside the database if
+that matters to you (nothing here does it for you).
+
 ## Sentry integration
 
 `POST /integrations/sentry` accepts Sentry Integration Platform webhooks (`event_alert` and `error` resources;

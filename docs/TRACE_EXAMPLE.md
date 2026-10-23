@@ -75,6 +75,10 @@ stored record and the runbook without a model, so it is available even when the 
 | `approved` | bob | "guard matches the existing contract"; the same SHA-256 |
 | `pr_opened` | system | draft PR on branch `opspulse/fix-…` |
 
+The response also carries `chain`: the approval log is a hash chain (here 3 entries: proposed, approved, executed), and
+`status: intact` means no entry was edited, removed from the middle or reordered, and the approval rows agree with it.
+Keep the `head` hash somewhere the database administrator cannot write if you need to notice the newest entries being cut.
+
 Two rules are visible here: the submitter (`alice`, a reporter) is not the decider (`bob`, a reviewer), and the approval
 carries the hash of the patch that was proposed. Merging is not an event, because this service never merges.
 

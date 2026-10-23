@@ -63,7 +63,7 @@
   },
   "trace": {
     "incident_id": "cc4f639d-3ba2-55ac-b190-89392f7e6f40",
-    "request_id": "d553b5063ecd4ec99e69814df8f9f159",
+    "request_id": "3fa4d646e99646cfa0b7ccc9393a154b",
     "status": "awaiting_approval",
     "error_category": null,
     "versions": {
@@ -200,39 +200,47 @@
     "incident_id": "cc4f639d-3ba2-55ac-b190-89392f7e6f40",
     "events": [
       {
-        "at": "2026-10-23T11:02:11.481790",
+        "at": "2026-10-23T11:38:33.099412",
         "event": "submitted",
         "actor": "alice",
         "detail": "incident reported for demo/inventory"
       },
       {
-        "at": "2026-10-23T11:02:11.529132",
+        "at": "2026-10-23T11:38:33.156675",
         "event": "analysed",
         "actor": "agent",
         "detail": "gate score 0.985, 1 attempt(s); model openai/gpt-oss-120b, prompt rca-prompt-v7.1, gate quality-gate-v8"
       },
       {
-        "at": "2026-10-23T11:02:11.529132",
+        "at": "2026-10-23T11:38:33.156675",
         "event": "proposed",
         "actor": "agent",
         "detail": "open a draft PR changing inventory.py",
         "patch_sha256": "b46e89c61c2beffc4138eb8f2faeef36f58dff1f2632a9220c16152972fd7543",
-        "expires_at": "2026-10-26T11:02:11.529132+00:00"
+        "expires_at": "2026-10-26T11:38:33.156675+00:00"
       },
       {
-        "at": "2026-10-23T11:02:11.592075",
+        "at": "2026-10-23T11:38:33.258753",
         "event": "approved",
         "actor": "bob",
         "detail": "guard matches the existing contract",
         "patch_sha256": "b46e89c61c2beffc4138eb8f2faeef36f58dff1f2632a9220c16152972fd7543"
       },
       {
-        "at": "2026-10-23T11:02:11.592075",
+        "at": "2026-10-23T11:38:33.258753",
         "event": "pr_opened",
         "actor": "system",
         "detail": "draft PR on branch opspulse/fix-e2e: https://github.com/demo/inventory/pull/1"
       }
     ],
-    "merge_policy": "never automatic"
+    "merge_policy": "never automatic",
+    "chain": {
+      "status": "intact",
+      "entries": 3,
+      "head": "c99aaceb7f9f100fd1b1aa5fd946be93ff08e6d28d090239cd86e47744442012",
+      "broken_at": null,
+      "reason": null,
+      "mismatches": []
+    }
   }
 }

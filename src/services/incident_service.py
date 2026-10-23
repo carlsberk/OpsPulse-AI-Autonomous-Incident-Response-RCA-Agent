@@ -359,12 +359,16 @@ def _reproduction_spec(final: IncidentState) -> ReproductionSpec | None:
 def get_audit(incident_id: uuid.UUID) -> dict[str, Any] | None:
     """The review timeline of one incident, or None if it does not exist."""
     from src.services.audit import build_audit
+    from src.services.audit_chain import check
 
     try:
         row = repositories.get_incident(incident_id)
         if row is None:
             return None
-        return build_audit(row, repositories.list_approvals(incident_id))
+        approvals = repositories.list_approvals(incident_id)
+        audit = build_audit(row, approvals)
+        audit["chain"] = check(repositories.list_audit_entries(incident_id), approvals)
+        return audit
     except SQLAlchemyError as exc:
         raise DatabaseUnavailableError("database unavailable") from exc
 

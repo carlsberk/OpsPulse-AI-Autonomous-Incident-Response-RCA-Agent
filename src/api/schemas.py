@@ -229,6 +229,13 @@ class AuditResponse(BaseModel):
     incident_id: str | None = None
     events: list[dict[str, Any]] = Field(description="Ordered review timeline: who did what, when, and why")
     merge_policy: str = Field(description="Merging is never done by this service")
+    chain: dict[str, Any] = Field(
+        default_factory=dict,
+        description=(
+            "Hash-chain check of the approval log: status none (decided before the log existed), intact, broken or "
+            "inconsistent (chain and approval rows disagree), the entry count and the head hash to keep elsewhere"
+        ),
+    )
 
 
 class ErrorBody(BaseModel):
