@@ -16,9 +16,10 @@ from sqlalchemy.exc import IntegrityError
 
 from src.config import settings
 from src.db.client import session_scope
-from src.db.models import Incident, RemediationApproval
+from src.db.models import AuditEntry, Incident, RemediationApproval
 from src.retrieval.history import HistoryCandidate, HistoryQuery, rank_lexical, to_prompt_records
 from src.retrieval.review_notes import decision_record
+from src.services.audit_chain import GENESIS, entry_hash
 
 HISTORY_CANDIDATE_LIMIT = 200  # newest eligible incidents per repository considered for ranking
 HISTORY_ELIGIBLE_STATUSES = (
@@ -449,11 +450,20 @@ def create_approval(incident_id: uuid.UUID, target_file: str, patch_sha256: str,
     """New pending approval; any older pending approval of the same incident is superseded."""
     now = datetime.now(UTC)
     with session_scope() as session:
+        older = list(
+            session.scalars(
+                select(RemediationApproval).where(
+                    RemediationApproval.incident_id == incident_id, RemediationApproval.status == "pending"
+                )
+            )
+        )
         session.execute(
             update(RemediationApproval)
             .where(RemediationApproval.incident_id == incident_id, RemediationApproval.status == "pending")
             .values(status="superseded", decided_at=now)
         )
+        for previous in older:
+            _append_audit(session, previous, "superseded", "system", "a newer proposal replaced it", now)
         row = RemediationApproval(
             id=uuid.uuid4(),
             incident_id=incident_id,
@@ -465,6 +475,7 @@ def create_approval(incident_id: uuid.UUID, target_file: str, patch_sha256: str,
         )
         session.add(row)
         session.flush()
+        _append_audit(session, row, "pending", "agent", f"proposed a draft PR changing {target_file}", now)
         return approval_to_dict(row)
 
 
@@ -509,4 +520,73 @@ def transition_approval(
             .where(RemediationApproval.id == approval_id, RemediationApproval.status == from_status)
             .values(**values)
         )
-        return result.rowcount == 1
+        if result.rowcount != 1:
+            return False
+        row = session.get(RemediationApproval, approval_id)
+        if row is not None:
+            actor = reviewer or ("system" if to_status in ("expired", "executed", "execution_failed") else None)
+            _append_audit(session, row, to_status, actor, note or "", values["decided_at"])
+        return True
+
+
+# ------------------------------------------------------------------ audit chain
+
+
+def _append_audit(
+    session: Any, approval: RemediationApproval, event: str, actor: str | None, detail: str, at: datetime
+) -> None:
+    """Add the next link of the incident's hash chain, in the caller's transaction (state change and record commit or
+    roll back together). A concurrent writer on the same incident violates the unique (incident, seq) constraint and
+    rolls this transaction back: the change is refused rather than recorded out of order."""
+    newest = select(AuditEntry).where(AuditEntry.incident_id == approval.incident_id)
+    last = session.scalars(newest.order_by(AuditEntry.seq.desc()).limit(1)).first()
+    entry = {
+        "seq": (last.seq + 1) if last else 1,
+        "approval_id": str(approval.id),
+        "event": event,
+        "actor": actor,
+        "patch_sha256": approval.patch_sha256,
+        "detail": detail,
+        "at": _aware(at).isoformat(),
+    }
+    prev_hash = last.entry_hash if last else GENESIS
+    session.add(
+        AuditEntry(
+            incident_id=approval.incident_id,
+            seq=entry["seq"],
+            approval_id=approval.id,
+            event=event,
+            actor=actor,
+            patch_sha256=approval.patch_sha256,
+            detail=detail,
+            at=entry["at"],
+            prev_hash=prev_hash,
+            entry_hash=entry_hash(prev_hash, entry),
+        )
+    )
+    session.flush()
+
+
+def list_audit_entries(incident_id: uuid.UUID | str) -> list[dict[str, Any]]:
+    """The incident's chain, oldest first, as plain dicts (what `audit_chain.verify` expects)."""
+    stmt = select(AuditEntry).where(AuditEntry.incident_id == uuid.UUID(str(incident_id))).order_by(AuditEntry.seq)
+    with session_scope() as session:
+        return [
+            {
+                "seq": r.seq,
+                "approval_id": str(r.approval_id),
+                "event": r.event,
+                "actor": r.actor,
+                "patch_sha256": r.patch_sha256,
+                "detail": r.detail,
+                "at": r.at,
+                "prev_hash": r.prev_hash,
+                "entry_hash": r.entry_hash,
+            }
+            for r in session.scalars(stmt)
+        ]
+
+
+def audited_incident_ids() -> list[str]:
+    with session_scope() as session:
+        return [str(i) for i in session.scalars(select(AuditEntry.incident_id).distinct())]

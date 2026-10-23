@@ -5,6 +5,20 @@ All notable changes are listed here. Versions of behaviour-critical components a
 
 ## [Unreleased]
 
+### Added
+- **Tamper-evident approval log** (migration `0009`, table `audit_entries`). Every proposal, supersession and decision
+  (approved, rejected, expired, executed, execution failed) is also written as one link of a per-incident hash chain, in
+  the same transaction as the state change: each entry holds the SHA-256 of its own fields and of the entry before it.
+  `GET /incidents/{id}/audit` now returns `chain` (`none`, `intact`, `broken` or `inconsistent`, the entry count and the head
+  hash), and `python -m src.services.audit_chain` checks every incident from the command line (exit 1 on a problem). Besides
+  the links, the check compares the chain with the `remediation_approvals` rows, which are updated in place: a status changed
+  without a chain entry is `inconsistent`. Incidents decided before the upgrade have no chain and say `none`, not `intact`.
+  What it does not do: someone who can rewrite the whole table can recompute a consistent chain, and deleting the newest
+  entries is only visible against a head hash kept elsewhere; see `docs/LIMITATIONS.md`.
+
+### Fixed
+- `docs/LIMITATIONS.md` still quoted 513 tests and 95.7 % coverage; it now matches the suite.
+
 ## [1.7.0] - 2026-10-23
 
 Two ways the system gets better evidence about its own proposals: a regression test the model writes and the sandbox runs,
