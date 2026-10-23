@@ -33,6 +33,7 @@ DATASET_FILES = {
     "holdout": DATASETS / "rca_holdout.json",  # never used for tuning
     "adversarial": DATASETS / "rca_adversarial.json",  # tries to provoke unsupported conclusions
     "callers": DATASETS / "rca_callers.json",  # root cause in a calling function
+    "reviewer_memory": DATASETS / "rca_reviewer_memory.json",  # an earlier reviewer's note says how to fix
 }
 
 

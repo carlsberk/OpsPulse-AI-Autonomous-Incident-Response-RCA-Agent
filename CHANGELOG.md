@@ -6,6 +6,19 @@ All notable changes are listed here. Versions of behaviour-critical components a
 ## [Unreleased]
 
 ### Added
+- **Reviewer decisions reach the next analysis** (prompt `rca-prompt-v7.1`). A similar earlier incident that a person approved
+  or rejected now shows `human review of that earlier incident: REJECTED by a reviewer - note: "..."` in the model's history
+  entry. The note is cleaned (one line, no control characters or backticks, at most 300 characters), wrapped like all
+  history text, and the system prompt says what it is and is not. `HISTORY_REVIEWER_NOTES` (default `true`) turns it off.
+  Live, three synthetic cases x 3 runs: with the note the patch followed it 9/9, without it the rejected patch style was
+  repeated 9/9 ([report](evals/results/REVIEWER-MEMORY-2026-10-23.md)). A mechanism check, not an effect size.
+- `python -m src.services.review_outcomes`: what reviewers decided, per prompt/gate/model version, with the gate score of
+  approved versus rejected proposals and the reviewers' rejection notes. Read-only; prints no rate below 20 decisions.
+- Dataset `rca-reviewer-memory-v1` (`evals/datasets/build_rca_reviewer_memory.py`), `python -m evals.reviewer_memory_eval`
+  (notes on versus off), its mock baseline in the CI regression gate, and history records in evaluation datasets can now carry a
+  past patch and a reviewer decision.
+
+### Added
 - **A reproduction test the model writes, run in the sandbox** (prompt `rca-prompt-v7`; needs `SANDBOX_ENABLED=true`). The model
   may propose one new pytest file that fails with the incident's exception type on the unpatched code and passes after the
   patch. It is validated as text (a new `test_*.py` path, a test function, no process/network/file/`exec` tools), run

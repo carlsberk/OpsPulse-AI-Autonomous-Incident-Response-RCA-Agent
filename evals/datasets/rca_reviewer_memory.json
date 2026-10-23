@@ -1,0 +1,122 @@
+{
+  "version": "rca-reviewer-memory-v1",
+  "cases": [
+    {
+      "id": "memory-config-default",
+      "scenario": "A missing config key; an earlier patch that defaulted the value was rejected: raise instead",
+      "repo_name": "eval/memory",
+      "error_message": "KeyError: 'cache_ttl'",
+      "stack_trace": "Traceback (most recent call last):\n  File \"/app/app/settings.py\", line 6, in cache_ttl\n    return int(config[\"cache_ttl\"])\nKeyError: 'cache_ttl'",
+      "files": {
+        "app/settings.py": "def database_url(config):\n    return config[\"database_url\"]\n\n\ndef cache_ttl(config):\n    return int(config[\"cache_ttl\"])\n"
+      },
+      "history": [
+        {
+          "error_message": "KeyError: 'database_url'",
+          "stack_trace": "Traceback (most recent call last):\n  File \"/app/app/settings.py\", line 2, in database_url\n    return config[\"database_url\"]\nKeyError: 'database_url'",
+          "affected_file": "app/settings.py",
+          "root_cause_summary": "database_url reads a required key that the deployment did not set",
+          "status": "remediation_rejected",
+          "suggested_patch": "--- a/app/settings.py\n+++ b/app/settings.py\n@@ -1,2 +1,2 @@\n def database_url(config):\n-    return config[\"database_url\"]\n+    return config.get(\"database_url\", \"\")\n",
+          "reviewer_decision": "rejected",
+          "reviewer_note": "Defaulting hides a misconfigured deployment. Raise a clear error that names the missing key instead."
+        }
+      ],
+      "expected": {
+        "inconclusive": false,
+        "root_cause_category": "missing_key",
+        "relevant_files": [
+          "app/settings.py"
+        ]
+      },
+      "mock_replies": [
+        {
+          "category": "missing_key",
+          "quote": "return int(config[\"cache_ttl\"])",
+          "fix": {
+            "old": "    return int(config[\"cache_ttl\"])\n",
+            "new": "    if \"cache_ttl\" not in config:\n        raise KeyError(\"cache_ttl is not configured\")\n    return int(config[\"cache_ttl\"])\n"
+          }
+        }
+      ]
+    },
+    {
+      "id": "memory-ratio-none",
+      "scenario": "A division by zero; an earlier patch that returned 0.0 was rejected: return None",
+      "repo_name": "eval/memory",
+      "error_message": "ZeroDivisionError: division by zero",
+      "stack_trace": "Traceback (most recent call last):\n  File \"/app/app/metrics.py\", line 6, in success_rate\n    return ok / total\nZeroDivisionError: division by zero",
+      "files": {
+        "app/metrics.py": "def error_rate(errors, total):\n    return errors / total\n\n\ndef success_rate(ok, total):\n    return ok / total\n"
+      },
+      "history": [
+        {
+          "error_message": "ZeroDivisionError: division by zero",
+          "stack_trace": "Traceback (most recent call last):\n  File \"/app/app/metrics.py\", line 2, in error_rate\n    return errors / total\nZeroDivisionError: division by zero",
+          "affected_file": "app/metrics.py",
+          "root_cause_summary": "error_rate divides by a total that is zero when there was no traffic",
+          "status": "remediation_rejected",
+          "suggested_patch": "--- a/app/metrics.py\n+++ b/app/metrics.py\n@@ -1,2 +1,2 @@\n def error_rate(errors, total):\n-    return errors / total\n+    return 0.0 if total == 0 else errors / total\n",
+          "reviewer_decision": "rejected",
+          "reviewer_note": "0.0 reads as a perfect score. Return None when total is 0 so the dashboard shows n/a."
+        }
+      ],
+      "expected": {
+        "inconclusive": false,
+        "root_cause_category": "logic_error",
+        "relevant_files": [
+          "app/metrics.py"
+        ]
+      },
+      "mock_replies": [
+        {
+          "category": "logic_error",
+          "quote": "return ok / total",
+          "fix": {
+            "old": "    return ok / total\n",
+            "new": "    return None if total == 0 else ok / total\n"
+          }
+        }
+      ]
+    },
+    {
+      "id": "memory-lookup-raise",
+      "scenario": "A missing account; an earlier patch that returned an empty string was rejected: raise LookupError",
+      "repo_name": "eval/memory",
+      "error_message": "AttributeError: 'NoneType' object has no attribute 'email'",
+      "stack_trace": "Traceback (most recent call last):\n  File \"/app/app/users.py\", line 12, in email_of\n    return user.email\nAttributeError: 'NoneType' object has no attribute 'email'",
+      "files": {
+        "app/users.py": "def find_user(users, user_id):\n    return users.get(user_id)\n\n\ndef display_name(users, user_id):\n    user = find_user(users, user_id)\n    return user.name\n\n\ndef email_of(users, user_id):\n    user = find_user(users, user_id)\n    return user.email\n"
+      },
+      "history": [
+        {
+          "error_message": "AttributeError: 'NoneType' object has no attribute 'name'",
+          "stack_trace": "Traceback (most recent call last):\n  File \"/app/app/users.py\", line 7, in display_name\n    return user.name\nAttributeError: 'NoneType' object has no attribute 'name'",
+          "affected_file": "app/users.py",
+          "root_cause_summary": "display_name dereferences a lookup that returns None for an unknown account",
+          "status": "remediation_rejected",
+          "suggested_patch": "--- a/app/users.py\n+++ b/app/users.py\n@@ -5,3 +5,5 @@\n def display_name(users, user_id):\n     user = find_user(users, user_id)\n+    if user is None:\n+        return \"\"\n     return user.name\n",
+          "reviewer_decision": "rejected",
+          "reviewer_note": "Returning \"\" hides a missing account. Raise LookupError(user_id) so the caller can answer 404."
+        }
+      ],
+      "expected": {
+        "inconclusive": false,
+        "root_cause_category": "null_reference",
+        "relevant_files": [
+          "app/users.py"
+        ]
+      },
+      "mock_replies": [
+        {
+          "category": "null_reference",
+          "quote": "return user.email",
+          "fix": {
+            "old": "    return user.email\n",
+            "new": "    if user is None:\n        raise LookupError(user_id)\n    return user.email\n"
+          }
+        }
+      ]
+    }
+  ]
+}

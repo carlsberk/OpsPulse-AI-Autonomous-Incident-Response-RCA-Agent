@@ -45,6 +45,9 @@ class HistoryRecord(BaseModel):
     affected_file: str | None = None
     root_cause_summary: str = ""
     status: str = "analysis_ready"
+    suggested_patch: str = ""
+    reviewer_decision: str | None = None  # "approved" | "rejected"
+    reviewer_note: str = ""
 
 
 class EvalCase(BaseModel):

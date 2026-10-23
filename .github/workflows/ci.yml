@@ -51,7 +51,7 @@ jobs:
       - name: Offline evaluation, regression gate against committed baselines
         # Scripted replies are deterministic, so any drop in a quality metric is a real behaviour change.
         run: |
-          for dataset in tuning holdout adversarial callers; do
+          for dataset in tuning holdout adversarial callers reviewer_memory; do
             python -m evals.run_rca --mode mock --dataset "$dataset" --out /tmp/eval
             python -m evals.compare_reports "evals/baselines/rca-$dataset-mock.json" /tmp/eval/rca-$dataset-mock-*.json               --fail-on-regression
           done

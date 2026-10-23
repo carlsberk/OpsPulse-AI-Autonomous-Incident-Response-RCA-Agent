@@ -1,0 +1,286 @@
+{
+  "mode": "mock",
+  "started_at": "2026-10-23T10:39:45.507511+00:00",
+  "dataset_version": "rca-reviewer-memory-v1",
+  "run_metadata": {
+    "agent_version": "1.6.0-opspulse",
+    "prompt_version": "rca-prompt-v7.1",
+    "evaluator_version": "quality-gate-v8",
+    "retrieval_strategy": "lexical-v1",
+    "model": "openai/gpt-oss-120b",
+    "quality_threshold": 0.85,
+    "max_analysis_iterations": 3,
+    "max_output_tokens": 4096
+  },
+  "metrics": {
+    "cases": 3,
+    "cases_not_evaluated": [],
+    "structured_output_validity": {
+      "value": 1.0,
+      "numerator": 3,
+      "denominator": 3,
+      "definition": "LLM attempts whose reply validated against RCAOutput / LLM attempts (provider errors excluded)"
+    },
+    "category_accuracy": {
+      "value": 1.0,
+      "numerator": 3,
+      "denominator": 3,
+      "definition": "final category == labelled category (or an accepted alternative) / cases labelled conclusive"
+    },
+    "evidence_grounding_accuracy": {
+      "value": 1.0,
+      "numerator": 6,
+      "denominator": 6,
+      "definition": "'observed' quotes found verbatim in their cited source / all 'observed' quotes (final analyses)"
+    },
+    "unsupported_claim_rate": {
+      "value": 0.0,
+      "numerator": 0,
+      "denominator": 9,
+      "definition": "(unverifiable 'observed' quotes + affected files absent from trace/retrieved file) / (all quotes + all affected files)"
+    },
+    "abstention_recall": {
+      "value": null,
+      "numerator": 0,
+      "denominator": 0,
+      "definition": "inconclusive-labelled cases where the model declared insufficient evidence or category 'unknown' / inconclusive-labelled cases"
+    },
+    "inconclusive_not_accepted_rate": {
+      "value": null,
+      "numerator": 0,
+      "denominator": 0,
+      "definition": "inconclusive-labelled cases the quality gate did NOT accept / inconclusive-labelled cases"
+    },
+    "false_abstention_rate": {
+      "value": 0.0,
+      "numerator": 0,
+      "denominator": 3,
+      "definition": "conclusive-labelled cases where the model abstained / conclusive-labelled cases"
+    },
+    "gate_acceptance_rate": {
+      "value": 1.0,
+      "numerator": 3,
+      "denominator": 3,
+      "definition": "cases accepted by the quality gate / evaluated cases"
+    },
+    "false_acceptance_rate": {
+      "value": 0.0,
+      "numerator": 0,
+      "denominator": 3,
+      "definition": "accepted cases that are inconclusive-labelled or have the wrong category / accepted cases"
+    },
+    "relevant_file_hit_rate": {
+      "value": 1.0,
+      "numerator": 3,
+      "denominator": 3,
+      "definition": "cases whose affected_files contain a labelled relevant file / cases with labelled files"
+    },
+    "unsupported_acceptance_rate": {
+      "value": null,
+      "numerator": 0,
+      "denominator": 0,
+      "definition": "unsupported analyses (inconclusive-labelled or with an unverifiable quote) the gate accepted / unsupported analyses"
+    },
+    "workflow_failure_rate": {
+      "value": 0.0,
+      "numerator": 0,
+      "denominator": 3,
+      "definition": "cases ending in workflow status 'failed' (e.g. provider errors) / cases"
+    },
+    "avg_attempts": 1.0,
+    "llm_latency_ms": {
+      "mean": 0,
+      "p95": 0,
+      "samples": 3
+    },
+    "case_wall_ms": {
+      "mean": 4,
+      "p95": 8
+    },
+    "tokens": {
+      "input": null,
+      "output": null,
+      "attempts_with_usage": 0
+    },
+    "estimated_cost_usd": null,
+    "calibration": {
+      "model_confidence": {
+        "samples": 3,
+        "brier": 0.0625,
+        "bins": [
+          {
+            "range": "0.70-0.85",
+            "n": 3,
+            "mean_score": 0.75,
+            "accuracy": 1.0
+          }
+        ]
+      },
+      "quality_score": {
+        "samples": 3,
+        "brier": 0.0002,
+        "bins": [
+          {
+            "range": "0.85-1.00",
+            "n": 3,
+            "mean_score": 0.988,
+            "accuracy": 1.0
+          }
+        ]
+      }
+    },
+    "consistency": null
+  },
+  "results": [
+    {
+      "case_id": "memory-config-default",
+      "expected": {
+        "root_cause_category": "missing_key",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/settings.py"
+        ],
+        "alternative_categories": [],
+        "note": ""
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.9875,
+      "predicted_category": "missing_key",
+      "declared_insufficient": false,
+      "model_confidence": 0.75,
+      "observed_quotes": 2,
+      "grounded_quotes": 2,
+      "affected_files": [
+        "app/settings.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 0,
+          "input_tokens": null,
+          "output_tokens": null,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.9875,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/settings.py\n+++ b/app/settings.py\n@@ -3,4 +3,6 @@\n \n \n def cache_ttl(config):\n+    if \"cache_ttl\" not in config:\n+        raise KeyError(\"cache_ttl is not configured\")\n     return int(config[\"cache_ttl\"])",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.75 (uncalibrated)"
+      },
+      "wall_ms": 8,
+      "run": 1
+    },
+    {
+      "case_id": "memory-ratio-none",
+      "expected": {
+        "root_cause_category": "logic_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/metrics.py"
+        ],
+        "alternative_categories": [],
+        "note": ""
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.9875,
+      "predicted_category": "logic_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.75,
+      "observed_quotes": 2,
+      "grounded_quotes": 2,
+      "affected_files": [
+        "app/metrics.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 0,
+          "input_tokens": null,
+          "output_tokens": null,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.9875,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/metrics.py\n+++ b/app/metrics.py\n@@ -3,4 +3,4 @@\n \n \n def success_rate(ok, total):\n-    return ok / total\n+    return None if total == 0 else ok / total",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.75 (uncalibrated)"
+      },
+      "wall_ms": 2,
+      "run": 1
+    },
+    {
+      "case_id": "memory-lookup-raise",
+      "expected": {
+        "root_cause_category": "null_reference",
+        "inconclusive": false,
+        "relevant_files": [
+          "app/users.py"
+        ],
+        "alternative_categories": [],
+        "note": ""
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.9875,
+      "predicted_category": "null_reference",
+      "declared_insufficient": false,
+      "model_confidence": 0.75,
+      "observed_quotes": 2,
+      "grounded_quotes": 2,
+      "affected_files": [
+        "app/users.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 0,
+          "input_tokens": null,
+          "output_tokens": null,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.9875,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/app/users.py\n+++ b/app/users.py\n@@ -9,4 +9,6 @@\n \n def email_of(users, user_id):\n     user = find_user(users, user_id)\n+    if user is None:\n+        raise LookupError(user_id)\n     return user.email",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.75 (uncalibrated)"
+      },
+      "wall_ms": 3,
+      "run": 1
+    }
+  ]
+}

@@ -41,6 +41,10 @@ provider failures excluded from every rate).
   sandbox is on, and needs an image with pytest and the repository's test plugins. In the 8 live runs with the final wording of the rule, 5 ended
   `reproduced_and_fixed` (4 of 6 on the pilot cases), the rest were tests written backwards, built on guessed constructors,
   or not proposed. A green pair is stronger evidence than "the diff applies"; it is still not proof.
+- **Reviewer memory is a mechanism check, not an effect size.** With the note the model followed it in 9 of 9 runs and without
+  it repeated the rejected patch in 9 of 9, on three synthetic cases built for exactly that. It has not been tested on real
+  review history (there is none yet), on vague notes, or on a note that does not fit the new incident, where applying it
+  would be a mistake.
 - **A passing gate is not a correct fix.** The gate proves structure: grounded quotes, a diff that applies, a patch that
   changes something. It does **not** run the target repository's tests. The PR text says so, and the reviewer decides.
 - **The model sometimes patches the symptom.** When the evidence quotes only a caller, `fix_location` warns but does not

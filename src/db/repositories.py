@@ -14,9 +14,11 @@ from typing import Any
 from sqlalchemy import CursorResult, and_, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 
+from src.config import settings
 from src.db.client import session_scope
 from src.db.models import Incident, RemediationApproval
 from src.retrieval.history import HistoryCandidate, HistoryQuery, rank_lexical, to_prompt_records
+from src.retrieval.review_notes import decision_record
 
 HISTORY_CANDIDATE_LIMIT = 200  # newest eligible incidents per repository considered for ranking
 HISTORY_ELIGIBLE_STATUSES = (
@@ -208,6 +210,26 @@ def _root_cause_summary(analysis: dict[str, Any] | None) -> str:
         return ""
 
 
+def _latest_decisions(incident_ids: list[uuid.UUID], session: Any) -> dict[uuid.UUID, dict[str, str]]:
+    """Latest human decision (approved / rejected, with the note) per incident; incidents nobody decided are absent."""
+    if not incident_ids:
+        return {}
+    stmt = (
+        select(RemediationApproval)
+        .where(
+            RemediationApproval.incident_id.in_(incident_ids),
+            RemediationApproval.status.in_(("approved", "executed", "execution_failed", "rejected")),
+        )
+        .order_by(RemediationApproval.decided_at)
+    )
+    latest: dict[uuid.UUID, dict[str, str]] = {}
+    for approval in session.scalars(stmt):  # oldest first, so the newest decision wins
+        record = decision_record(approval.status, approval.decision_note)
+        if record:
+            latest[approval.incident_id] = record
+    return latest
+
+
 def load_history_candidates(repo_name: str, exclude_id: str | None = None) -> list[HistoryCandidate]:
     """Newest eligible incidents of ONE repository (bounded), newest first."""
     stmt = (
@@ -220,6 +242,7 @@ def load_history_candidates(repo_name: str, exclude_id: str | None = None) -> li
         stmt = stmt.where(Incident.id != uuid.UUID(exclude_id))
     with session_scope() as session:
         rows = list(session.scalars(stmt))
+        decisions = _latest_decisions([row.id for row in rows], session) if settings.history_reviewer_notes else {}
     return [
         HistoryCandidate(
             id=str(row.id),
@@ -234,6 +257,7 @@ def load_history_candidates(repo_name: str, exclude_id: str | None = None) -> li
                 "status": row.status,
                 "pr_url": row.pr_url,
                 "created_at": _iso(row.created_at),
+                "reviewer_decision": decisions.get(row.id),
             },
         )
         for row in rows
