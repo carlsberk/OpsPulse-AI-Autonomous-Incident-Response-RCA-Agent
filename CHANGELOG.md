@@ -6,7 +6,11 @@ All notable changes are listed here. Versions of behaviour-critical components a
 ## [Unreleased]
 
 ### Added
-- **Tamper-evident approval log** (migration `0009`, table `audit_entries`). Every proposal, supersession and decision
+- **Saved heads catch cut-off entries.** `python -m src.services.audit_chain --save-heads heads.json` writes the head hash
+  of every intact chain; later, `--heads heads.json` reports `truncated` (exit 1) when a chain no longer contains the saved
+  point: newest entries removed, an entry rewritten with a recomputed chain, or a whole chain gone. Growth since the file
+  was written is fine. Keep the file where the database administrator cannot write; this repository does not store it.
+
   (approved, rejected, expired, executed, execution failed) is also written as one link of a per-incident hash chain, in
   the same transaction as the state change: each entry holds the SHA-256 of its own fields and of the entry before it.
   `GET /incidents/{id}/audit` now returns `chain` (`none`, `intact`, `broken` or `inconsistent`, the entry count and the head
