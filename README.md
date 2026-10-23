@@ -693,8 +693,15 @@ the same transaction as the state change: each entry stores the SHA-256 of its o
 | `none` | decided before the log existed (or never proposed): nothing to check, **not** a pass |
 
 This detects someone who changes some rows and not all of them. It does not stop a database administrator who rewrites the
-whole table, and removing the newest entries leaves a valid shorter chain: store the `head` hash outside the database if
-that matters to you (nothing here does it for you).
+whole table, and removing the newest entries leaves a valid shorter chain. For that, save the heads somewhere outside the
+database and compare later:
+
+```bash
+python -m src.services.audit_chain --save-heads heads.json   # keep this file elsewhere
+python -m src.services.audit_chain --heads heads.json        # exit 1, status `truncated`, if a chain lost entries
+```
+
+Nothing stores the file for you, and it only covers what existed when you saved it.
 
 ## Sentry integration
 

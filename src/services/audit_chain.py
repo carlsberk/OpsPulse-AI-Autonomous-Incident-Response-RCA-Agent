@@ -9,8 +9,9 @@ chain entry is reported.
 
 What this is, and is not: it detects edits made *after the fact* by someone who changes some rows and not all of them.
 Anyone who can rewrite the whole table (a database administrator) can recompute a consistent chain; the defence is to
-keep the head hash (printed here and returned by the audit endpoint) somewhere they cannot reach. Incidents decided
-before this log existed have no chain and are reported as such, not as intact.
+keep the head hashes somewhere they cannot reach: `--save-heads FILE` writes them, `--heads FILE` later fails (status
+`truncated`) when a chain no longer contains the saved point, which is how cutting off the newest entries shows.
+Incidents decided before this log existed have no chain and are reported as such, not as intact.
 """
 
 from __future__ import annotations
@@ -18,6 +19,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import pathlib
 import uuid
 from datetime import UTC, datetime
 from typing import Any
@@ -89,21 +91,54 @@ def check(entries: list[dict[str, Any]], approvals: list[dict[str, Any]]) -> dic
     return result
 
 
+def against_anchor(entries: list[dict[str, Any]], anchor: dict[str, Any] | None) -> str | None:
+    """A problem if the chain no longer contains the point saved earlier (`{"entries": n, "head": hash}`), else None.
+
+    This is what catches the newest entries being cut off: a shorter chain is internally valid, but it has no entry n
+    with the saved hash. Growth since the anchor is expected and fine."""
+    if not anchor:
+        return None
+    count = int(anchor["entries"])
+    at_anchor = next((e for e in entries if int(e["seq"]) == count), None)
+    if at_anchor is None:
+        return f"the saved anchor had {count} entries, the chain now has {len(entries)}"
+    if at_anchor["entry_hash"] != anchor["head"]:
+        return f"entry {count} no longer has the hash saved in the anchor file"
+    return None
+
+
 def main(argv: list[str] | None = None) -> int:
     from src.db import repositories
 
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--incident", help="check one incident (default: every incident that has a chain)")
+    parser.add_argument(
+        "--save-heads", type=pathlib.Path, help="write each intact chain's head to this file (keep it elsewhere)"
+    )
+    parser.add_argument(
+        "--heads", type=pathlib.Path, help="a file written earlier by --save-heads: fail if a chain lost entries"
+    )
     args = parser.parse_args(argv)
-    ids = [args.incident] if args.incident else repositories.audited_incident_ids()
+    anchors = json.loads(args.heads.read_text(encoding="utf-8")) if args.heads else {}
+    ids = [args.incident] if args.incident else sorted(set(repositories.audited_incident_ids()) | set(anchors))
     bad = 0
+    saved: dict[str, Any] = {}
     for incident_id in ids:
         approvals = repositories.list_approvals(uuid.UUID(str(incident_id)))
-        result = check(repositories.list_audit_entries(incident_id), approvals)
-        bad += result["status"] in ("broken", "inconsistent")
+        entries = repositories.list_audit_entries(incident_id)
+        result = check(entries, approvals)
+        lost = against_anchor(entries, anchors.get(str(incident_id)))
+        if lost and result["status"] in ("intact", "none"):
+            result["status"], result["reason"] = "truncated", lost
+        bad += result["status"] in ("broken", "inconsistent", "truncated")
+        if result["status"] == "intact":
+            saved[str(incident_id)] = {"entries": result["entries"], "head": result["head"]}
         print(f"{incident_id}  {result['status']:<12} entries={result['entries']} head={result['head']}")
         if result["reason"]:
             print(f"    {result['reason']}")
+    if args.save_heads:
+        args.save_heads.write_text(json.dumps(saved, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        print(f"saved {len(saved)} head(s) to {args.save_heads}")
     print(f"{len(ids)} incident(s) checked, {bad} with a problem")
     return 1 if bad else 0
 

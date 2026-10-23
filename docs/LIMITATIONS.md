@@ -73,8 +73,9 @@ provider failures excluded from every rate).
 - **The audit chain detects partial tampering, not a determined administrator.** Proposals and decisions are chained by
   SHA-256 per incident and cross-checked against the approval rows, so editing or deleting an entry, or changing a status
   without a chain entry, is reported. Someone who can rewrite the whole table can recompute a consistent chain, and removing
-  the newest entries leaves a valid shorter chain; only a head hash stored outside the database (the audit response and
-  `python -m src.services.audit_chain` print it) would show that. Nothing stores it for you. The `events` timeline itself is
+  the newest entries leaves a valid shorter chain; only a head hash stored outside the database shows that
+  (`audit_chain --save-heads` writes them, `--heads` compares). Nothing stores or schedules that file for you, and it
+  covers only what existed when it was saved. The `events` timeline itself is
   still derived from rows updated in place, and decisions made before the log existed have no chain.
 - **Cost is `null` unless you set prices.** `LLM_COST_INPUT_PER_MTOK` and `LLM_COST_OUTPUT_PER_MTOK` fill it in; no price is
   assumed.

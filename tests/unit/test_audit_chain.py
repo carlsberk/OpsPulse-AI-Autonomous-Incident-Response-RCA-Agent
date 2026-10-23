@@ -206,3 +206,58 @@ def test_incident_without_a_chain_is_reported_as_none(client, fake_llm, source_f
     created = client.post("/webhook/incident?wait=true", json=incident_payload(), headers=API_HEADERS).json()
     body = client.get(f"/incidents/{created['incident_id']}/audit", headers=REPORTER_HEADERS).json()
     assert body["chain"]["status"] == "none"
+
+
+# ------------------------------------------------------------------ saved heads (catching truncation)
+
+
+def test_anchor_accepts_the_same_and_a_longer_chain():
+    entries = _chain(THREE)
+    anchor = {"entries": 2, "head": entries[1]["entry_hash"]}
+    assert audit_chain.against_anchor(entries, anchor) is None
+    assert audit_chain.against_anchor(entries[:2], anchor) is None
+    assert audit_chain.against_anchor(entries, None) is None
+
+
+def test_anchor_catches_cut_off_newest_entries():
+    entries = _chain(THREE)
+    anchor = {"entries": 3, "head": entries[2]["entry_hash"]}
+    assert audit_chain.verify(entries[:2])["status"] == "intact"  # the chain alone cannot tell
+    assert "3 entries" in audit_chain.against_anchor(entries[:2], anchor)
+
+
+def test_anchor_catches_a_rewritten_chain_of_the_same_length():
+    entries = _chain(THREE)
+    anchor = {"entries": 3, "head": entries[2]["entry_hash"]}
+    rewritten = _chain([("a1", "pending", ""), ("a1", "rejected", "forged"), ("a1", "executed", "")])
+    assert audit_chain.verify(rewritten)["status"] == "intact"
+    assert "no longer has the hash" in audit_chain.against_anchor(rewritten, anchor)
+
+
+def test_cli_saves_heads_and_then_notices_truncation(client, proposal, tmp_path, capsys):  # noqa: F811
+    incident, _ = proposal
+    decide(client, incident)
+    heads = tmp_path / "heads.json"
+    assert audit_chain.main(["--save-heads", str(heads)]) == 0
+    assert audit_chain.main(["--heads", str(heads)]) == 0
+    with session_scope() as session:
+        session.execute(delete(AuditEntry).where(AuditEntry.event == "executed"))
+        session.execute(
+            update(RemediationApproval).values(status="approved")
+        )  # keep rows consistent with the cut chain
+    capsys.readouterr()
+    assert audit_chain.main(["--heads", str(heads)]) == 1
+    out = capsys.readouterr().out
+    assert "truncated" in out and "saved anchor had 3 entries" in out
+
+
+def test_cli_notices_an_incident_whose_whole_chain_vanished(client, proposal, tmp_path, capsys):  # noqa: F811
+    incident, _ = proposal
+    decide(client, incident)
+    heads = tmp_path / "heads.json"
+    audit_chain.main(["--save-heads", str(heads)])
+    with session_scope() as session:
+        session.execute(delete(AuditEntry))
+    capsys.readouterr()
+    assert audit_chain.main(["--heads", str(heads)]) == 1
+    assert "truncated" in capsys.readouterr().out
