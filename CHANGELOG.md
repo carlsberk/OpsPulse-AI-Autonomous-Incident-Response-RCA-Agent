@@ -5,6 +5,27 @@ All notable changes are listed here. Versions of behaviour-critical components a
 
 ## [Unreleased]
 
+### Added
+- **A reproduction test the model writes, run in the sandbox** (prompt `rca-prompt-v7`; needs `SANDBOX_ENABLED=true`). The model
+  may propose one new pytest file that fails with the incident's exception type on the unpatched code and passes after the
+  patch. It is validated as text (a new `test_*.py` path, a test function, no process/network/file/`exec` tools), run
+  before and after the patch in the sandbox, classified (`reproduced_and_fixed`, `reproduced_not_fixed`, `not_reproduced`,
+  `fails_for_another_reason`, `invalid`, `error`, `timeout`) and reported to the reviewer (a "Test evidence" card in the
+  console, the PR text). "Reproduced" requires the incident's exception to be the one that ends the test, so a test that
+  dies of its own bug is not a reproduction. It is evidence only: never merged, never replaces the diff, and the model wrote
+  both the test and the fix. A malformed `reproduction_test` becomes `null`; it never costs the analysis.
+- The console shows the sandbox result and the reproduction test (as text) in a new "Test evidence" card.
+- `python -m evals.repro_eval`: how good the model's tests are, with the live model and the real sandbox. First measurement
+  ([report](evals/results/REPRO-EVAL-2026-10-23.md), 14 runs in total): 4 of 6 pilot runs `reproduced_and_fixed` with the final rule
+  wording vs 1 of 6 with the first; the failures were tests written backwards and guessed constructors, and a classifier
+  that was too loose (now stricter).
+- Real-Docker integration tests for the reproduction (a genuine reproduction, a test that fails for another reason, a test
+  that passes on the unpatched code, a hostile test refused before it runs).
+
+### Fixed
+- `evals/pilot_real_repo.py` crashed on import since 1.4.0: a field inserted in the middle of its `Mutation` dataclass
+  shifted every positional call. A test now keeps the table importable.
+
 ## [1.6.0] - 2026-10-22
 
 Analyse the code that was actually deployed, and show the reviewer which code that was. One feature, backward compatible:

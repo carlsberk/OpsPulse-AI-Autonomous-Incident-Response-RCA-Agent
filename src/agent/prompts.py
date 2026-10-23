@@ -57,6 +57,14 @@ OUTPUT_SCHEMA_EXAMPLE: dict[str, Any] = {
     "uncertainties": ["what the supplied data does not show"],
     "tests_to_run": ["a concrete test that would confirm or refute the fix"],
     "control_flow": {"self_assessed_confidence": 0.6, "needs_human_review": False, "evidence_sufficient": True},
+    # Optional. Evidence only: it is run in an isolated sandbox, never merged, and never replaces the diff.
+    "reproduction_test": {
+        "path": "tests/test_regression_incident.py",
+        "content": (
+            "from app.module import failing_function\n\n\ndef test_reproduces_the_incident():\n"
+            "    failing_function(None)  # raises the same exception as the incident, before the fix\n"
+        ),
+    },
 }
 
 RCA_SYSTEM_PROMPT = (
@@ -92,6 +100,17 @@ historical_incidents and "quote" must be copied character-for-character from tha
 - "affected_files" may only list files that appear in the stack trace or in <AFFECTED_FILE>.
 - If the data is insufficient to identify a root cause, set "evidence_sufficient" to false, explain what is \
 missing in "uncertainties", leave "unified_diff" empty and set "needs_human_review" to true.
+- "reproduction_test" is OPTIONAL evidence: one NEW pytest file with a test that calls the failing code from \
+<CODE_CONTEXT> with the input the trace implies and ASSERTS THE CORRECT BEHAVIOUR. On the unpatched code it must \
+fail with the SAME exception type as the incident; after your patch it must pass. Do NOT wrap the buggy call in \
+pytest.raises of the incident's exception: such a test passes before the fix and proves nothing. Only construct \
+objects whose classes you were shown; if the function only reads attributes or keys, pass a plain stand-in \
+(types.SimpleNamespace, a dict). If it needs a class, database, network or fixture you were not shown, set \
+"reproduction_test" to null instead of guessing its constructor. Import the module by its path in the repository \
+(derive it from the file path), use only the standard library and pytest, and do not use the network, files, \
+processes or sleeping. A new file under "tests/" named test_*.py; at most 30 lines. It is run in an isolated \
+sandbox and shown to a reviewer; it is never merged and never replaces "unified_diff". A null test is a good answer \
+when you cannot write a faithful one.
 - "self_assessed_confidence" is your subjective estimate, not a probability. Be conservative.
 - "uncertainties" is NEVER empty: there is always something you could not verify (at minimum, that the proposed \
 fix has not been executed or tested).

@@ -141,6 +141,24 @@ def _tests_notice(sandbox: Any) -> str:
     )
 
 
+_REPRODUCTION_WORDS = {
+    "reproduced_and_fixed": "reproduced the incident's exception before the patch and passed after it",
+    "not_reproduced": "did not reproduce the incident (it passes on the unpatched code)",
+    "reproduced_not_fixed": "reproduced the incident's exception, and still fails after the patch",
+    "fails_for_another_reason": "failed on the unpatched code, but not with the incident's exception",
+}
+
+
+def _reproduction_line(sandbox: Any) -> str:
+    report = sandbox.get("reproduction") if isinstance(sandbox, dict) else None
+    if not isinstance(report, dict) or report.get("status") not in _REPRODUCTION_WORDS:
+        return ""
+    return (
+        f"- **Reproduction test (written by the model, run in the sandbox, not part of this PR):** "
+        f"{_REPRODUCTION_WORDS[report['status']]}. The model wrote both the test and the fix: read the test too."
+    )
+
+
 def build_pull_request_body(fix: ProposedFix, reviewer: str | None = None) -> str:
     analysis = fix.analysis
     summary = analysis.get("incident_summary") or {}
@@ -169,6 +187,7 @@ def build_pull_request_body(fix: ProposedFix, reviewer: str | None = None) -> st
             "",
             f"- **Incident ID:** `{fix.incident_id}`",
             _revision_line(analysis),
+            _reproduction_line(analysis.get("sandbox")),
             f"- **Title:** {_untrusted(summary.get('title'), 200)}",
             f"- **Root-cause category (model-assigned):** {_untrusted(analysis.get('root_cause_category'), 40)}",
             f"- **Trigger frame:** `{_untrusted(summary.get('trigger_frame'), 200)}`",

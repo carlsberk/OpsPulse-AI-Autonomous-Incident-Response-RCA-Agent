@@ -40,9 +40,9 @@ class Mutation:
     scenario: str
     category: str
     fix_files: tuple[str, ...]  # where a correct fix belongs (labelled truth)
-    alternatives: tuple[str, ...] = ()  # other categories a reviewer would accept for the same failure
     edits: tuple[Edit, ...] = field(default_factory=tuple)
     trigger: str = ""  # python snippet reproducing a realistic crash when the repository's own tests do not reach it
+    alternatives: tuple[str, ...] = ()  # other categories a reviewer would accept for the same failure
 
 
 MUTATIONS = (

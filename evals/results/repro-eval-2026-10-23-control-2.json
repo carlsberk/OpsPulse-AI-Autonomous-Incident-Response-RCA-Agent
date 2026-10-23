@@ -1,0 +1,32 @@
+{
+  "run_at": "2026-10-23T09:58:55.974403+00:00",
+  "dataset": "callers",
+  "run_metadata": {
+    "agent_version": "1.6.0-opspulse",
+    "prompt_version": "rca-prompt-v7",
+    "evaluator_version": "quality-gate-v8",
+    "retrieval_strategy": "lexical-v1",
+    "model": "openai/gpt-oss-120b",
+    "quality_threshold": 0.85,
+    "max_analysis_iterations": 3,
+    "max_output_tokens": 4096
+  },
+  "counts": {
+    "reproduced_and_fixed": 1
+  },
+  "rows": [
+    {
+      "case_id": "control-cause-in-trigger",
+      "workflow_status": "accepted",
+      "patch": true,
+      "wall_ms": 21857,
+      "reproduction_test": {
+        "path": "tests/test_tile_zero_division.py",
+        "content": "from app.dashboard import tile\n\ndef test_tile_returns_zero_for_empty_metrics():\n    # metrics list empty -> values list empty -> safe_mean should return 0\n    assert tile([]) == 0"
+      },
+      "outcome": "reproduced_and_fixed",
+      "summary": "the test raises the incident's ZeroDivisionError before the patch and passes after it",
+      "before_tail": "es) / len(values)\n               ^^^^^^^^^^^^^^^^^^^^^^^^^\nE       ZeroDivisionError: division by zero\n\napp/stats.py:2: ZeroDivisionError\n=========================== short test summary info ============================\nFAILED tests/test_tile_zero_division.py::test_tile_returns_zero_for_empty_metrics\n!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!\n1 failed in 0.02s\n"
+    }
+  ]
+}

@@ -9,6 +9,8 @@ it reports what the repository's own tests did, and the reviewer decides.
 from __future__ import annotations
 
 import logging
+import re
+import shlex
 import shutil
 import subprocess
 import tempfile
@@ -18,6 +20,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+from src.agent import reproduction as repro
 from src.agent.patching import PatchError, apply_unified_diff
 from src.config import settings
 from src.integrations.github import GitHubError, download_repository_snapshot
@@ -40,6 +43,17 @@ class SandboxRun:
 
 
 @dataclass(frozen=True)
+class ReproductionReport:
+    # reproduced_and_fixed | not_reproduced | reproduced_not_fixed | fails_for_another_reason | invalid
+    # | error | timeout
+    status: str
+    summary: str
+    path: str | None = None
+    before: SandboxRun | None = None
+    after: SandboxRun | None = None
+
+
+@dataclass(frozen=True)
 class SandboxReport:
     # fixes_failing_tests | no_regression | still_failing | regression | timeout | error | unavailable
     status: str
@@ -47,14 +61,15 @@ class SandboxReport:
     commit_sha: str | None = None
     before: SandboxRun | None = None
     after: SandboxRun | None = None
+    reproduction: ReproductionReport | None = None
 
     def as_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 
-def build_docker_command(name: str, checkout: Path) -> list[str]:
+def build_docker_command(name: str, checkout: Path, command: str | None = None) -> list[str]:
     memory = f"{settings.sandbox_memory_mb}m"
-    script = f"cp -r /src /tmp/work && cd /tmp/work && {settings.sandbox_command}"
+    script = f"cp -r /src /tmp/work && cd /tmp/work && {command or settings.sandbox_command}"
     return [
         "docker", "run", "--rm", "--name", name,
         "--network", "none",
@@ -79,9 +94,10 @@ def _docker_runner(argv: list[str], timeout: int) -> tuple[int | None, str]:
     return done.returncode, done.stdout + done.stderr
 
 
-def _run(checkout: Path, runner: Runner) -> SandboxRun:
+def _run(checkout: Path, runner: Runner, command: str | None = None) -> SandboxRun:
     code, output = runner(
-        build_docker_command(f"opspulse-sandbox-{uuid.uuid4().hex[:12]}", checkout), settings.sandbox_timeout_seconds
+        build_docker_command(f"opspulse-sandbox-{uuid.uuid4().hex[:12]}", checkout, command),
+        settings.sandbox_timeout_seconds,
     )
     return SandboxRun(code, redact(output)[-OUTPUT_TAIL_CHARS:])
 
@@ -116,12 +132,74 @@ def classify(before: SandboxRun, after: SandboxRun) -> tuple[str, str]:
     return "still_failing", "tests fail both before and after the patch"
 
 
+def _raised(error_name: str, output: str) -> bool:
+    """pytest reports the exception that ended the test as an `E   Name: message` line or as `path:line: Name`. Merely
+    *mentioning* the name (in a source line, a docstring, another traceback) does not count: a test that dies of an
+    AttributeError of its own making must not be called a reproduction of a KeyError because the word appears."""
+    name = re.escape(error_name)
+    on_e_line = rf"(?m)^E\s+(?:[\w.]+\.)?{name}\b"
+    on_location_line = rf"(?m)^[\w./\\-]+:\d+: (?:[\w.]+\.)?{name}\b"
+    return bool(re.search(on_e_line, output) or re.search(on_location_line, output))
+
+
+def classify_reproduction(before: SandboxRun, after: SandboxRun, expected_error: str | None) -> tuple[str, str]:
+    """What the model's reproduction test shows. "Reproduced" needs the incident's own exception type in the failing
+    run: a test that fails because of a typo or a wrong import has not reproduced anything."""
+    if before.exit_code is None or after.exit_code is None:
+        return "timeout", f"the reproduction test did not finish within {settings.sandbox_timeout_seconds}s"
+    if (
+        before.exit_code in DOCKER_ERROR_CODES
+        or after.exit_code in DOCKER_ERROR_CODES
+        or _environment_problem(before, after)
+    ):
+        return "error", "the sandbox image cannot run the reproduction test (see SANDBOX_IMAGE)"
+    if before.exit_code == 0:
+        return "not_reproduced", "the test passes on the unpatched code, so it does not reproduce the incident"
+    if not expected_error:
+        return (
+            "fails_for_another_reason",
+            "the incident's exception type is unknown, so a failure cannot be matched to it",
+        )
+    if not _raised(expected_error, before.output_tail):
+        return (
+            "fails_for_another_reason",
+            f"the test fails on the unpatched code, but not with the incident's {expected_error}",
+        )
+    if after.exit_code == 0:
+        return (
+            "reproduced_and_fixed",
+            f"the test raises the incident's {expected_error} before the patch and passes after it",
+        )
+    return "reproduced_not_fixed", f"the test raises the incident's {expected_error}, and still fails after the patch"
+
+
+def _reproduce(base: Path, patched: Path, spec: repro.ReproductionSpec, runner: Runner) -> ReproductionReport:
+    problem = repro.validate(spec)
+    if problem:
+        return ReproductionReport("invalid", f"the reproduction test was not run: {problem}", spec.path)
+    for checkout in (base, patched):
+        target = checkout / spec.path
+        if not target.parent.resolve().is_relative_to(checkout.resolve()) or target.exists():
+            return ReproductionReport(
+                "invalid", "the reproduction test must be a new file inside the repository", spec.path
+            )
+    for checkout in (base, patched):
+        target = checkout / spec.path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(spec.content, encoding="utf-8")
+    command = f"{settings.sandbox_command} {shlex.quote(spec.path)}"
+    before, after = _run(base, runner, command), _run(patched, runner, command)
+    status, summary = classify_reproduction(before, after, spec.expected_error)
+    return ReproductionReport(status, summary, spec.path, before, after)
+
+
 def run_patch_in_sandbox(
     repo_name: str,
     file_path: str,
     unified_diff: str,
     runner: Runner = _docker_runner,
     snapshot: Snapshot = download_repository_snapshot,
+    reproduction: repro.ReproductionSpec | None = None,
 ) -> SandboxReport:
     """Never raises: any failure becomes a report whose status is `error` or `unavailable`."""
     if runner is _docker_runner and shutil.which("docker") is None:
@@ -137,8 +215,13 @@ def run_patch_in_sandbox(
                 return SandboxReport("error", "the patched file is not in the repository snapshot", sha)
             target.write_text(apply_unified_diff(target.read_text(encoding="utf-8"), unified_diff), encoding="utf-8")
             before, after = _run(base, runner), _run(patched, runner)
+            status, summary = classify(before, after)
+            reproduced = (
+                _reproduce(base, patched, reproduction, runner)
+                if reproduction is not None and status not in ("error", "timeout")
+                else None
+            )
         except (GitHubError, PatchError, OSError, ValueError) as exc:
             logger.warning("sandbox run failed: %s", type(exc).__name__)
             return SandboxReport("error", f"sandbox run failed: {redact(str(exc))[:200]}")
-    status, summary = classify(before, after)
-    return SandboxReport(status, summary, sha, before, after)
+    return SandboxReport(status, summary, sha, before, after, reproduced)

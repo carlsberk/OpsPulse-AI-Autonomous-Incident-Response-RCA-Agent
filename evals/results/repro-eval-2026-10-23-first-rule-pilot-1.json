@@ -1,0 +1,60 @@
+{
+  "run_at": "2026-10-23T09:56:08.210913+00:00",
+  "dataset": "pilot.json",
+  "run_metadata": {
+    "agent_version": "1.6.0-opspulse",
+    "prompt_version": "rca-prompt-v7",
+    "evaluator_version": "quality-gate-v8",
+    "retrieval_strategy": "lexical-v1",
+    "model": "openai/gpt-oss-120b",
+    "quality_threshold": 0.85,
+    "max_analysis_iterations": 3,
+    "max_output_tokens": 4096
+  },
+  "counts": {
+    "reproduced_not_fixed": 1,
+    "fails_for_another_reason": 1,
+    "not_reproduced": 1
+  },
+  "rows": [
+    {
+      "case_id": "finding-codes-missing-key",
+      "workflow_status": "accepted",
+      "patch": true,
+      "wall_ms": 5345,
+      "reproduction_test": {
+        "path": "tests/test_finding_codes_correctness.py",
+        "content": "import asyncio\nfrom app.evaluators.deterministic.finding_codes import FindingCodesCorrectnessEvaluator\nfrom app.core.schemas import EvaluationCase, EvaluationResult, SystemExecution\n\nclass DummyCase(EvaluationCase):\n    def __init__(self):\n        self.expected_output = {\"must_include_finding_codes\": []}\n\nclass DummyExecution(SystemExecution):\n    def __init__(self):\n        self.output = {}\n\nasync def run_test():\n    evaluator = FindingCodesCorrectnessEvaluator()\n    case = DummyCase()\n    execution = DummyExecution()\n    result: EvaluationResult = await evaluator.evaluate(case, execution)\n    assert isinstance(result, EvaluationResult)\n    assert result.passed is True\n\ndef test_evaluator_handles_missing_findings():\n    asyncio.run(run_test())"
+      },
+      "outcome": "reproduced_not_fixed",
+      "summary": "the test raises the incident's KeyError, and still fails after the patch",
+      "before_tail": "e' object has no attribute '__pydantic_fields_set__'\n\n/usr/local/lib/python3.11/site-packages/pydantic/main.py:1102: AttributeError\n=========================== short test summary info ============================\nFAILED tests/test_finding_codes_correctness.py::test_evaluator_handles_missing_findings\n!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!\n1 failed in 0.28s\n"
+    },
+    {
+      "case_id": "field-accuracy-empty-division",
+      "workflow_status": "accepted",
+      "patch": true,
+      "wall_ms": 42175,
+      "reproduction_test": {
+        "path": "tests/test_field_accuracy_zero_division.py",
+        "content": "import pytest\nfrom app.evaluators.deterministic.field_accuracy import DocumentFieldAccuracyEvaluator\nfrom app.core.schemas import EvaluationCase, EvaluationResult, SystemExecution\n\n@pytest.mark.asyncio\nasync def test_division_by_zero_handled():\n    evaluator = DocumentFieldAccuracyEvaluator()\n    case = EvaluationCase(input={}, expected_output={})\n    execution = SystemExecution(output={})\n    result: EvaluationResult = await evaluator.evaluate(case, execution)\n    assert result.score == 0.0"
+      },
+      "outcome": "fails_for_another_reason",
+      "summary": "the test fails on the unpatched code, but not with the incident's ZeroDivisionError",
+      "before_tail": "   For further information visit https://errors.pydantic.dev/2.14/v/missing\n\ntests/test_field_accuracy_zero_division.py:8: ValidationError\n=========================== short test summary info ============================\nFAILED tests/test_field_accuracy_zero_division.py::test_division_by_zero_handled\n!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!\n1 failed in 0.11s\n"
+    },
+    {
+      "case_id": "retrieval-k-default-dropped",
+      "workflow_status": "accepted",
+      "patch": true,
+      "wall_ms": 5738,
+      "reproduction_test": {
+        "path": "tests/test_retrieval_evaluator.py",
+        "content": "import pytest\nfrom app.evaluators.deterministic.retrieval_metrics import RecallAtKEvaluator\n\n@pytest.mark.asyncio\nasync def test_recall_evaluator_missing_k_raises_typeerror_before_fix():\n    # Minimal case and execution objects\n    case = type('Case', (), {'expected_output': {'relevant_document_ids': ['doc1']}})()\n    execution = type('Exec', (), {'output': {'retrieved_documents': [{'id': 'doc1'}]}})()\n    evaluator = RecallAtKEvaluator()\n    evaluator.config = {}  # 'k' missing\n    # The call should raise TypeError before the fix\n    with pytest.raises(TypeError):\n        await evaluator.evaluate(case, execution)"
+      },
+      "outcome": "not_reproduced",
+      "summary": "the test passes on the unpatched code, so it does not reproduce the incident",
+      "before_tail": ".                                                                        [100%]\n1 passed in 0.08s\n"
+    }
+  ]
+}
