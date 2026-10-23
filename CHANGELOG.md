@@ -6,6 +6,13 @@ All notable changes are listed here. Versions of behaviour-critical components a
 ## [Unreleased]
 
 ### Added
+- `python -m evals.history_real_repo build|verify`: a dataset built from a real repository's bug-fix history instead of
+  injected bugs. A case is a commit that fixed a bug and added a test; the parent plus that test is the incident, and only
+  commits where the real fix turns the test green are kept. `verify` applies the model's patch to the parent and runs the
+  real regression test. The category label is a heuristic from the exception type.
+- Reliability reports show 95 % Wilson intervals next to every rate.
+- The live holdout result for prompt v7.1 (`evals/results/`), with the honest reading in `docs/LIMITATIONS.md`: no evidence
+  that v7.1 is better or worse than v6.
 - `python -m scripts.pilot_check [--online]`: tells you what blocks a first pilot (missing token, remediation or approval
   switched off, no reviewer identity, repository not allow-listed, unmigrated database, a token that cannot push, no Docker
   image for the sandbox) and what is only a warning. It prints setting names, never values; exit 1 while something blocks.

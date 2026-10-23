@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import pathlib
 import statistics
 from collections import defaultdict
@@ -94,6 +95,25 @@ def _tokens(run: dict[str, Any]) -> int:
 
 def _rate(part: int, whole: int) -> str:
     return f"{part}/{whole}" if whole else "n/a"
+
+
+def wilson_interval(part: int, whole: int, z: float = 1.96) -> tuple[float, float]:
+    """95 % Wilson score interval for a proportion. Valid for small samples and for 0 or all successes."""
+    if whole <= 0:
+        return 0.0, 1.0
+    p = part / whole
+    denom = 1 + z * z / whole
+    centre = (p + z * z / (2 * whole)) / denom
+    half = z * math.sqrt(p * (1 - p) / whole + z * z / (4 * whole * whole)) / denom
+    return max(0.0, centre - half), min(1.0, centre + half)
+
+
+def _rate_ci(part: int, whole: int) -> str:
+    """`9/11 (48-98%)`: the count with its 95 % Wilson interval."""
+    if not whole:
+        return "n/a"
+    low, high = wilson_interval(part, whole)
+    return f"{part}/{whole} ({low * 100:.0f}-{high * 100:.0f}%)"
 
 
 def per_case(report: dict[str, Any]) -> dict[str, dict[str, Any]]:
@@ -189,6 +209,10 @@ def _header(candidate: dict[str, Any], source: str, total_runs: int, skipped: in
         f"- Evaluated runs: {total_runs}; **not evaluated** (provider quota/timeout, in no rate): {skipped}",
         f"- Estimated cost: {f'${cost}' if cost is not None else 'n/a (no prices configured: LLM_COST_*_PER_MTOK)'}",
     ]
+    lines.append(
+        "- Ranges are 95 % Wilson intervals. Repeated runs of one case are not independent, "
+        "so with `--repeat` they are narrower than the truth."
+    )
     if total_runs < SMALL_SAMPLE:
         lines.append(f"- **Small sample ({total_runs} evaluated runs): read these as counts, not as rates.**")
     return lines
@@ -206,9 +230,10 @@ def _class_table(classes: dict[str, dict[str, Any]]) -> list[str]:
     for name, c in classes.items():
         r = c["runs"]
         out.append(
-            f"| {name} | {c['cases']} | {r} | {_rate(c['accepted'], r)} | {_rate(c['correct'], r)} "
-            f"| {_rate(c['patch_kept'], r)} | {_rate(c['false_accepted'], r)} | {_rate(c['false_rejected'], r)} "
-            f"| {_rate(c['unsafe_accepted'], r)} | {_rate(c['grounded_quotes'], c['observed_quotes'])} "
+            f"| {name} | {c['cases']} | {r} | {_rate_ci(c['accepted'], r)} | {_rate_ci(c['correct'], r)} "
+            f"| {_rate_ci(c['patch_kept'], r)} | {_rate_ci(c['false_accepted'], r)} "
+            f"| {_rate_ci(c['false_rejected'], r)} "
+            f"| {_rate_ci(c['unsafe_accepted'], r)} | {_rate_ci(c['grounded_quotes'], c['observed_quotes'])} "
             f"| {c['attempts'] / r if r else 0:.1f} | {c['stable']}/{c['cases']} "
             f"| {c['latency_ms']:.0f} | {c['tokens']:.0f} |"
         )
