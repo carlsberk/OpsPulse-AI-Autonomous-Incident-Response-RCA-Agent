@@ -6,6 +6,9 @@ All notable changes are listed here. Versions of behaviour-critical components a
 ## [Unreleased]
 
 ### Changed
+- CI hardening: every workflow action is pinned to a full commit SHA (the tag stays in a comment; Dependabot updates both),
+  test workflows no longer keep the checkout token (`persist-credentials: false`), and `tests/unit/test_workflows.py` fails if
+  an action is unpinned or a workflow loses its `permissions`. CONTRIBUTING lists the repository settings the code cannot enforce.
 - README brought up to 1.8.0: current gate, features (sandbox, commit pinning, reviewer memory, audit chain), live results and
   limits in the "At a glance" table, CI jobs, coverage and verified versions.
 
