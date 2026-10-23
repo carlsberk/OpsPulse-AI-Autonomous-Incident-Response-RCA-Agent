@@ -5,6 +5,10 @@ All notable changes are listed here. Versions of behaviour-critical components a
 
 ## [Unreleased]
 
+### Added
+- Runbook: a checklist for a first real pilot on a test repository (token scope, configuration, how many failures to report,
+  deciding them as a reviewer, and the two commands that measure the result).
+
 ### Fixed
 - Documentation: the README quoted 245 and 320 tests and the 1.8.0 notes said the audit log was not run on PostgreSQL. The
   CI "postgres" job runs migration `0009`, its downgrade round trip and the whole suite (including the audit chain tests)
