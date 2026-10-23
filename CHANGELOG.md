@@ -5,6 +5,10 @@ All notable changes are listed here. Versions of behaviour-critical components a
 
 ## [Unreleased]
 
+### Changed
+- README brought up to 1.8.0: current gate, features (sandbox, commit pinning, reviewer memory, audit chain), live results and
+  limits in the "At a glance" table, CI jobs, coverage and verified versions.
+
 ### Added
 - Runbook: a checklist for a first real pilot on a test repository (token scope, configuration, how many failures to report,
   deciding them as a reviewer, and the two commands that measure the result).
