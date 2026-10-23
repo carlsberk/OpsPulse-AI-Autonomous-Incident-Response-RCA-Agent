@@ -20,7 +20,7 @@ integer (`TypeError`). Alertmanager reports it; the worker analyses it; a review
   "request_id": "fb125e79bb3749b290522c05bdbae3ac",
   "status": "awaiting_approval",
   "versions": {
-    "agent_version": "1.7.0-opspulse",
+    "agent_version": "1.8.0-opspulse",
     "prompt_version": "rca-prompt-v7.1",
     "evaluator_version": "quality-gate-v8",
     "retrieval_strategy": "lexical-v1",
