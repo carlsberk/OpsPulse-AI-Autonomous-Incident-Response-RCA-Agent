@@ -11,7 +11,8 @@ caveats**, and what it has **not shown at all**.
 - **Totality under hostile input**: structure-aware fuzzing of the schema check, the quality gate, the workflow, the
   assistant and the console helpers found no unhandled state in the final code. It did find real defects earlier, which are
   fixed and listed in the [changelog](../CHANGELOG.md).
-- 674 tests, about 95 % line coverage, strict type checking.
+- About 680 tests, about 95 % line coverage, strict type checking. The whole suite and the migration round trip also run on
+  a PostgreSQL 16 service container in CI (not on a managed or production database).
 
 ## Measured, with caveats
 
