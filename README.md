@@ -14,7 +14,8 @@ which waits for an **explicit human approval** and is never merged automatically
 
 > **What it is not:** an autonomous bug fixer. The quality gate verifies that an analysis is *well-formed and
 > grounded in the data that was actually retrieved*, and that the patch *applies*. It does not prove a fix is
-> correct. No tests of the target repository are executed by the service.
+> correct. By default no tests of the target repository are executed; an optional Docker sandbox can run them, and
+> a regression test the model writes, before a human decides. That is more evidence, still not proof.
 
 ---
 
@@ -28,16 +29,22 @@ caveats in [Evaluation](#evaluation)):
 | | Result | Where |
 |---|---|---|
 | Live model, 26 tuning cases (`gpt-oss-120b`, prompt v4) | category 18/22, quotes verified 52/52, 4/4 inconclusive cases not accepted, 1.31 attempts/case | [Live results](#live-results-openaigpt-oss-120b-on-groq-2026-10-09) |
-| Held-out set (never used for tuning) | 7/12 evaluated live so far (7/7 correct); 5 pending a provider quota | [Held-out](#live-results-openaigpt-oss-120b-on-groq-2026-10-09) |
+| Held-out set (never used for tuning; prompt v6, 1 run) | category 9/10 under the old label, 0 invented quotes (25/25 verified) | [Held-out](#live-results-openaigpt-oss-120b-on-groq-2026-10-09) |
+| Caller-vs-callee set (prompt v6.1, 3 runs per case) | category 13/13, correct fix file 13/13; the control case accepted 2/2 | [Limitations](docs/LIMITATIONS.md) |
+| Real public repository, 4 injected bugs, 3 runs | correct fix file 12/12, 0 invented quotes (bugs are injected, so easier than real incidents) | [Limitations](docs/LIMITATIONS.md) |
+| Reproduction test written by the model, run in the sandbox | 4 of 6 pilot runs `reproduced_and_fixed`; the model writes both the test and the fix | [Test evidence](#test-evidence-the-sandbox-and-a-reproduction-test) |
+| Reviewer memory (earlier reviewer note shown to the model) | note followed 9/9 vs rejected patch repeated 9/9 without it; synthetic cases, a mechanism check only | [Learning from reviewers](#learning-from-reviewers) |
 | Smaller / other models, same cases | `gpt-oss-20b` 14/22 and more false acceptances; `qwen3.8-27b` only 9 cases evaluable (rate limits) | [Model comparison](#live-results-openaigpt-oss-120b-on-groq-2026-10-09) |
 | Adversarial set (bait: fabricated lines, foreign files, injected "approve" text ...) | all bait rejected by the gate in mock mode; one *documented* blind spot is accepted; live: no bait taken (6/8 cases) | [Regression gate](#regression-gate-adversarial-set-and-calibration) |
 | Retrieval (`lexical-v1` vs fingerprint baseline) | recall@3 0.46 -> 0.93, MRR 0.56 -> 1.0, 0 cross-repository leaks | [Retrieval](#retrieval) |
 | End to end, real bug, live model | failing test -> accepted analysis -> patch applied in a sandbox -> tests pass (one run) | [Demo](#demo) |
 
 **Known limits, stated up front:** the gate proves grounding and applicability, not correctness; a grounded but wrong
-diagnosis can be accepted (documented blind spot); the fix is limited to the failing file; no tests of the target
-repository are run by the service; Sentry, Alertmanager, GitHub PR creation and Langfuse were exercised through
-fakes, not against live services. See [Known limitations](#known-limitations).
+diagnosis can be accepted (documented blind spot); the fix is limited to the failing file; the sandbox that runs the
+target repository's tests is opt-in and only lightly proven; there is no production use and no real review history yet;
+Sentry, Alertmanager and Langfuse were exercised through fakes, and GitHub PR creation through a fake plus one run on a
+private toy repository. Every live number comes from one provider tier and small samples. See
+[Known limitations](#known-limitations) and [what is proven and what is not](docs/LIMITATIONS.md).
 
 ## Command line
 
@@ -83,12 +90,16 @@ publishes a GitHub Release using that version's section of `CHANGELOG.md` as its
 | Integrations | Sentry issue-alert webhooks (`POST /integrations/sentry`, HMAC-verified, project -> repository mapping, idempotent per event); Prometheus Alertmanager receiver (`POST /integrations/alertmanager`, Bearer API key, idempotent per alert) |
 | Context | Stack-trace parsing (Python, JS, Java, Go), GitHub source window around the failing line, ranked same-repository history |
 | Analysis | Groq (`openai/gpt-oss-120b` by default; `llama-3.3-70b-versatile` is no longer served) in JSON mode, validated by a Pydantic schema; every evidence item labelled *observed / inference / hypothesis* |
-| Quality gate | Deterministic, weighted checks with *blocking* checks: schema, trigger frame, **verbatim evidence quotes**, file grounding, patch applies to retrieved source, locality, size |
+| Quality gate | Deterministic (`quality-gate-v8`), weighted checks; *blocking*: schema, trigger grounding, **verbatim evidence quotes**, trace/code consistency, well-formed diff, diff applies to the retrieved source, patch changes something; `fix_location` warns the reviewer |
 | Review console | `/console`: incident list, evidence, gate breakdown, coloured diff, approve/reject - strict CSP, no `innerHTML` |
 | Remediation | Opt-in; policy-checked single-file diff; **human approval bound to the patch SHA-256 by an authenticated reviewer other than the submitter (four-eyes)**; deterministic branch per failure; duplicate-PR guard; draft PRs |
+| Test evidence | Opt-in Docker sandbox (no network, read-only root, no capabilities, unprivileged user, resource caps): the repository's tests before and after the patch, plus a regression test the model writes; a patch that breaks passing tests goes to review. Verified against a real Docker daemon on Windows and in Linux CI |
+| Deployed code | An incident can carry the deployed `commit_sha`; source and caller windows are read at that commit, never silently at the head |
+| Learning from reviewers | Earlier approve/reject decisions and notes on similar incidents are shown to the model as labelled history; `review_outcomes` reports what reviewers decided per version |
+| Audit | Per-incident review timeline plus a **hash-chained, append-only approval log** checked against the approval rows (`python -m src.services.audit_chain`, saved heads detect cut-off entries); detects partial tampering, not a determined administrator |
 | Persistence | PostgreSQL/Neon via SQLAlchemy 2, Alembic migrations, failure taxonomy (`error_category`) |
 | Observability | Structured JSON logs with incident correlation and secret redaction; Langfuse v4 traces with content masking by default; Prometheus `/metrics` (content-free labels) |
-| Evaluation | 26-case synthetic RCA dataset, deterministic metrics, mock and live modes; labelled retrieval dataset comparing two ranking strategies |
+| Evaluation | Synthetic RCA datasets (tuning, holdout, adversarial, callers, reviewer memory), deterministic metrics, mock and live modes, a CI regression gate against committed baselines, a per-class reliability report, a pilot on injected bugs in a real repository; labelled retrieval dataset comparing two ranking strategies |
 | Delivery | about 680 offline unit tests (SQLite locally, the same suite and the migrations on PostgreSQL 16 in CI), opt-in live tests, GitHub Actions, Dockerfile + Compose, reproducible demo, ADRs |
 
 ## Architecture
@@ -1031,7 +1042,7 @@ stack traces or connection strings. Re-sending a request with the same `incident
 
 ```bash
 pytest                               # about 680 offline tests (SQLite, fakes for Groq/GitHub/Langfuse; includes property-based tests)
-pytest --cov=src --cov=evals         # coverage (86% total at time of writing; CI enforces a floor of 84%)
+pytest --cov=src --cov=evals         # coverage (about 95% total at time of writing; CI enforces a floor of 84%)
 python -m evals.ask_eval --mode mock # incident-assistant evaluation (offline)
 ruff check src tests evals scripts migrations && ruff format --check src tests evals scripts migrations
 mypy                                 # src/
@@ -1047,16 +1058,18 @@ Alembic migrations vs. models, Langfuse enabled/disabled/broken, log redaction, 
 the four-eyes rule, rate limiting, queue claims/lease expiry/worker resilience, Sentry signatures and payload
 translation, listing/pagination, Prometheus labels, and the console's CSP and absence of unsafe DOM sinks.
 
-`.github/workflows/ci.yml` (no secrets, `contents: read`) has four jobs:
+`.github/workflows/ci.yml` (no secrets, `contents: read`) has five jobs:
 
 - **python-versions** - the unit tests on Python 3.12 and 3.13 (the image uses 3.11);
-- **quality** - ruff, format check, mypy, import smoke test, unit tests with coverage, mock evaluation of three
+- **quality** - ruff, format check, mypy, import smoke test, unit tests with coverage, mock evaluation of five
   datasets against committed baselines (fails on any quality regression), retrieval evaluation (fails on any cross-repository leak) and the sandboxed demo;
 - **postgres** - Alembic upgrade/downgrade/upgrade round trip, `alembic check` (models == migrated schema) and
   the unit tests against a PostgreSQL 16 service container;
 - **docker** - validates the Compose file and the Prometheus alert rules, builds the image, and runs an
   end-to-end smoke test of the Compose stack (`scripts/compose_smoke.sh`): an incident submitted to the API
-  is processed by the separate worker container against PostgreSQL.
+  is processed by the separate worker container against PostgreSQL;
+- **sandbox-docker** - the opt-in sandbox tests (escape attempts, a real fix, a regression, the reproduction test) against
+  a real Docker daemon on a Linux runner.
 
 The first CI run on GitHub caught a dependency that a stale local virtualenv had hidden (see CHANGELOG); the
 workflow has run green on GitHub since. Contributor workflow: [CONTRIBUTING.md](CONTRIBUTING.md); security:
@@ -1143,9 +1156,10 @@ One run of one bug - it shows the loop works end to end, not that it generalises
 
 ## Known limitations
 
-- **Untested against live services:** Groq, GitHub branch/PR creation, Neon and Langfuse were exercised only
-  through fakes (Groq has been exercised live in the evaluations). PostgreSQL and the Compose stack (api +
-  worker + db) are exercised in CI.
+- **Little live evidence:** Groq has been exercised live in the evaluations; GitHub branch/PR creation through a fake
+  and once against a private toy repository (scripted model); Neon and Langfuse only through fakes. PostgreSQL 16 and the
+  Compose stack (api + worker + db) are exercised in CI. There is no production use and no real review history. The full
+  list is in [docs/LIMITATIONS.md](docs/LIMITATIONS.md).
 - The queue lives in the `incidents` table and is polled (default every second); it is meant for tens of
   incidents per minute, not for high-throughput streaming. An interrupted analysis restarts from the beginning
   (no mid-graph checkpoint), so a crash costs the LLM calls already made.
@@ -1167,6 +1181,8 @@ One run of one bug - it shows the loop works end to end, not that it generalises
 
 ## Roadmap
 
+- A first pilot on a real test repository with real review decisions (checklist in the [runbook](docs/RUNBOOK.md)); it is
+  the largest unmeasured part.
 - More real-world-shaped cases, ideally from real incident post-mortems.
 - More inbound adapters (Datadog, OpenTelemetry) and per-tenant allow-lists.
 - PostgreSQL full-text search for candidate selection when histories outgrow the 200-row window; evaluate
@@ -1175,10 +1191,10 @@ One run of one bug - it shows the loop works end to end, not that it generalises
 
 ## Verified versions
 
-Developed and tested on Windows with Python 3.11.9 and: fastapi 0.143.0, pydantic 2.14.0, SQLAlchemy 2.1.4,
-alembic 1.20.0, langgraph 1.2.14, langchain-core 1.6.9, langchain-groq 1.1.3, groq 0.37.1, langfuse 4.17.0,
-PyGithub 2.10.0, prometheus-client 0.26.0, pytest 9.1.1, ruff 0.16.10, mypy 1.20.2 and 2.4.0. langfuse and langgraph were the latest releases on
-PyPI at the time of checking (2026-10-09).
+Checked on 2026-10-24: CI runs Python 3.11 (the image), 3.12 and 3.13; the local release gates ran on Windows with Python
+3.14.3 and: fastapi 0.161.1, pydantic 2.14.1, SQLAlchemy 2.1.6, alembic 1.20.1, langgraph 1.2.16, langchain-core 1.7.0,
+langchain-groq 1.1.3, groq 0.37.1, langfuse 4.18.0, PyGithub 2.10.0, httpx 0.28.1, pytest 9.1.1, hypothesis 6.170.8,
+ruff 0.17.2 and mypy 2.4.0 (strict).
 
 ## License
 
