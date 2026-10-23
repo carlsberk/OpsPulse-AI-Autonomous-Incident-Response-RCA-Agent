@@ -130,6 +130,28 @@ def _snapshot(work: pathlib.Path, sources: tuple[str, ...]) -> dict[str, str]:
     return files
 
 
+def repo_frames_only(trace: str) -> str:
+    """Drop the frames outside the repository (pytest, pluggy, the standard library): a production trace would not
+    carry the test runner's own frames, and they cost thousands of tokens and name host paths."""
+    lines = trace.splitlines()
+    header, final = lines[0], lines[-1]
+    kept: list[str] = []
+    block: list[str] = []
+
+    def flush() -> None:
+        if block and block[0].lstrip().startswith('File "/srv/'):
+            kept.extend(block)
+
+    for line in lines[1:-1]:
+        if line.startswith('  File "'):
+            flush()
+            block = [line]
+        else:
+            block.append(line)
+    flush()
+    return "\n".join([header, *kept, final])
+
+
 def build_case(repo: pathlib.Path, python: str, cand: Candidate, repo_name: str) -> tuple[dict, dict] | str:
     """The case and its truth, or the reason this commit is not a clean red-to-green."""
     with tempfile.TemporaryDirectory(prefix="opspulse-history-", ignore_cleanup_errors=True) as tmp:
@@ -142,6 +164,7 @@ def build_case(repo: pathlib.Path, python: str, cand: Candidate, repo_name: str)
             if code == 0 or failure is None:
                 return "the tests do not fail at the parent with a Python traceback"
             trace, error = failure
+            trace = repo_frames_only(trace)
             if "\n" in error or "Traceback" in error:
                 return "the test failed through a subprocess, so there is no single error line to report"
             if not any(f"/srv/{src}" in trace for src in cand.source_files):
@@ -235,14 +258,20 @@ def cmd_build(args: argparse.Namespace) -> int:
 
 def cmd_verify(args: argparse.Namespace) -> int:
     metas = json.loads(args.dataset.with_suffix(".meta.json").read_text())
+    repo_of = {c["id"]: c["repo_name"] for c in json.loads(args.dataset.read_text())["cases"]}
+    repos = dict(spec.split("=", 1) for spec in args.repo or [])
     report = json.loads(args.report.read_text())
     counts: dict[str, int] = {}
     for run in report["results"]:
         meta = metas.get(run["case_id"])
         if meta is None:
             continue
+        repo = pathlib.Path(repos.get(repo_of[run["case_id"]], args.repo_dir or ""))
         patch = run.get("patch") or ""
-        verdict, detail = verify_patch(args.repo_dir, args.python, meta, patch) if patch else ("no_patch", "no patch")
+        try:
+            verdict, detail = verify_patch(repo, args.python, meta, patch) if patch else ("no_patch", "no patch")
+        except RuntimeError as exc:  # e.g. no clone given for this case's repository
+            verdict, detail = "not_checked", str(exc)[:120]
         counts[verdict] = counts.get(verdict, 0) + 1
         accepted = run.get("workflow_status") == "accepted"
         print(f"  {run['case_id']}: {verdict} (gate {'accepted' if accepted else 'did not accept'}) - {detail}")
@@ -255,7 +284,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     for name in ("build", "verify"):
         p = sub.add_parser(name)
-        p.add_argument("--repo-dir", type=pathlib.Path, required=True)
+        p.add_argument("--repo-dir", type=pathlib.Path, required=name == "build")
         p.add_argument("--python", default=sys.executable, help="interpreter that can run the repository's tests")
         if name == "build":
             p.add_argument("--repo-name", required=True, help="owner/repo, used only as a label")
@@ -266,6 +295,7 @@ def main(argv: list[str] | None = None) -> int:
             p.add_argument("--scan", type=int, default=60, help="how many candidate commits to examine")
             p.add_argument("--max-cases", type=int, default=15)
         else:
+            p.add_argument("--repo", action="append", metavar="OWNER/NAME=PATH", help="clone for one repository")
             p.add_argument("--dataset", type=pathlib.Path, required=True)
             p.add_argument("--report", type=pathlib.Path, required=True)
     args = parser.parse_args(argv)

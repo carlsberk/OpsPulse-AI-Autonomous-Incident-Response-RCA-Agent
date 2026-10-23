@@ -76,3 +76,16 @@ def test_a_commit_whose_test_never_fails_is_not_a_case(repo):
     run(repo, "commit", "-q", "-m", "Fix crash in nothing")
     cand = h.find_candidates(repo, 10, "2000-01-01")[0]  # newest first
     assert isinstance(h.build_case(repo, sys.executable, cand, "o/r"), str)
+
+
+def test_frames_outside_the_repository_are_dropped_from_the_trace():
+    trace = (
+        "Traceback (most recent call last):\n"
+        '  File "/venv/site-packages/_pytest/runner.py", line 1, in call\n    result = func()\n'
+        '  File "/srv/tests/test_mod.py", line 4, in test_first\n    assert first([]) is None\n'
+        '  File "/srv/pkg/mod.py", line 2, in first\n    return items[0]\n'
+        "IndexError: list index out of range"
+    )
+    out = h.repo_frames_only(trace)
+    assert "_pytest" not in out and "/venv/" not in out
+    assert "/srv/pkg/mod.py" in out and "return items[0]" in out and out.endswith("IndexError: list index out of range")

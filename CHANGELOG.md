@@ -6,6 +6,8 @@ All notable changes are listed here. Versions of behaviour-critical components a
 ## [Unreleased]
 
 ### Added
+- First measurement on real bug-fix history (`evals/results/history-real-*`): the gate accepted 10 of 10 analysed runs with the
+  right file, yet only 2 of those patches made the real regression test pass. Recorded in `docs/LIMITATIONS.md`.
 - `python -m evals.history_real_repo build|verify`: a dataset built from a real repository's bug-fix history instead of
   injected bugs. A case is a commit that fixed a bug and added a test; the parent plus that test is the incident, and only
   commits where the real fix turns the test green are kept. `verify` applies the model's patch to the parent and runs the
@@ -29,6 +31,8 @@ All notable changes are listed here. Versions of behaviour-critical components a
   limits in the "At a glance" table, CI jobs, coverage and verified versions.
 
 ### Fixed
+- `history_real_repo` stripped neither the test runner's own frames nor host paths from the traceback it builds, which made
+  every request exceed the provider's size limit (HTTP 413). Only frames inside the repository are kept now.
 - The PostgreSQL CI job failed on the pilot-check tests (merged in #37): that job migrates the test database before the tests
   run, so an `alembic_version` table already existed and two tests assumed it did not. They now start from a known state.
 - Documentation: the README quoted 245 and 320 tests and the 1.8.0 notes said the audit log was not run on PostgreSQL. The
