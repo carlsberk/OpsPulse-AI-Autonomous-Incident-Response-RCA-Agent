@@ -5,23 +5,42 @@ All notable changes are listed here. Versions of behaviour-critical components a
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-10-24
+
+A record of who decided what that shows tampering. One feature, no change to the prompt, the quality gate or any analysis
+behaviour.
+
+### Upgrade notes
+- **Run the migrations** (`alembic upgrade head`; the Docker image does it on start). Migration `0009` adds the
+  `audit_entries` table; nothing existing is changed or backfilled.
+- Incidents decided **before** the upgrade have no chain and report `none` (not `intact`). Chains start with the next
+  proposal on each incident.
+- `GET /incidents/{id}/audit` has a new `chain` field; existing fields are unchanged.
+- Each approval transition now also inserts one row. A concurrent writer on the same incident violates the unique
+  `(incident, seq)` constraint and the change is refused (rolled back) rather than recorded out of order.
+
 ### Added
-- **Saved heads catch cut-off entries.** `python -m src.services.audit_chain --save-heads heads.json` writes the head hash
-  of every intact chain; later, `--heads heads.json` reports `truncated` (exit 1) when a chain no longer contains the saved
-  point: newest entries removed, an entry rewritten with a recomputed chain, or a whole chain gone. Growth since the file
-  was written is fine. Keep the file where the database administrator cannot write; this repository does not store it.
 - **Tamper-evident approval log** (migration `0009`, table `audit_entries`). Every proposal, supersession and decision
-  (approved, rejected, expired, executed, execution failed) is also written as one link of a per-incident hash chain, in
-  the same transaction as the state change: each entry holds the SHA-256 of its own fields and of the entry before it.
-  `GET /incidents/{id}/audit` now returns `chain` (`none`, `intact`, `broken` or `inconsistent`, the entry count and the head
+  (approved, rejected, expired, executed, execution failed) is written as one link of a per-incident hash chain, in the same
+  transaction as the state change: each entry holds the SHA-256 of its own fields and of the entry before it.
+  `GET /incidents/{id}/audit` returns `chain` (`none`, `intact`, `broken` or `inconsistent`, the entry count and the head
   hash), and `python -m src.services.audit_chain` checks every incident from the command line (exit 1 on a problem). Besides
-  the links, the check compares the chain with the `remediation_approvals` rows, which are updated in place: a status changed
-  without a chain entry is `inconsistent`. Incidents decided before the upgrade have no chain and say `none`, not `intact`.
-  What it does not do: someone who can rewrite the whole table can recompute a consistent chain, and deleting the newest
-  entries is only visible against a head hash kept elsewhere; see `docs/LIMITATIONS.md`.
+  the links, the check compares the chain with the `remediation_approvals` rows, which are updated in place: a status
+  changed without a chain entry is `inconsistent`.
+- **Saved heads catch cut-off entries.** `python -m src.services.audit_chain --save-heads heads.json` writes the head hash of
+  every intact chain; later, `--heads heads.json` reports `truncated` (exit 1) when a chain no longer contains the saved
+  point: newest entries removed, an entry rewritten with a recomputed chain, or a whole chain gone. Growth since the file
+  was written is fine.
 
 ### Fixed
 - `docs/LIMITATIONS.md` still quoted 513 tests and 95.7 % coverage; it now matches the suite.
+
+### What this does not do
+- Someone who can rewrite the whole table (a database administrator) can recompute a consistent chain. The saved-heads file
+  only helps if it is kept where that person cannot write; this repository does not store or schedule it.
+- The `events` timeline is still derived from rows that are updated in place; the chain covers the approval lifecycle, not
+  submission or analysis.
+- Verified with unit tests, a real SQLite database and the end-to-end flow; not run against a production PostgreSQL.
 
 ## [1.7.0] - 2026-10-23
 
