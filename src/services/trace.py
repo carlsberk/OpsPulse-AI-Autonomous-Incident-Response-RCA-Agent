@@ -52,6 +52,7 @@ def build_trace(incident: dict[str, Any]) -> dict[str, Any]:
         "status": incident.get("status"),
         "error_category": incident.get("error_category"),
         "versions": {k: meta.get(k) for k in _VERSION_KEYS},
+        "source_revision": analysis.get("source_revision"),
         "attempts": rows,
         "totals": {
             "llm_calls": len(rows),

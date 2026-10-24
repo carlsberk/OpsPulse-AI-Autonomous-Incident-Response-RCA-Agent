@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 Severity = Literal["CRITICAL", "HIGH", "MEDIUM", "LOW"]
 EvidenceKind = Literal["observed", "inference", "hypothesis"]
@@ -102,6 +102,14 @@ class PatchRemediation(_Model):
     unified_diff: str = Field(default="", max_length=20_000)
 
 
+class ReproductionTest(_Model):
+    """Optional evidence: a new pytest file that raises the incident's exception on the code as it is. Lenient on
+    purpose: a malformed extra must never cost the analysis, so anything that is not a path and text becomes None."""
+
+    path: str = Field(min_length=1, max_length=200)
+    content: str = Field(min_length=1, max_length=6000)
+
+
 class ControlFlow(_Model):
     self_assessed_confidence: float = Field(ge=0.0, le=1.0)
     needs_human_review: bool
@@ -119,6 +127,20 @@ class RCAOutput(_Model):
     uncertainties: list[str] = Field(min_length=1, max_length=10)
     tests_to_run: list[str] = Field(min_length=1, max_length=10)
     control_flow: ControlFlow
+    reproduction_test: ReproductionTest | None = None
+
+    @field_validator("reproduction_test", mode="before")
+    @classmethod
+    def _tolerate_a_malformed_reproduction_test(cls, value: Any) -> Any:
+        if (
+            isinstance(value, dict)
+            and isinstance(value.get("path"), str)
+            and isinstance(value.get("content"), str)
+            and 0 < len(value["path"]) <= 200
+            and 0 < len(value["content"]) <= 6000
+        ):
+            return {"path": value["path"], "content": value["content"]}
+        return None
 
     @model_validator(mode="after")
     def _primary_references_a_hypothesis(self) -> RCAOutput:

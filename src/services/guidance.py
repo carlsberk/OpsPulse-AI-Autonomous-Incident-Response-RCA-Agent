@@ -215,7 +215,15 @@ CATEGORY_GUIDE: dict[str, tuple[str, list[tuple[str, str, str]]]] = {
     ),
     "remediation_policy_violation": (
         "The patch violates the remediation policy (for example it touches more than the affected file).",
-        [("check", "reviewer", "Apply the idea by hand if it is sound; the policy blocks automatic proposals.")],
+        [
+            ("check", "reviewer", "Apply the idea by hand if it is sound; the policy blocks automatic proposals."),
+            (
+                "action",
+                "reporter",
+                "If the reason says the patch does not apply to the default branch head, the branch moved after the "
+                "analysed commit: re-submit the incident with the current deployed `commit_sha` for a fresh analysis.",
+            ),
+        ],
     ),
     "retrieval_failed": (
         "Looking up similar past incidents failed, so the analysis ran without history.",

@@ -20,8 +20,8 @@ integer (`TypeError`). Alertmanager reports it; the worker analyses it; a review
   "request_id": "fb125e79bb3749b290522c05bdbae3ac",
   "status": "awaiting_approval",
   "versions": {
-    "agent_version": "1.4.0-opspulse",
-    "prompt_version": "rca-prompt-v6.1",
+    "agent_version": "1.8.0-opspulse",
+    "prompt_version": "rca-prompt-v7.1",
     "evaluator_version": "quality-gate-v8",
     "retrieval_strategy": "lexical-v1",
     "model": "openai/gpt-oss-120b"
@@ -74,6 +74,10 @@ stored record and the runbook without a model, so it is available even when the 
 | `proposed` | agent | open a draft PR changing `inventory.py`; patch SHA-256 `b46e89c6…`; expires in 72 h |
 | `approved` | bob | "guard matches the existing contract"; the same SHA-256 |
 | `pr_opened` | system | draft PR on branch `opspulse/fix-…` |
+
+The response also carries `chain`: the approval log is a hash chain (here 3 entries: proposed, approved, executed), and
+`status: intact` means no entry was edited, removed from the middle or reordered, and the approval rows agree with it.
+Keep the `head` hash somewhere the database administrator cannot write if you need to notice the newest entries being cut.
 
 Two rules are visible here: the submitter (`alice`, a reporter) is not the decider (`bob`, a reviewer), and the approval
 carries the hash of the patch that was proposed. Merging is not an event, because this service never merges.

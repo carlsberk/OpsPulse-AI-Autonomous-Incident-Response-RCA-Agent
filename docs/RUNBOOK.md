@@ -88,3 +88,33 @@ secret are rejected with 401 in between; Sentry's delivery log shows them.
 
 Set `ENABLE_GITHUB_REMEDIATION=false` and restart. Pending approvals stay pending; approving one then re-checks
 the configuration and ends as `analysis_ready` without touching GitHub.
+
+## Running a real pilot on a test repository
+
+Everything measured in this repository used synthetic or injected failures. This is the checklist for the first run on real
+code with real review decisions. Use a repository you own and can throw away; nothing here merges anything.
+
+1. **A repository and a token.** A private test repository with a small Python project and a real test suite. A fine-grained
+   token limited to that repository with *Contents: read/write* and *Pull requests: read/write*. Put it in `.env` yourself
+   (`GITHUB_TOKEN=`); it is never needed in chat or in the console.
+2. **Configuration.** `ALLOWED_REPOSITORIES=<owner>/<repo>`, `ENABLE_GITHUB_REMEDIATION=true`,
+   `REQUIRE_REMEDIATION_APPROVAL=true`, `GITHUB_PR_DRAFT=true`, `ALLOW_SELF_APPROVAL=false`, a reporter key and a reviewer key
+   in `API_KEYS` (two identities, so the four-eyes rule applies), and optionally `SANDBOX_ENABLED=true` with an image that
+   contains your project's dependencies.
+   Then run `python -m scripts.pilot_check` (configuration and database only) and, once the token is in `.env`,
+   `python -m scripts.pilot_check --online`, which also makes read-only GitHub calls (is the repository reachable, can the token
+   push, is it archived) and checks Docker when the sandbox is on. It names the setting, never its value, and exits 1 while
+   something blocks the pilot.
+3. **Report real failures.** Break something in the test repository, let it raise, and send the trace through
+   `POST /webhook/incident` (or Alertmanager or Sentry). Aim for 15 to 20 distinct failures of different kinds, including
+   two or three where the right answer is "not enough evidence".
+4. **Decide each one yourself in the console**, as the reviewer, with a note on every rejection. The notes are what
+   the next analysis sees and what the report quotes.
+5. **Measure.** `python -m src.services.review_outcomes` prints approvals and rejections per prompt, gate and model version
+   (no rate below 20 decisions). `python -m src.services.audit_chain --save-heads heads.json` checks the approval log and
+   saves its heads; keep that file outside the database host.
+6. **Write down what you saw**, including every wrong diagnosis and every patch you rejected. A short honest report with
+   misses in it is worth more than a clean one; `docs/LIMITATIONS.md` is where it belongs.
+
+What a pilot still does not establish: that the system helps your team (that needs weeks of real alerts), a rate with a
+confidence interval (20 decisions is a start, not a measurement), or anything about languages other than the one you used.

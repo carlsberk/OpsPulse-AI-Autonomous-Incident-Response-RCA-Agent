@@ -31,6 +31,7 @@ class IncidentState(TypedDict):
     error_message: str
     stack_trace: str
     repo_name: str
+    commit_sha: str | None  # deployed commit reported with the incident; source is read at it when set
     affected_file: str | None
     failing_line: int | None
     code_context: str | None
@@ -51,13 +52,16 @@ class IncidentState(TypedDict):
     attempts: list[dict[str, Any]]  # per LLM attempt: latency, provider token usage, output validity
 
 
-def initial_state(incident_id: str, error_message: str, stack_trace: str, repo_name: str) -> IncidentState:
+def initial_state(
+    incident_id: str, error_message: str, stack_trace: str, repo_name: str, commit_sha: str | None = None
+) -> IncidentState:
     """Build the entry state for the graph."""
     return IncidentState(
         incident_id=incident_id,
         error_message=error_message,
         stack_trace=stack_trace,
         repo_name=repo_name,
+        commit_sha=commit_sha,
         affected_file=None,
         failing_line=None,
         code_context=None,

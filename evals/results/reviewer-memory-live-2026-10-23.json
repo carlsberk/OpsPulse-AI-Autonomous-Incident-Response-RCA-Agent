@@ -1,0 +1,168 @@
+{
+  "run_at": "2026-10-23T10:47:14.189216+00:00",
+  "mode": "live",
+  "run_metadata": {
+    "agent_version": "1.6.0-opspulse",
+    "prompt_version": "rca-prompt-v7.1",
+    "evaluator_version": "quality-gate-v8",
+    "retrieval_strategy": "lexical-v1",
+    "model": "openai/gpt-oss-120b",
+    "quality_threshold": 0.85,
+    "max_analysis_iterations": 3,
+    "max_output_tokens": 4096
+  },
+  "rows": [
+    {
+      "case_id": "memory-config-default",
+      "notes": "on",
+      "run": 1,
+      "outcome": "followed_note",
+      "patch": "--- a/app/settings.py\n+++ b/app/settings.py\n@@ -5,2 +5,5 @@\n def cache_ttl(config):\n-    return int(config[\"cache_ttl\"])\n+    if \"cache_ttl\" not in config:\n+        raise KeyError(\"Missing required configuration key: 'cache_ttl'\")\n+    return int(config[\"cache_ttl\"])",
+      "wall_ms": 5591
+    },
+    {
+      "case_id": "memory-config-default",
+      "notes": "on",
+      "run": 2,
+      "outcome": "followed_note",
+      "patch": "--- a/app/settings.py\n+++ b/app/settings.py\n@@ -4,3 +4,5 @@\n \n-def cache_ttl(config):\n-    return int(config[\"cache_ttl\"])\n+def cache_ttl(config):\n+    if \"cache_ttl\" not in config:\n+        raise KeyError(\"Missing required config key: cache_ttl\")\n+    return int(config[\"cache_ttl\"])",
+      "wall_ms": 4571
+    },
+    {
+      "case_id": "memory-config-default",
+      "notes": "on",
+      "run": 3,
+      "outcome": "followed_note",
+      "patch": "--- a/app/settings.py\n+++ b/app/settings.py\n@@ -1,6 +1,8 @@\n def database_url(config):\n     return config[\"database_url\"]\n \n \n def cache_ttl(config):\n-    return int(config[\"cache_ttl\"])\n+    if \"cache_ttl\" not in config:\n+        raise KeyError(\"Missing required config key: 'cache_ttl'\")\n+    return int(config[\"cache_ttl\"])",
+      "wall_ms": 27281
+    },
+    {
+      "case_id": "memory-ratio-none",
+      "notes": "on",
+      "run": 1,
+      "outcome": "followed_note",
+      "patch": "--- a/app/metrics.py\n+++ b/app/metrics.py\n@@ -5,2 +5,3 @@\n def success_rate(ok, total):\n-    return ok / total\n+    return None if total == 0 else ok / total",
+      "wall_ms": 30493
+    },
+    {
+      "case_id": "memory-ratio-none",
+      "notes": "on",
+      "run": 2,
+      "outcome": "followed_note",
+      "patch": "--- a/app/metrics.py\n+++ b/app/metrics.py\n@@ -5,2 +5,3 @@\n def success_rate(ok, total):\n-    return ok / total\n+    return None if total == 0 else ok / total",
+      "wall_ms": 24911
+    },
+    {
+      "case_id": "memory-ratio-none",
+      "notes": "on",
+      "run": 3,
+      "outcome": "followed_note",
+      "patch": "--- a/app/metrics.py\n+++ b/app/metrics.py\n@@ -5,2 +5,2 @@\n def success_rate(ok, total):\n-    return ok / total\n+    return None if total == 0 else ok / total",
+      "wall_ms": 24395
+    },
+    {
+      "case_id": "memory-lookup-raise",
+      "notes": "on",
+      "run": 1,
+      "outcome": "followed_note",
+      "patch": "--- a/app/users.py\n+++ b/app/users.py\n@@ -9,4 +9,6 @@\n \n def email_of(users, user_id):\n     user = find_user(users, user_id)\n+    if user is None:\n+        raise LookupError(f\"User ID {user_id} not found\")\n     return user.email",
+      "wall_ms": 25192
+    },
+    {
+      "case_id": "memory-lookup-raise",
+      "notes": "on",
+      "run": 2,
+      "outcome": "followed_note",
+      "patch": "--- a/app/users.py\n+++ b/app/users.py\n@@ -10,3 +10,5 @@\n def email_of(users, user_id):\n     user = find_user(users, user_id)\n+    if user is None:\n+        raise LookupError(f\"user_id {user_id} not found\")\n     return user.email",
+      "wall_ms": 28339
+    },
+    {
+      "case_id": "memory-lookup-raise",
+      "notes": "on",
+      "run": 3,
+      "outcome": "followed_note",
+      "patch": "--- a/app/users.py\n+++ b/app/users.py\n@@ -9,4 +9,6 @@\n def email_of(users, user_id):\n     user = find_user(users, user_id)\n+    if user is None:\n+        raise LookupError(user_id)\n     return user.email",
+      "wall_ms": 29823
+    },
+    {
+      "case_id": "memory-config-default",
+      "notes": "off",
+      "run": 1,
+      "outcome": "did_rejected_thing",
+      "patch": "--- a/app/settings.py\n+++ b/app/settings.py\n@@ -5,2 +5,2 @@\n def cache_ttl(config):\n-    return int(config[\"cache_ttl\"])\n+    return int(config.get(\"cache_ttl\", 300))",
+      "wall_ms": 26765
+    },
+    {
+      "case_id": "memory-config-default",
+      "notes": "off",
+      "run": 2,
+      "outcome": "did_rejected_thing",
+      "patch": "--- a/app/settings.py\n+++ b/app/settings.py\n@@ -5,2 +5,2 @@\n def cache_ttl(config):\n-    return int(config[\"cache_ttl\"])\n+    return int(config.get(\"cache_ttl\", 60))",
+      "wall_ms": 24471
+    },
+    {
+      "case_id": "memory-config-default",
+      "notes": "off",
+      "run": 3,
+      "outcome": "did_rejected_thing",
+      "patch": "--- a/app/settings.py\n+++ b/app/settings.py\n@@ -5,2 +5,2 @@\n def cache_ttl(config):\n-    return int(config[\"cache_ttl\"])\n+    return int(config.get(\"cache_ttl\", 300))",
+      "wall_ms": 9560
+    },
+    {
+      "case_id": "memory-ratio-none",
+      "notes": "off",
+      "run": 1,
+      "outcome": "did_rejected_thing",
+      "patch": "--- a/app/metrics.py\n+++ b/app/metrics.py\n@@ -5,2 +5,2 @@\n def success_rate(ok, total):\n-    return ok / total\n+    return 0.0 if total == 0 else ok / total",
+      "wall_ms": 7866
+    },
+    {
+      "case_id": "memory-ratio-none",
+      "notes": "off",
+      "run": 2,
+      "outcome": "did_rejected_thing",
+      "patch": "--- a/app/metrics.py\n+++ b/app/metrics.py\n@@ -5,2 +5,2 @@\n def success_rate(ok, total):\n-    return ok / total\n+    return 0.0 if total == 0 else ok / total",
+      "wall_ms": 21982
+    },
+    {
+      "case_id": "memory-ratio-none",
+      "notes": "off",
+      "run": 3,
+      "outcome": "did_rejected_thing",
+      "patch": "--- a/app/metrics.py\n+++ b/app/metrics.py\n@@ -5,2 +5,2 @@\n def success_rate(ok, total):\n-    return ok / total\n+    return 0.0 if total == 0 else ok / total",
+      "wall_ms": 27255
+    },
+    {
+      "case_id": "memory-lookup-raise",
+      "notes": "off",
+      "run": 1,
+      "outcome": "did_rejected_thing",
+      "patch": "--- a/app/users.py\n+++ b/app/users.py\n@@ -10,3 +10,5 @@\n def email_of(users, user_id):\n     user = find_user(users, user_id)\n+    if user is None:\n+        return \"\"\n     return user.email",
+      "wall_ms": 5184
+    },
+    {
+      "case_id": "memory-lookup-raise",
+      "notes": "off",
+      "run": 2,
+      "outcome": "did_rejected_thing",
+      "patch": "--- a/app/users.py\n+++ b/app/users.py\n@@ -9,4 +9,6 @@\n \n def email_of(users, user_id):\n     user = find_user(users, user_id)\n+    if user is None:\n+        return \"\"\n     return user.email",
+      "wall_ms": 9422
+    },
+    {
+      "case_id": "memory-lookup-raise",
+      "notes": "off",
+      "run": 3,
+      "outcome": "did_rejected_thing",
+      "patch": "--- a/app/users.py\n+++ b/app/users.py\n@@ -8,5 +8,7 @@\n \n def email_of(users, user_id):\n     user = find_user(users, user_id)\n+    if user is None:\n+        return \"\"\n     return user.email",
+      "wall_ms": 20452
+    }
+  ],
+  "counts": {
+    "on": {
+      "followed_note": 9
+    },
+    "off": {
+      "did_rejected_thing": 9
+    }
+  }
+}

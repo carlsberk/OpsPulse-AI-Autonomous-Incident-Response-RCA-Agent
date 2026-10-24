@@ -168,6 +168,20 @@
             <div id="d-patch" class="diff" role="region" aria-label="Proposed patch" tabindex="0"></div>
           </article>
 
+          <article id="tests-card" class="card" hidden aria-labelledby="tests-title">
+            <div class="section-head">
+              <h2 id="tests-title">Test evidence</h2>
+              <span id="tests-badge" class="badge s-neutral"></span>
+            </div>
+            <ul id="tests-list" class="plain small"></ul>
+            <details id="repro-details" hidden>
+              <summary class="small">The model's reproduction test <span id="repro-path" class="mono muted"></span></summary>
+              <pre id="repro-code" class="raw"></pre>
+            </details>
+            <p class="muted small">Run in an isolated sandbox with no network. The model wrote both the test and the fix:
+              read the test like any other claim.</p>
+          </article>
+
           <article id="trail" class="card" hidden aria-labelledby="trail-title">
             <div class="section-head">
               <h2 id="trail-title">Evidence trail</h2>

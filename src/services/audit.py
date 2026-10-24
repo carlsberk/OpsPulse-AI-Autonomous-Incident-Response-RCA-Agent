@@ -1,9 +1,10 @@
 """Review timeline of one incident: who submitted, what was proposed, who decided what and why, what happened next.
 
 Derived from rows the system already keeps (the incident and every remediation approval, including superseded and
-expired ones), so it needs no extra write path that could drift from the real state. It is a *report*, not a
-tamper-evident log: rows are updated in place by the workflow. Every event carries only facts present in the record;
-nothing is inferred.
+expired ones), so it needs no extra write path that could drift from the real state. The events themselves are a
+*report* over rows the workflow updates in place; the tamper-evident part is the separate hash chain in
+`audit_chain`, whose check is returned next to them. Every event carries only facts present in the record; nothing
+is inferred.
 """
 
 from __future__ import annotations

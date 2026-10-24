@@ -23,8 +23,10 @@ everything needed to resume (the analysis, the patch, the pending approval) is p
 from __future__ import annotations
 
 import logging
+import re
 import time
 import uuid
+from dataclasses import replace
 from datetime import timedelta
 from functools import lru_cache
 from typing import Any, cast
@@ -35,6 +37,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from src import metrics
 from src.agent.graph import build_graph
 from src.agent.parsing import compute_fingerprint
+from src.agent.reproduction import ReproductionSpec, expected_error_name
 from src.agent.state import IncidentState, initial_state
 from src.config import settings
 from src.db import repositories
@@ -42,6 +45,7 @@ from src.errors import TRANSIENT_CATEGORIES, ErrorCategory
 from src.integrations import github
 from src.integrations.notify import notify_incident
 from src.integrations.observability import build_run_config, flush_traces, incident_trace
+from src.integrations.sandbox import run_patch_in_sandbox
 from src.logging_config import incident_id_var, redact, request_id_var
 from src.services import remediation_service
 from src.services.remediation_service import ApprovalForbiddenError, ProposedFix, RemediationOutcome
@@ -67,13 +71,25 @@ def get_graph() -> CompiledStateGraph[Any, Any, Any, Any]:
 
 
 def submit_incident(
-    incident_id: uuid.UUID, repo_name: str, error_message: str, stack_trace: str, submitted_by: str | None = None
+    incident_id: uuid.UUID,
+    repo_name: str,
+    error_message: str,
+    stack_trace: str,
+    submitted_by: str | None = None,
+    commit_sha: str | None = None,
 ) -> tuple[dict[str, Any], bool]:
     """Persist a new `queued` incident, or return the existing one for a repeated delivery."""
     fingerprint = compute_fingerprint(repo_name, error_message, stack_trace)
     try:
         row, created = repositories.create_incident(
-            incident_id, repo_name, fingerprint, error_message, stack_trace, submitted_by, request_id_var.get()
+            incident_id,
+            repo_name,
+            fingerprint,
+            error_message,
+            stack_trace,
+            submitted_by,
+            request_id_var.get(),
+            commit_sha,
         )
     except SQLAlchemyError as exc:
         logger.error("database unavailable while creating incident: %s", type(exc).__name__)
@@ -160,6 +176,7 @@ def run_incident_pipeline(
     stack_trace: str,
     graph: CompiledStateGraph[Any, Any, Any, Any] | None = None,
     claim_token: str | None = None,
+    commit_sha: str | None = None,
 ) -> dict[str, Any]:
     """Run the graph, persist the outcome, optionally propose/open a PR. Returns the stored incident.
 
@@ -176,7 +193,14 @@ def run_incident_pipeline(
         with incident_trace(str(incident_id), repo_name, fingerprint) as trace:
             try:
                 result = _run(
-                    incident_id, repo_name, error_message, stack_trace, fingerprint, graph or get_graph(), claim_token
+                    incident_id,
+                    repo_name,
+                    error_message,
+                    stack_trace,
+                    fingerprint,
+                    graph or get_graph(),
+                    claim_token,
+                    commit_sha,
                 )
             except repositories.ClaimLostError:
                 logger.warning("claim lost to another worker; discarding this run's result")
@@ -204,8 +228,9 @@ def _run(
     fingerprint: str,
     graph: CompiledStateGraph[Any, Any, Any, Any],
     claim_token: str | None = None,
+    commit_sha: str | None = None,
 ) -> dict[str, Any]:
-    state = initial_state(str(incident_id), error_message, stack_trace, repo_name)
+    state = initial_state(str(incident_id), error_message, stack_trace, repo_name, commit_sha)
     try:
         final = cast(
             IncidentState, graph.invoke(state, config=build_run_config(str(incident_id), repo_name, fingerprint))
@@ -231,14 +256,35 @@ def _run(
             **(final["root_cause_analysis"] or {}),
             "attempts": final["attempts"],
             "source_windows": source_windows(final),
+            "source_revision": source_revision(final),
         },
         suggested_patch=final["suggested_patch"],
         quality_score=final["quality_score"],
         iterations=final["iterations"],
     )
     if final["quality_gate_passed"]:
+        fix = _fix_from_state(incident_id, fingerprint, final)
+        # Only this service writes `sandbox`; never trust a key of that name that came from the model.
+        fix = replace(fix, analysis={k: v for k, v in fix.analysis.items() if k != "sandbox"})
+        if settings.sandbox_enabled and fix.patch and fix.target_file:
+            report = run_patch_in_sandbox(
+                fix.repo_name, fix.target_file, fix.patch, reproduction=_reproduction_spec(final)
+            )
+            logger.info("sandbox run: %s", report.status)
+            fix = replace(fix, analysis={**fix.analysis, "sandbox": report.as_dict()})
+            _persist_or_raise(
+                incident_id,
+                claim_token=claim_token,
+                root_cause_analysis={
+                    **(final["root_cause_analysis"] or {}),
+                    "attempts": final["attempts"],
+                    "source_windows": source_windows(final),
+                    "source_revision": source_revision(final),
+                    "sandbox": report.as_dict(),
+                },
+            )
         try:
-            outcome = remediation_service.remediate(_fix_from_state(incident_id, fingerprint, final))
+            outcome = remediation_service.remediate(fix)
         except SQLAlchemyError as exc:
             logger.error("database unavailable during remediation: %s", type(exc).__name__)
             raise DatabaseUnavailableError("database unavailable") from exc
@@ -292,15 +338,37 @@ def source_windows(final: IncidentState) -> dict[str, str]:
     }
 
 
+_COMMIT_LINE = re.compile(r"^COMMIT: ([0-9a-f]{7,40})", re.MULTILINE)
+
+
+def source_revision(final: IncidentState) -> dict[str, Any]:
+    """Which revision of the code the analysis read: the commit shown to the model, and whether the incident pinned it
+    (the deployed commit) or it was the default branch head at analysis time (which may have moved since)."""
+    match = _COMMIT_LINE.search(final.get("code_context") or "")
+    return {"commit": match.group(1) if match else None, "pinned": bool(final.get("commit_sha"))}
+
+
+def _reproduction_spec(final: IncidentState) -> ReproductionSpec | None:
+    """The model's optional regression test, as the sandbox will receive it (text only; nothing is run here)."""
+    test = (final["root_cause_analysis"] or {}).get("reproduction_test")
+    if not isinstance(test, dict) or not isinstance(test.get("path"), str) or not isinstance(test.get("content"), str):
+        return None
+    return ReproductionSpec(test["path"], test["content"], expected_error_name(final["error_message"]))
+
+
 def get_audit(incident_id: uuid.UUID) -> dict[str, Any] | None:
     """The review timeline of one incident, or None if it does not exist."""
     from src.services.audit import build_audit
+    from src.services.audit_chain import check
 
     try:
         row = repositories.get_incident(incident_id)
         if row is None:
             return None
-        return build_audit(row, repositories.list_approvals(incident_id))
+        approvals = repositories.list_approvals(incident_id)
+        audit = build_audit(row, approvals)
+        audit["chain"] = check(repositories.list_audit_entries(incident_id), approvals)
+        return audit
     except SQLAlchemyError as exc:
         raise DatabaseUnavailableError("database unavailable") from exc
 

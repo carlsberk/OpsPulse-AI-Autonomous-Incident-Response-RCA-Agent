@@ -15,15 +15,17 @@ concurrency:
 jobs:
   quality:
     name: Lint, types, tests, offline evaluation
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     # No secrets are used: unit tests, migrations and the mock evaluation run fully offline.
     env:
       DATABASE_URL: sqlite://
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version: "3.11"
           cache: pip
@@ -51,7 +53,7 @@ jobs:
       - name: Offline evaluation, regression gate against committed baselines
         # Scripted replies are deterministic, so any drop in a quality metric is a real behaviour change.
         run: |
-          for dataset in tuning holdout adversarial callers; do
+          for dataset in tuning holdout adversarial callers reviewer_memory; do
             python -m evals.run_rca --mode mock --dataset "$dataset" --out /tmp/eval
             python -m evals.compare_reports "evals/baselines/rca-$dataset-mock.json" /tmp/eval/rca-$dataset-mock-*.json               --fail-on-regression
           done
@@ -74,7 +76,7 @@ jobs:
 
       - name: Upload reports
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: reports
           path: |
@@ -84,7 +86,7 @@ jobs:
 
   python-versions:
     name: Unit tests on Python ${{ matrix.python }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -93,8 +95,10 @@ jobs:
     env:
       DATABASE_URL: sqlite://
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version: ${{ matrix.python }}
           cache: pip
@@ -106,7 +110,7 @@ jobs:
 
   postgres:
     name: Migrations and tests on PostgreSQL 16
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     services:
       postgres:
@@ -123,9 +127,11 @@ jobs:
       DATABASE_URL: postgresql://opspulse:ci-only-password@localhost:5432/opspulse
       TEST_DATABASE_URL: postgresql://opspulse:ci-only-password@localhost:5432/opspulse
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version: "3.11"
           cache: pip
@@ -148,10 +154,12 @@ jobs:
 
   docker:
     name: Docker image and Compose stack
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
       - name: Compose file is valid
         run: docker compose config --quiet
 
@@ -165,3 +173,23 @@ jobs:
 
       - name: End-to-end smoke test (api + worker + PostgreSQL via Compose)
         run: bash scripts/compose_smoke.sh
+
+  sandbox-docker:
+    name: Sandbox against a real Docker daemon
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements*.txt
+      - run: pip install -r requirements-dev.txt
+      - name: Real fix, regression, missing test runner and five escape attempts (network, writes, root, secrets, fork bomb)
+        env:
+          RUN_DOCKER_TESTS: "1"
+          DATABASE_URL: sqlite://
+        run: pytest -q tests/integration/test_sandbox_docker.py

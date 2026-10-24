@@ -124,6 +124,7 @@ class Worker:
                 job["error_message"],
                 job["stack_trace"],
                 claim_token=job["claim_token"],
+                commit_sha=job.get("commit_sha"),
             )
         return True
 

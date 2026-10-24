@@ -9,8 +9,11 @@ from __future__ import annotations
 
 import logging
 import re
+import shutil
+import tarfile
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 import requests
@@ -158,14 +161,25 @@ def _recent_commits(repo: Repository, path: str, limit: int = 5) -> list[str]:
         return []
 
 
-def fetch_source_context(repo_name: str, runtime_path: str, failing_line: int) -> SourceContext | None:
-    """Numbered window of +/- CODE_CONTEXT_RADIUS lines around the failing line on the default branch.
+def fetch_source_context(
+    repo_name: str, runtime_path: str, failing_line: int, ref: str | None = None
+) -> SourceContext | None:
+    """Numbered window of +/- CODE_CONTEXT_RADIUS lines around the failing line, at `ref` (the deployed commit) when
+    given, else on the default branch head.
 
-    Returns None when the file cannot be located. Raises GitHubError / TRANSPORT_ERRORS on API failures.
+    Returns None when the file cannot be located. Raises GitHubError / TRANSPORT_ERRORS on API failures. A `ref` that
+    cannot be read is an error, never a silent fallback to the default branch: the code that failed in production may
+    differ from the head, and analysing the wrong code would look like a grounded analysis.
     """
     repo = get_repo(repo_name)
     try:
-        commit_sha = repo.get_branch(repo.default_branch).commit.sha
+        if ref:
+            try:
+                commit_sha = repo.get_commit(ref).sha
+            except GithubException as exc:
+                raise api_error(exc, f"commit {ref[:12]} could not be read: ") from exc
+        else:
+            commit_sha = repo.get_branch(repo.default_branch).commit.sha
         path = resolve_repo_path(repo, runtime_path, commit_sha)
         if path is None:
             return None
@@ -278,3 +292,62 @@ def create_fix_pull_request(
     except GithubException as exc:
         logger.warning("could not label PR: %s", describe_github_error(exc))
     return PullRequestResult(pr.html_url, pr.number, branch, already_existed=False)
+
+
+def download_repository_snapshot(repo_name: str, dest: Path, max_bytes: int) -> str:
+    """Extract the default branch head into `dest` (an empty directory) and return its commit SHA.
+
+    Only regular files and directories are extracted (no links, no absolute or `..` paths) and the download and
+    the extracted size are both capped, because the archive comes from a repository we do not control.
+    """
+    repo = get_repo(repo_name)
+    try:
+        sha = repo.get_branch(repo.default_branch).commit.sha
+        url = repo.get_archive_link("tarball", ref=sha)
+    except GithubException as exc:
+        raise api_error(exc, "cannot fetch repository archive: ") from exc
+    archive = dest.parent / f"{dest.name}.tar.gz"
+    try:
+        with requests.get(url, stream=True, timeout=30) as response:
+            response.raise_for_status()
+            size = 0
+            with archive.open("wb") as out:
+                for chunk in response.iter_content(1 << 16):
+                    size += len(chunk)
+                    if size > max_bytes:
+                        raise GitHubError("repository archive exceeds the sandbox size limit")
+                    out.write(chunk)
+        _extract_regular_files(archive, dest, max_bytes)
+    except (requests.RequestException, tarfile.TarError, OSError) as exc:
+        raise GitHubError(f"cannot fetch repository archive: {type(exc).__name__}") from exc
+    finally:
+        archive.unlink(missing_ok=True)
+    return sha
+
+
+def _extract_regular_files(archive: Path, dest: Path, max_bytes: int) -> None:
+    dest.mkdir(parents=True, exist_ok=True)
+    root = dest.resolve()
+    total = 0
+    with tarfile.open(archive, "r:gz") as tar:
+        for member in tar:
+            parts = PurePosixPath(member.name).parts[1:]  # drop the "<owner>-<repo>-<sha>/" prefix
+            if not parts or not (member.isfile() or member.isdir()):
+                continue
+            if PurePosixPath(member.name).is_absolute() or ".." in parts:
+                raise GitHubError("repository archive contains an unsafe path")
+            target = root.joinpath(*parts)
+            if not target.resolve().is_relative_to(root):
+                raise GitHubError("repository archive contains an unsafe path")
+            if member.isdir():
+                target.mkdir(parents=True, exist_ok=True)
+                continue
+            total += member.size
+            if total > max_bytes:
+                raise GitHubError("repository contents exceed the sandbox size limit")
+            source = tar.extractfile(member)
+            if source is None:
+                continue
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with source, target.open("wb") as out:
+                shutil.copyfileobj(source, out)

@@ -5,6 +5,217 @@ All notable changes are listed here. Versions of behaviour-critical components a
 
 ## [Unreleased]
 
+### Added
+- A social preview image for the repository (`docs/images/social-preview.png`, source `.html`), Security and Release badges
+  in the README, and the suggested About text and topics in CONTRIBUTING (those live in GitHub's settings, so they are not applied
+  by a merge).
+- A second live holdout run with the current prompt and gate (`rca-prompt-v7.1`, `quality-gate-v8`, 12 cases) and a
+  run-to-run comparison with the first: the same category result (9/10), but the two runs disagreed on 3 of 12 cases, and
+  one case is wrongly diagnosed and accepted in both. LIMITATIONS and the README table quote both runs.
+- First measurement on real bug-fix history (`evals/results/history-real-*`): the gate accepted 10 of 10 analysed runs with the
+  right file, yet only 2 of those patches made the real regression test pass. Recorded in `docs/LIMITATIONS.md`.
+- `python -m evals.history_real_repo build|verify`: a dataset built from a real repository's bug-fix history instead of
+  injected bugs. A case is a commit that fixed a bug and added a test; the parent plus that test is the incident, and only
+  commits where the real fix turns the test green are kept. `verify` applies the model's patch to the parent and runs the
+  real regression test. The category label is a heuristic from the exception type.
+- Reliability reports show 95 % Wilson intervals next to every rate.
+- The live holdout result for prompt v7.1 (`evals/results/`), with the honest reading in `docs/LIMITATIONS.md`: no evidence
+  that v7.1 is better or worse than v6.
+- `python -m scripts.pilot_check [--online]`: tells you what blocks a first pilot (missing token, remediation or approval
+  switched off, no reviewer identity, repository not allow-listed, unmigrated database, a token that cannot push, no Docker
+  image for the sandbox) and what is only a warning. It prints setting names, never values; exit 1 while something blocks.
+- Runbook: a checklist for a first real pilot on a test repository (token scope, configuration, how many failures to report,
+  deciding them as a reviewer, and the two commands that measure the result).
+
+### Changed
+- CI runs on `ubuntu-24.04` instead of `ubuntu-latest` (GitHub is migrating `latest` to Ubuntu 26, which would change Python,
+  Docker and tooling under every job without a commit here); a test fails if a job uses a floating label.
+- CI hardening: every workflow action is pinned to a full commit SHA (the tag stays in a comment; Dependabot updates both),
+  test workflows no longer keep the checkout token (`persist-credentials: false`), and `tests/unit/test_workflows.py` fails if
+  an action is unpinned or a workflow loses its `permissions`. CONTRIBUTING lists the repository settings the code cannot enforce.
+- README brought up to 1.8.0: current gate, features (sandbox, commit pinning, reviewer memory, audit chain), live results and
+  limits in the "At a glance" table, CI jobs, coverage and verified versions.
+
+### Fixed
+- `history_real_repo` stripped neither the test runner's own frames nor host paths from the traceback it builds, which made
+  every request exceed the provider's size limit (HTTP 413). Only frames inside the repository are kept now.
+- The PostgreSQL CI job failed on the pilot-check tests (merged in #37): that job migrates the test database before the tests
+  run, so an `alembic_version` table already existed and two tests assumed it did not. They now start from a known state.
+- Documentation: the README quoted 245 and 320 tests and the 1.8.0 notes said the audit log was not run on PostgreSQL. The
+  CI "postgres" job runs migration `0009`, its downgrade round trip and the whole suite (including the audit chain tests)
+  on PostgreSQL 16; what has not been run is a managed or production database.
+
+## [1.8.0] - 2026-10-24
+
+A record of who decided what that shows tampering. One feature, no change to the prompt, the quality gate or any analysis
+behaviour.
+
+### Upgrade notes
+- **Run the migrations** (`alembic upgrade head`; the Docker image does it on start). Migration `0009` adds the
+  `audit_entries` table; nothing existing is changed or backfilled.
+- Incidents decided **before** the upgrade have no chain and report `none` (not `intact`). Chains start with the next
+  proposal on each incident.
+- `GET /incidents/{id}/audit` has a new `chain` field; existing fields are unchanged.
+- Each approval transition now also inserts one row. A concurrent writer on the same incident violates the unique
+  `(incident, seq)` constraint and the change is refused (rolled back) rather than recorded out of order.
+
+### Added
+- **Tamper-evident approval log** (migration `0009`, table `audit_entries`). Every proposal, supersession and decision
+  (approved, rejected, expired, executed, execution failed) is written as one link of a per-incident hash chain, in the same
+  transaction as the state change: each entry holds the SHA-256 of its own fields and of the entry before it.
+  `GET /incidents/{id}/audit` returns `chain` (`none`, `intact`, `broken` or `inconsistent`, the entry count and the head
+  hash), and `python -m src.services.audit_chain` checks every incident from the command line (exit 1 on a problem). Besides
+  the links, the check compares the chain with the `remediation_approvals` rows, which are updated in place: a status
+  changed without a chain entry is `inconsistent`.
+- **Saved heads catch cut-off entries.** `python -m src.services.audit_chain --save-heads heads.json` writes the head hash of
+  every intact chain; later, `--heads heads.json` reports `truncated` (exit 1) when a chain no longer contains the saved
+  point: newest entries removed, an entry rewritten with a recomputed chain, or a whole chain gone. Growth since the file
+  was written is fine.
+
+### Fixed
+- `docs/LIMITATIONS.md` still quoted 513 tests and 95.7 % coverage; it now matches the suite.
+
+### What this does not do
+- Someone who can rewrite the whole table (a database administrator) can recompute a consistent chain. The saved-heads file
+  only helps if it is kept where that person cannot write; this repository does not store or schedule it.
+- The `events` timeline is still derived from rows that are updated in place; the chain covers the approval lifecycle, not
+  submission or analysis.
+- Verified with unit tests, a real SQLite database and the end-to-end flow; not run against a production PostgreSQL.
+
+## [1.7.0] - 2026-10-23
+
+Two ways the system gets better evidence about its own proposals: a regression test the model writes and the sandbox runs,
+and the memory of what reviewers decided before. Both are changes to the prompt (`rca-prompt-v7.1`), so the model's
+behaviour changes, not only the tooling.
+
+### Upgrade notes
+- **No database migration.**
+- **Prompt `rca-prompt-v7.1`.** Replies can now include an optional `reproduction_test`, so they are somewhat longer
+  (`LLM_MAX_OUTPUT_TOKENS` defaults to 4096; raise it if replies get cut off). Compare live results across prompt versions with
+  `evals.reliability_report`, not by eye. Mock baselines are unchanged.
+- **`HISTORY_REVIEWER_NOTES` defaults to `true`.** If your database already holds approvals and rejections, similar earlier
+  incidents now show the reviewer's decision and note to the model. Set it to `false` to keep the previous prompts.
+- The reproduction test is **only run** with `SANDBOX_ENABLED=true` (Docker, and an image with pytest and the repository's test
+  plugins). With the sandbox off the proposed test is stored and shown as "proposed but not run".
+
+### Added
+- **A reproduction test the model writes, run in the sandbox.** The model may propose one new pytest file that fails with the
+  incident's exception type on the unpatched code and passes after the patch. It is validated as text (a new `test_*.py`
+  path, a test function, no process, network, file or `exec` tools), run before and after the patch in the sandbox and
+  classified (`reproduced_and_fixed`, `reproduced_not_fixed`, `not_reproduced`, `fails_for_another_reason`, `invalid`,
+  `error`, `timeout`). "Reproduced" requires the incident's exception to be the one that *ends* the test, so a test that
+  dies of its own bug is not a reproduction. The result is shown in a new "Test evidence" card in the console and in the
+  pull request text. It is evidence only: never merged, never replaces the diff, and the model wrote both the test and the
+  fix. A malformed `reproduction_test` becomes `null`; it never costs the analysis.
+- **Reviewer decisions reach the next analysis.** A similar earlier incident that a person approved or rejected shows
+  `human review of that earlier incident: REJECTED by a reviewer - note: "..."` in the model's history entry. The note is
+  cleaned (one line, no control characters or backticks, at most 300 characters) and the prompt says it is a preference to
+  apply only where it clearly fits, never evidence about the current incident or an instruction.
+- **`python -m src.services.review_outcomes`**: what reviewers decided, per prompt, gate and model version, with the gate
+  score of approved versus rejected proposals and the rejection notes. Read-only; prints counts and **no rate below 20
+  decisions**.
+- Evaluation: `python -m evals.repro_eval` (the model's tests, live, real sandbox), dataset `rca-reviewer-memory-v1` with
+  `python -m evals.reviewer_memory_eval` (notes on versus off) and its mock baseline in the CI regression gate; real-Docker
+  integration tests for the reproduction; evaluation history records can carry a past patch and a reviewer decision.
+
+### Fixed
+- `evals/pilot_real_repo.py` crashed on import since 1.4.0 (a field inserted mid-way shifted every positional `Mutation`
+  call); a test now keeps it importable.
+- The first version of the reproduction classifier counted the incident's exception name appearing *anywhere* in the output as a
+  reproduction; a test that died of its own `AttributeError` was reported as reproducing a `KeyError`. It now requires the
+  exception to end the test.
+
+### Measured, with the usual caveats
+- **Reproduction tests** ([report](evals/results/REPRO-EVAL-2026-10-23.md), live model, real Docker, 14 runs in total): with
+  the final wording of the rule 4 of 6 pilot runs and 1 of 2 control runs were `reproduced_and_fixed`; the first wording gave
+  1 of 6. The failures were tests written backwards (`pytest.raises` around the bug) and constructors the model had not been
+  shown. Small numbers, one model, and the model wrote both the test and the fix.
+- **Reviewer memory** ([report](evals/results/REVIEWER-MEMORY-2026-10-23.md), live, 3 synthetic cases x 3 runs per condition):
+  with the note the patch did what it asked in 9 of 9 runs; without it the model repeated the *rejected* patch style in 9
+  of 9, although the rejected patch was in the prompt. This shows the mechanism, not the effect in practice: the cases were built
+  so the naive fix is the rejected one and the note is explicit. There is no real review history in this repository yet.
+
+## [1.6.0] - 2026-10-22
+
+Analyse the code that was actually deployed, and show the reviewer which code that was. One feature, backward compatible:
+without a `commit_sha` everything behaves as before.
+
+### Upgrade notes
+- **Run the migrations** (`alembic upgrade head`; the Docker image does it on start). Migration 0008 adds
+  `incidents.commit_sha` (nullable, no backfill).
+- Nothing to configure. To use the feature, send the deployed commit (see below); existing reporters keep working unchanged.
+
+### Added
+- **Analyse the code that was deployed.** An incident can carry the deployed `commit_sha` (API field; Alertmanager label or
+  annotation `commit_sha`; Sentry `release`, only when it is a git SHA, so `my-app@1.4.2` is ignored). Source and caller
+  windows are then read **at that commit** instead of the default branch head, which matters when the deployed code
+  differs from the head (the situation `ho-drift-attribute` is about). A commit that cannot be read (unknown, or not
+  visible to the token) sends the incident to review with that reason; it is **never silently replaced by the head**,
+  because analysing the wrong code would look like a grounded analysis. A pin reaches the worker through the stored row.
+- **The reviewer can see which code the analysis read.** The analysis records `source_revision` (the commit shown to the
+  model, and whether the incident pinned it); `GET /incidents/{id}/trace` returns it; the pull request text says
+  "Analysed at commit `...`" with its origin (the deployed commit, or the default branch head at analysis time, which may
+  have moved). The guidance for a patch that no longer applies to a moved head tells the reporter to re-submit with the
+  current `commit_sha`.
+
+### Good to know
+- The quality gate checks the patch against the file **as it was at the pinned commit**, but when the pull request is
+  opened the patch is applied to the **current** default branch head. If the head moved so that it no longer applies, the PR
+  step refuses with that message instead of opening a wrong PR. Rebasing the patch is not done.
+- Unit-tested with a fake GitHub only; not yet run against github.com. Without a reported `commit_sha` the head is used, so
+  a head that differs from what is deployed can still mislead the analysis.
+- Test-only: an API test of the pinning feature asserted nothing about the outcome, so an analysis that crashed inside would
+  still have passed it. It now asserts the incident did not fail.
+
+## [1.5.0] - 2026-10-22
+
+One new optional feature (a sandboxed test run, off by default), one security hardening, and the first time the sandbox was
+checked against a real Docker daemon, which found and fixed a defect. Versioned 1.5.0 rather than 1.4.1 because it adds a
+feature with its own settings, even though every default behaviour is unchanged.
+
+### Upgrade notes
+- **No database migration.** Nothing changes unless you set `SANDBOX_ENABLED=true`.
+- New optional settings (all in `.env.example`): `SANDBOX_ENABLED` (default `false`), `SANDBOX_IMAGE`, `SANDBOX_COMMAND`,
+  `SANDBOX_TIMEOUT_SECONDS`, `SANDBOX_MEMORY_MB`, `SANDBOX_MAX_REPO_MB`. With the sandbox on you need Docker on the host
+  **and an image that already contains pytest and the repository's dependencies** (the container has no network); the
+  default `python:3.11-slim` has no pytest and is reported as an environment `error`.
+- Request bodies over 1 MB are now refused with 413 however they are sent.
+
+### Added
+- **Optional sandboxed test run** (`SANDBOX_ENABLED`, default off). Before a patch is proposed, the target repository's
+  tests run in a throwaway Docker container (no network, read-only root, `--cap-drop ALL`, `no-new-privileges`,
+  unprivileged user, memory, CPU, process and time caps; the checkout is mounted read-only and copied to a size-capped
+  tmpfs) with and without the patch. The result is stored in the analysis (`analysis.sandbox`), shown to the reviewer and
+  written into the PR text. A patch that breaks tests that passed before is routed to `needs_review` and gets no approval.
+  A passing run still does not prove the fix is right.
+- **Sandbox integration tests against a real Docker daemon** (`tests/integration/test_sandbox_docker.py`, opt-in with
+  `RUN_DOCKER_TESTS=1`) and a CI job running them (`sandbox-docker`): a real fix turning failing tests green, a regression
+  being caught, a missing test runner reported as an environment error, and five escape attempts written as tests
+  (network access, writing outside the tmpfs, running as root or with capabilities, seeing host secrets or the Docker
+  socket, a fork bomb), all contained. Verified on Docker Desktop for Windows and on a Linux CI runner (green on `main`).
+- `scripts/e2e_flow.py` can open its pull request on a real test repository (`E2E_LIVE_GITHUB_REPO` and `GITHUB_TOKEN`).
+  One such run with the scripted (MOCK) model is recorded in `docs/LIMITATIONS.md`; it shows the GitHub plumbing works, not
+  the model's quality.
+
+### Security
+- Request bodies over 1 MB are refused with 413 even when sent chunked (no `Content-Length`): the bytes are counted as they
+  arrive instead of being buffered first (`src/api/limits.py`). Before, the limit could be bypassed by streaming a body.
+
+### Fixed
+- **Sandbox: a missing test runner was reported as failing tests.** The default `SANDBOX_IMAGE` has no pytest, so
+  `python -m pytest` exits 1 ("No module named pytest") and the report said "tests fail both before and after the patch".
+  Found by running the sandbox against a real Docker daemon for the first time. A missing module or program that shows up
+  both before and after the patch is now `error` and points at `SANDBOX_IMAGE`; an import error introduced only by the patch
+  is still a `regression`.
+- `scripts/demo.py` and `scripts/e2e_flow.py` failed on macOS because the sandbox traceback printed the resolved
+  `/private/var/...` path while the `/app/` rewrite used the symlinked one.
+- A sandbox unit test split the mounted path on a colon and so failed on Windows (drive letters); the production code was
+  fine.
+
+### Documentation
+- `docs/LIMITATIONS.md` now says what the sandbox has and has not been shown to do, and that the GitHub adapter has also been
+  run once against github.com (with a scripted model).
+
 ## [1.4.0] - 2026-10-19
 
 Hardening, evidence and honesty. Nothing here changes the safety model (no GitHub write without a human decision, no merge);

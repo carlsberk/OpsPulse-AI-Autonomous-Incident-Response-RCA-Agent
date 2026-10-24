@@ -104,3 +104,14 @@ def test_small_samples_are_flagged_and_datasets_that_differ_are_not_compared():
     cand = {**_report([_full("c1")]), "dataset_version": "other"}
     text = render(cand, base, "r.json")
     assert "Small sample" in text and "not compared" in text
+
+
+def test_wilson_interval_is_sane_at_the_edges_and_for_small_samples():
+    from evals.reliability_report import _rate_ci, wilson_interval
+
+    low, high = wilson_interval(9, 11)
+    assert 0.5 < low < 0.6 and 0.9 < high < 1.0  # roughly 52 % to 95 %
+    assert wilson_interval(0, 5)[0] == 0.0 and wilson_interval(5, 5)[1] == 1.0
+    assert 0.0 < wilson_interval(0, 5)[1] < 0.6  # zero successes is not "certainly zero"
+    assert wilson_interval(0, 0) == (0.0, 1.0)
+    assert _rate_ci(0, 0) == "n/a" and _rate_ci(9, 11).startswith("9/11 (")

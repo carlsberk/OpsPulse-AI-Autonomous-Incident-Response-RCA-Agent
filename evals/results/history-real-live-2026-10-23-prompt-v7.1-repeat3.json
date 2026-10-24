@@ -1,0 +1,952 @@
+{
+  "mode": "live",
+  "started_at": "2026-10-23T21:40:50.522394+00:00",
+  "dataset_version": "history-real-v1",
+  "run_metadata": {
+    "agent_version": "1.8.0-opspulse",
+    "prompt_version": "rca-prompt-v7.1",
+    "evaluator_version": "quality-gate-v8",
+    "retrieval_strategy": "lexical-v1",
+    "model": "openai/gpt-oss-120b",
+    "quality_threshold": 0.85,
+    "max_analysis_iterations": 3,
+    "max_output_tokens": 4096
+  },
+  "metrics": {
+    "cases": 15,
+    "cases_not_evaluated": [
+      "hist-0978de5b",
+      "hist-20c6370d",
+      "hist-d2eba037",
+      "hist-d2eba037",
+      "hist-d2eba037"
+    ],
+    "structured_output_validity": {
+      "value": 0.9286,
+      "numerator": 13,
+      "denominator": 14,
+      "definition": "LLM attempts whose reply validated against RCAOutput / LLM attempts (provider errors excluded)"
+    },
+    "category_accuracy": {
+      "value": 0.8,
+      "numerator": 8,
+      "denominator": 10,
+      "definition": "final category == labelled category (or an accepted alternative) / cases labelled conclusive"
+    },
+    "evidence_grounding_accuracy": {
+      "value": 1.0,
+      "numerator": 19,
+      "denominator": 19,
+      "definition": "'observed' quotes found verbatim in their cited source / all 'observed' quotes (final analyses)"
+    },
+    "unsupported_claim_rate": {
+      "value": 0.0,
+      "numerator": 0,
+      "denominator": 29,
+      "definition": "(unverifiable 'observed' quotes + affected files absent from trace/retrieved file) / (all quotes + all affected files)"
+    },
+    "abstention_recall": {
+      "value": null,
+      "numerator": 0,
+      "denominator": 0,
+      "definition": "inconclusive-labelled cases where the model declared insufficient evidence or category 'unknown' / inconclusive-labelled cases"
+    },
+    "inconclusive_not_accepted_rate": {
+      "value": null,
+      "numerator": 0,
+      "denominator": 0,
+      "definition": "inconclusive-labelled cases the quality gate did NOT accept / inconclusive-labelled cases"
+    },
+    "false_abstention_rate": {
+      "value": 0.0,
+      "numerator": 0,
+      "denominator": 10,
+      "definition": "conclusive-labelled cases where the model abstained / conclusive-labelled cases"
+    },
+    "gate_acceptance_rate": {
+      "value": 1.0,
+      "numerator": 10,
+      "denominator": 10,
+      "definition": "cases accepted by the quality gate / evaluated cases"
+    },
+    "false_acceptance_rate": {
+      "value": 0.2,
+      "numerator": 2,
+      "denominator": 10,
+      "definition": "accepted cases that are inconclusive-labelled or have the wrong category / accepted cases"
+    },
+    "relevant_file_hit_rate": {
+      "value": 1.0,
+      "numerator": 10,
+      "denominator": 10,
+      "definition": "cases whose affected_files contain a labelled relevant file / cases with labelled files"
+    },
+    "unsupported_acceptance_rate": {
+      "value": null,
+      "numerator": 0,
+      "denominator": 0,
+      "definition": "unsupported analyses (inconclusive-labelled or with an unverifiable quote) the gate accepted / unsupported analyses"
+    },
+    "workflow_failure_rate": {
+      "value": 0.3333,
+      "numerator": 5,
+      "denominator": 15,
+      "definition": "cases ending in workflow status 'failed' (e.g. provider errors) / cases"
+    },
+    "avg_attempts": 1.267,
+    "llm_latency_ms": {
+      "mean": 24105,
+      "p95": 56342,
+      "samples": 14
+    },
+    "case_wall_ms": {
+      "mean": 23954,
+      "p95": 97259
+    },
+    "tokens": {
+      "input": 60196,
+      "output": 32479,
+      "attempts_with_usage": 14
+    },
+    "estimated_cost_usd": null,
+    "calibration": {
+      "model_confidence": {
+        "samples": 10,
+        "brier": 0.157,
+        "bins": [
+          {
+            "range": "0.50-0.70",
+            "n": 1,
+            "mean_score": 0.6,
+            "accuracy": 1.0
+          },
+          {
+            "range": "0.70-0.85",
+            "n": 9,
+            "mean_score": 0.744,
+            "accuracy": 0.778
+          }
+        ]
+      },
+      "quality_score": {
+        "samples": 10,
+        "brier": 0.1942,
+        "bins": [
+          {
+            "range": "0.85-1.00",
+            "n": 10,
+            "mean_score": 0.987,
+            "accuracy": 0.8
+          }
+        ]
+      }
+    },
+    "consistency": {
+      "cases_repeated": 4,
+      "stable_outcome_rate": {
+        "value": 1.0,
+        "numerator": 4,
+        "denominator": 4,
+        "definition": "repeated cases whose outcome never changed / repeated cases"
+      },
+      "per_case": {
+        "hist-87a9a4e0": {
+          "runs": 3,
+          "accepted": 3,
+          "correct_category": 3,
+          "distinct_outcomes": 1
+        },
+        "hist-92cb7096": {
+          "runs": 3,
+          "accepted": 3,
+          "correct_category": 3,
+          "distinct_outcomes": 1
+        },
+        "hist-0978de5b": {
+          "runs": 2,
+          "accepted": 2,
+          "correct_category": 0,
+          "distinct_outcomes": 1
+        },
+        "hist-20c6370d": {
+          "runs": 2,
+          "accepted": 2,
+          "correct_category": 2,
+          "distinct_outcomes": 1
+        }
+      }
+    }
+  },
+  "results": [
+    {
+      "case_id": "hist-87a9a4e0",
+      "expected": {
+        "root_cause_category": "logic_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "tabulate/__init__.py"
+        ],
+        "alternative_categories": [],
+        "note": "Category is a heuristic from the exception type; the truth is the real fix commit 87a9a4e07a5e. Prefer relevant_file_hit_rate and `history_real_repo verify`."
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.99,
+      "predicted_category": "logic_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.8,
+      "observed_quotes": 2,
+      "grounded_quotes": 2,
+      "affected_files": [
+        "tabulate/__init__.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 7720,
+          "input_tokens": 4110,
+          "output_tokens": 2006,
+          "truncated": false,
+          "valid_json": false,
+          "schema_valid": false,
+          "schema_error_fields": [],
+          "gate_score": 0.125,
+          "gate_passed": false,
+          "failed_checks": [
+            "schema",
+            "trigger_grounding",
+            "evidence_grounding",
+            "affected_files_grounding",
+            "self_assessment",
+            "diff_wellformed",
+            "diff_applies",
+            "patch_minimal",
+            "patch_locality",
+            "patch_effective"
+          ],
+          "decision": "retrying with evaluator feedback"
+        },
+        {
+          "iteration": 2,
+          "latency_ms": 5006,
+          "input_tokens": 4412,
+          "output_tokens": 2163,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.99,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/tabulate/__init__.py\n+++ b/tabulate/__init__.py\n@@ -2290,4 +2290,7 @@\n     if maxheadercolwidths is not None:\n-        num_cols = len(list_of_lists[0])\n+        if list_of_lists:\n+            num_cols = len(list_of_lists[0])\n+        else:\n+            num_cols = len(headers) if headers is not None else 0\n         if isinstance(maxheadercolwidths, int):  # Expand scalar for all columns",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.80 (uncalibrated)"
+      },
+      "wall_ms": 12735,
+      "run": 1
+    },
+    {
+      "case_id": "hist-87a9a4e0",
+      "expected": {
+        "root_cause_category": "logic_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "tabulate/__init__.py"
+        ],
+        "alternative_categories": [],
+        "note": "Category is a heuristic from the exception type; the truth is the real fix commit 87a9a4e07a5e. Prefer relevant_file_hit_rate and `history_real_repo verify`."
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.99,
+      "predicted_category": "logic_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.8,
+      "observed_quotes": 3,
+      "grounded_quotes": 3,
+      "affected_files": [
+        "tabulate/__init__.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 28960,
+          "input_tokens": 4110,
+          "output_tokens": 2489,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.99,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/tabulate/__init__.py\n+++ b/tabulate/__init__.py\n@@ -2289,7 +2289,11 @@\n-    if maxheadercolwidths is not None:\n-        num_cols = len(list_of_lists[0])\n-        if isinstance(maxheadercolwidths, int):  # Expand scalar for all columns\n+    if maxheadercolwidths is not None:\n+        if len(list_of_lists):\n+            num_cols = len(list_of_lists[0])\n+        else:\n+            num_cols = 0\n+        if isinstance(maxheadercolwidths, int):  # Expand scalar for all columns",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.80 (uncalibrated)"
+      },
+      "wall_ms": 28966,
+      "run": 2
+    },
+    {
+      "case_id": "hist-87a9a4e0",
+      "expected": {
+        "root_cause_category": "logic_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "tabulate/__init__.py"
+        ],
+        "alternative_categories": [],
+        "note": "Category is a heuristic from the exception type; the truth is the real fix commit 87a9a4e07a5e. Prefer relevant_file_hit_rate and `history_real_repo verify`."
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.99,
+      "predicted_category": "logic_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.8,
+      "observed_quotes": 2,
+      "grounded_quotes": 2,
+      "affected_files": [
+        "tabulate/__init__.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 40407,
+          "input_tokens": 4110,
+          "output_tokens": 2300,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.99,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/tabulate/__init__.py\n+++ b/tabulate/__init__.py\n@@ -2289,6 +2289,9 @@\n \n-    if maxheadercolwidths is not None:\n-        num_cols = len(list_of_lists[0])\n-        if isinstance(maxheadercolwidths, int):  # Expand scalar for all columns\n+    if maxheadercolwidths is not None:\n+        if len(list_of_lists):\n+            num_cols = len(list_of_lists[0])\n+        else:\n+            num_cols = 0\n+        if isinstance(maxheadercolwidths, int):  # Expand scalar for all columns",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.80 (uncalibrated)"
+      },
+      "wall_ms": 40414,
+      "run": 3
+    },
+    {
+      "case_id": "hist-92cb7096",
+      "expected": {
+        "root_cause_category": "type_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "tabulate/__init__.py"
+        ],
+        "alternative_categories": [],
+        "note": "Category is a heuristic from the exception type; the truth is the real fix commit 92cb7096adaf. Prefer relevant_file_hit_rate and `history_real_repo verify`."
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.985,
+      "predicted_category": "type_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.7,
+      "observed_quotes": 2,
+      "grounded_quotes": 2,
+      "affected_files": [
+        "tabulate/__init__.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 24955,
+          "input_tokens": 4409,
+          "output_tokens": 2024,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.985,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/tabulate/__init__.py\n+++ b/tabulate/__init__.py\n@@ -1229,5 +1229,10 @@\n     if valtype is str:\n         return f\"{val}\"\n     elif valtype is int:\n-        return format(val, intfmt)\n+        # Coerce string representations of integers to actual int before formatting.\n+        try:\n+            return format(int(val), intfmt)\n+        except (ValueError, TypeError):\n+            # If conversion fails, fall back to original behaviour.\n+            return format(val, intfmt)\n     elif valtype is bytes:",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.70 (uncalibrated)"
+      },
+      "wall_ms": 24962,
+      "run": 1
+    },
+    {
+      "case_id": "hist-92cb7096",
+      "expected": {
+        "root_cause_category": "type_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "tabulate/__init__.py"
+        ],
+        "alternative_categories": [],
+        "note": "Category is a heuristic from the exception type; the truth is the real fix commit 92cb7096adaf. Prefer relevant_file_hit_rate and `history_real_repo verify`."
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.98,
+      "predicted_category": "type_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.6,
+      "observed_quotes": 2,
+      "grounded_quotes": 2,
+      "affected_files": [
+        "tabulate/__init__.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 40906,
+          "input_tokens": 4409,
+          "output_tokens": 2547,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.935,
+          "gate_passed": false,
+          "failed_checks": [
+            "trigger_grounding",
+            "self_assessment"
+          ],
+          "decision": "retrying with evaluator feedback"
+        },
+        {
+          "iteration": 2,
+          "latency_ms": 56342,
+          "input_tokens": 5057,
+          "output_tokens": 2272,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.98,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/tabulate/__init__.py\n+++ b/tabulate/__init__.py\n@@ -1230,5 +1230,12 @@\n-        return format(val, intfmt)\n+        # Guard against non\u2011int values (e.g., numeric strings) when an integer format is specified.\n+        if isinstance(val, int):\n+            return format(val, intfmt)\n+        try:\n+            int_val = int(val)\n+            return format(int_val, intfmt)\n+        except Exception:\n+            # Fallback to plain string representation if conversion fails.\n+            return f\"{val}\"",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.60 (uncalibrated)"
+      },
+      "wall_ms": 97259,
+      "run": 2
+    },
+    {
+      "case_id": "hist-92cb7096",
+      "expected": {
+        "root_cause_category": "type_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "tabulate/__init__.py"
+        ],
+        "alternative_categories": [],
+        "note": "Category is a heuristic from the exception type; the truth is the real fix commit 92cb7096adaf. Prefer relevant_file_hit_rate and `history_real_repo verify`."
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.985,
+      "predicted_category": "type_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.7,
+      "observed_quotes": 2,
+      "grounded_quotes": 2,
+      "affected_files": [
+        "tabulate/__init__.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 25109,
+          "input_tokens": 4409,
+          "output_tokens": 2225,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.985,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/tabulate/__init__.py\n+++ b/tabulate/__init__.py\n@@ -1229,5 +1229,9 @@\n     if valtype is str:\n         return f\"{val}\"\n     elif valtype is int:\n-        return format(val, intfmt)\n+        # Accept numeric strings by converting them to int before formatting\n+        if isinstance(val, str):\n+            try:\n+                val = int(val)\n+            except ValueError:\n+                return f\"{val}\"\n+        return format(val, intfmt)\n     elif valtype is bytes:",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.70 (uncalibrated)"
+      },
+      "wall_ms": 25116,
+      "run": 3
+    },
+    {
+      "case_id": "hist-0978de5b",
+      "expected": {
+        "root_cause_category": "attribute_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "tabulate/__init__.py"
+        ],
+        "alternative_categories": [],
+        "note": "Category is a heuristic from the exception type; the truth is the real fix commit 0978de5bb3a7. Prefer relevant_file_hit_rate and `history_real_repo verify`."
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.985,
+      "predicted_category": "logic_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.7,
+      "observed_quotes": 2,
+      "grounded_quotes": 2,
+      "affected_files": [
+        "tabulate/__init__.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 6695,
+          "input_tokens": 4390,
+          "output_tokens": 2458,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.985,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/tabulate/__init__.py\n+++ b/tabulate/__init__.py\n@@\n-        elif (\n-            dataclasses is not None\n-            and len(rows) > 0\n-            and dataclasses.is_dataclass(rows[0])\n-        ):\n+        elif (\n+            dataclasses is not None\n+            and len(rows) > 0\n+            and dataclasses.is_dataclass(rows[0])\n+            and all(dataclasses.is_dataclass(r) for r in rows)\n+        ):",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.70 (uncalibrated)"
+      },
+      "wall_ms": 6699,
+      "run": 1
+    },
+    {
+      "case_id": "hist-0978de5b",
+      "expected": {
+        "root_cause_category": "attribute_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "tabulate/__init__.py"
+        ],
+        "alternative_categories": [],
+        "note": "Category is a heuristic from the exception type; the truth is the real fix commit 0978de5bb3a7. Prefer relevant_file_hit_rate and `history_real_repo verify`."
+      },
+      "workflow_status": "failed",
+      "error_category": "llm_unavailable",
+      "error": "the LLM provider returned HTTP 413",
+      "gate_passed": false,
+      "quality_score": 0.635,
+      "predicted_category": "logic_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.7,
+      "observed_quotes": 3,
+      "grounded_quotes": 2,
+      "affected_files": [
+        "tabulate/__init__.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 45406,
+          "input_tokens": 4390,
+          "output_tokens": 2243,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.635,
+          "gate_passed": false,
+          "failed_checks": [
+            "evidence_grounding",
+            "self_assessment",
+            "diff_applies",
+            "patch_locality",
+            "patch_effective"
+          ],
+          "decision": "retrying with evaluator feedback"
+        },
+        {
+          "iteration": 2,
+          "error_category": "llm_unavailable"
+        }
+      ],
+      "patch": "--- a/tabulate/__init__.py\n+++ b/tabulate/__init__.py\n@@ -1459,7 +1459,7 @@\n         field_names = [field.name for field in dataclasses.fields(rows[0])]\n         if headers == \"keys\":\n             headers = field_names\n-        rows = [[getattr(row, f) for f in field_names] for row in rows]\n+        rows = [[getattr(row, f) for f in field_names] if not _is_separating_line(row) else row for row in rows]\n \n         elif headers == \"keys\" and len(rows) > 0:",
+      "failed_check_details": {
+        "evidence_grounding": "observed evidence #3 quote not found verbatim in code_context: 'elif (\\\\n dataclasses is not None\\\\n and len(rows) > 0\\\\n and d'",
+        "self_assessment": "model self-assessed 0.70 (uncalibrated)",
+        "diff_applies": "patch does not apply to the retrieved source: hunk 1: context/removed lines were not found in the source (first line: '        field_names = [field.name for field in dataclasses.fields(rows'). Closest lines in the source - copy them exactly, including indentation: L1461: '            field_names = [field.name for field in dataclasses.fields(rows[0])]' | L1462: '            if headers == \"keys\":' | L1463: '                headers = field_names' | L1464: '            rows = [[getattr(row, f) for f in field_names] for row in rows]' | L1465: '' | L1466: '        elif headers == \"keys\" and len(rows",
+        "patch_locality": "patch not applicable",
+        "patch_effective": "patch not applicable"
+      },
+      "wall_ms": 45545,
+      "run": 2
+    },
+    {
+      "case_id": "hist-0978de5b",
+      "expected": {
+        "root_cause_category": "attribute_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "tabulate/__init__.py"
+        ],
+        "alternative_categories": [],
+        "note": "Category is a heuristic from the exception type; the truth is the real fix commit 0978de5bb3a7. Prefer relevant_file_hit_rate and `history_real_repo verify`."
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.985,
+      "predicted_category": "logic_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.7,
+      "observed_quotes": 2,
+      "grounded_quotes": 2,
+      "affected_files": [
+        "tabulate/__init__.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 22573,
+          "input_tokens": 4390,
+          "output_tokens": 2697,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.985,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/tabulate/__init__.py\n+++ b/tabulate/__init__.py\n@@ -1460,5 +1460,9 @@\n-            field_names = [field.name for field in dataclasses.fields(rows[0])]\n-            if headers == \"keys\":\n-                headers = field_names\n-            rows = [[getattr(row, f) for f in field_names] for row in rows]\n+            field_names = [field.name for field in dataclasses.fields(rows[0])]\n+            if headers == \"keys\":\n+                headers = field_names\n+            rows = [\n+                [getattr(row, f) for f in field_names] if not _is_separating_line(row) else row\n+                for row in rows\n+            ]",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.70 (uncalibrated)"
+      },
+      "wall_ms": 22580,
+      "run": 3
+    },
+    {
+      "case_id": "hist-20c6370d",
+      "expected": {
+        "root_cause_category": "logic_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "tabulate/__init__.py"
+        ],
+        "alternative_categories": [],
+        "note": "Category is a heuristic from the exception type; the truth is the real fix commit 20c6370d5da2. Prefer relevant_file_hit_rate and `history_real_repo verify`."
+      },
+      "workflow_status": "failed",
+      "error_category": "llm_rate_limited",
+      "error": "the LLM provider rate limit was exceeded (TPM)",
+      "gate_passed": false,
+      "quality_score": 0.0,
+      "predicted_category": null,
+      "declared_insufficient": false,
+      "model_confidence": null,
+      "observed_quotes": 0,
+      "grounded_quotes": 0,
+      "affected_files": [],
+      "grounded_files": 0,
+      "attempts": [
+        {
+          "iteration": 1,
+          "error_category": "llm_rate_limited"
+        }
+      ],
+      "patch": null,
+      "failed_check_details": {},
+      "wall_ms": 21289,
+      "run": 1
+    },
+    {
+      "case_id": "hist-20c6370d",
+      "expected": {
+        "root_cause_category": "logic_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "tabulate/__init__.py"
+        ],
+        "alternative_categories": [],
+        "note": "Category is a heuristic from the exception type; the truth is the real fix commit 20c6370d5da2. Prefer relevant_file_hit_rate and `history_real_repo verify`."
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.985,
+      "predicted_category": "logic_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.7,
+      "observed_quotes": 1,
+      "grounded_quotes": 1,
+      "affected_files": [
+        "tabulate/__init__.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 5456,
+          "input_tokens": 4149,
+          "output_tokens": 2433,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.985,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/tabulate/__init__.py\n+++ b/tabulate/__init__.py\n@@ -2064,6 +2064,12 @@\n     if maxcolwidths is not None:\n-        num_cols = len(list_of_lists[0])\n-        if isinstance(maxcolwidths, int):  # Expand scalar for all columns\n-            maxcolwidths = _expand_iterable(maxcolwidths, num_cols, maxcolwidths)\n-        else:  # Ignore col width for any 'trailing' columns\n-            maxcolwidths = _expand_iterable(maxcolwidths, num_cols, None)\n+        if list_of_lists:\n+            num_cols = len(list_of_lists[0])\n+            if isinstance(maxcolwidths, int):  # Expand scalar for all columns\n+                maxcolwidths = _expand_iterable(maxcolwidths, num_cols, maxcolwidths)\n+            else:  # Ignore col width for any 'trailing' columns\n+                maxcolwidths = _expand_iterable(maxcolwidths, num_cols, None)\n+        else:\n+            # No rows to process; skip column width handling\n+            pass",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.70 (uncalibrated)"
+      },
+      "wall_ms": 5460,
+      "run": 2
+    },
+    {
+      "case_id": "hist-20c6370d",
+      "expected": {
+        "root_cause_category": "logic_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "tabulate/__init__.py"
+        ],
+        "alternative_categories": [],
+        "note": "Category is a heuristic from the exception type; the truth is the real fix commit 20c6370d5da2. Prefer relevant_file_hit_rate and `history_real_repo verify`."
+      },
+      "workflow_status": "accepted",
+      "error_category": null,
+      "error": null,
+      "gate_passed": true,
+      "quality_score": 0.99,
+      "predicted_category": "logic_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.8,
+      "observed_quotes": 1,
+      "grounded_quotes": 1,
+      "affected_files": [
+        "tabulate/__init__.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 15602,
+          "input_tokens": 4149,
+          "output_tokens": 2925,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.99,
+          "gate_passed": true,
+          "failed_checks": [
+            "self_assessment"
+          ],
+          "decision": "quality gate passed"
+        }
+      ],
+      "patch": "--- a/tabulate/__init__.py\n+++ b/tabulate/__init__.py\n@@ -2064,4 +2064,7 @@\n     if maxcolwidths is not None:\n-        num_cols = len(list_of_lists[0])\n-        if isinstance(maxcolwidths, int):  # Expand scalar for all columns\n-            maxcolwidths = _expand_iterable(maxcolwidths, num_cols, maxcolwidths)\n+        if list_of_lists:\n+            num_cols = len(list_of_lists[0])\n+        else:\n+            num_cols = 0\n+        if isinstance(maxcolwidths, int):  # Expand scalar for all columns\n+            maxcolwidths = _expand_iterable(maxcolwidths, num_cols, maxcolwidths)\n@@ -2076,4 +2076,7 @@\n     if maxheadercolwidths is not None:\n-        num_cols = len(list_of_lists[0])\n-        if isinstance(maxheadercolwidths, int):  # Expand scalar for all columns\n-            maxheadercolwidths = _expand_iterable(\n+        if list_of_lists:\n+            num_cols = len(list_of_lists[0])\n+        else:\n+            num_cols = 0\n+        if isinstance(maxheadercolwidths, int):  # Expand scalar for all columns\n+            maxheadercolwidths = _expand_iterable(",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.80 (uncalibrated)"
+      },
+      "wall_ms": 15607,
+      "run": 3
+    },
+    {
+      "case_id": "hist-d2eba037",
+      "expected": {
+        "root_cause_category": "logic_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "toolz/itertoolz.py"
+        ],
+        "alternative_categories": [],
+        "note": "Category is a heuristic from the exception type; the truth is the real fix commit d2eba0374a45. Prefer relevant_file_hit_rate and `history_real_repo verify`."
+      },
+      "workflow_status": "failed",
+      "error_category": "llm_rate_limited",
+      "error": "the LLM provider rate limit was exceeded (TPD)",
+      "gate_passed": false,
+      "quality_score": 0.54,
+      "predicted_category": "logic_error",
+      "declared_insufficient": false,
+      "model_confidence": 0.8,
+      "observed_quotes": 2,
+      "grounded_quotes": 2,
+      "affected_files": [
+        "toolz/itertoolz.py"
+      ],
+      "grounded_files": 1,
+      "attempts": [
+        {
+          "iteration": 1,
+          "latency_ms": 12328,
+          "input_tokens": 3702,
+          "output_tokens": 1697,
+          "truncated": false,
+          "valid_json": true,
+          "schema_valid": true,
+          "schema_error_fields": [],
+          "gate_score": 0.54,
+          "gate_passed": false,
+          "failed_checks": [
+            "self_assessment",
+            "diff_wellformed",
+            "diff_applies",
+            "patch_minimal",
+            "patch_locality",
+            "patch_effective"
+          ],
+          "decision": "retrying with evaluator feedback"
+        },
+        {
+          "iteration": 2,
+          "error_category": "llm_rate_limited"
+        }
+      ],
+      "patch": "--- a/toolz/itertoolz.py\n+++ b/toolz/itertoolz.py\n@@ -520,6 +520,11 @@\n def interpose(el, seq):\n@@\n-    inposed = concat(zip(itertools.repeat(el), seq))\n-    next(inposed)\n-    return inposed\n+    inposed = concat(zip(itertools.repeat(el), seq))\n+    try:\n+        next(inposed)\n+    except StopIteration:\n+        return iter(())\n+    return inposed",
+      "failed_check_details": {
+        "self_assessment": "model self-assessed 0.80 (uncalibrated)",
+        "diff_wellformed": "diff is malformed: hunk without any added or removed line",
+        "diff_applies": "diff is malformed: hunk without any added or removed line",
+        "patch_minimal": "diff is malformed: hunk without any added or removed line",
+        "patch_locality": "diff is malformed: hunk without any added or removed line",
+        "patch_effective": "diff is malformed: hunk without any added or removed line"
+      },
+      "wall_ms": 12450,
+      "run": 1
+    },
+    {
+      "case_id": "hist-d2eba037",
+      "expected": {
+        "root_cause_category": "logic_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "toolz/itertoolz.py"
+        ],
+        "alternative_categories": [],
+        "note": "Category is a heuristic from the exception type; the truth is the real fix commit d2eba0374a45. Prefer relevant_file_hit_rate and `history_real_repo verify`."
+      },
+      "workflow_status": "failed",
+      "error_category": "llm_rate_limited",
+      "error": "the LLM provider rate limit was exceeded (TPD)",
+      "gate_passed": false,
+      "quality_score": 0.0,
+      "predicted_category": null,
+      "declared_insufficient": false,
+      "model_confidence": null,
+      "observed_quotes": 0,
+      "grounded_quotes": 0,
+      "affected_files": [],
+      "grounded_files": 0,
+      "attempts": [
+        {
+          "iteration": 1,
+          "error_category": "llm_rate_limited"
+        }
+      ],
+      "patch": null,
+      "failed_check_details": {},
+      "wall_ms": 121,
+      "run": 2
+    },
+    {
+      "case_id": "hist-d2eba037",
+      "expected": {
+        "root_cause_category": "logic_error",
+        "inconclusive": false,
+        "relevant_files": [
+          "toolz/itertoolz.py"
+        ],
+        "alternative_categories": [],
+        "note": "Category is a heuristic from the exception type; the truth is the real fix commit d2eba0374a45. Prefer relevant_file_hit_rate and `history_real_repo verify`."
+      },
+      "workflow_status": "failed",
+      "error_category": "llm_rate_limited",
+      "error": "the LLM provider rate limit was exceeded (TPD)",
+      "gate_passed": false,
+      "quality_score": 0.0,
+      "predicted_category": null,
+      "declared_insufficient": false,
+      "model_confidence": null,
+      "observed_quotes": 0,
+      "grounded_quotes": 0,
+      "affected_files": [],
+      "grounded_files": 0,
+      "attempts": [
+        {
+          "iteration": 1,
+          "error_category": "llm_rate_limited"
+        }
+      ],
+      "patch": null,
+      "failed_check_details": {},
+      "wall_ms": 109,
+      "run": 3
+    }
+  ]
+}

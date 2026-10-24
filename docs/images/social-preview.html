@@ -1,0 +1,39 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>OpsPulse AI social preview</title>
+<style>
+  /* Source of docs/images/social-preview.png (1280x640, GitHub's recommended size).
+     Render: msedge --headless --screenshot=docs/images/social-preview.png --window-size=1280,640 file:///.../social-preview.html */
+  :root { --bg: #0d1117; --panel: #161b22; --line: #30363d; --text: #e6edf3; --muted: #8b949e; --accent: #58a6ff; --ok: #3fb950; --warn: #d29922; }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1280px; height: 640px; background: var(--bg); color: var(--text); font-family: "Segoe UI", system-ui, -apple-system, sans-serif; overflow: hidden; }
+  .wrap { height: 640px; padding: 64px 72px; display: grid; grid-template-columns: 1fr 440px; gap: 56px; align-items: center;
+          background: radial-gradient(900px 500px at 85% 10%, rgba(88,166,255,.14), transparent 60%), var(--bg); }
+  .tag { font-size: 20px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); margin-bottom: 22px; font-weight: 600; }
+  h1 { font-size: 78px; line-height: 1.02; letter-spacing: -.02em; margin-bottom: 26px; }
+  h1 span { color: var(--accent); }
+  p { font-size: 30px; line-height: 1.35; color: var(--muted); max-width: 640px; }
+  p b { color: var(--text); font-weight: 600; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 22px 24px; font-family: Consolas, "Cascadia Mono", monospace; font-size: 19px; line-height: 1.7; box-shadow: 0 24px 60px rgba(0,0,0,.45); }
+  .bar { display: flex; gap: 8px; margin-bottom: 14px; }
+  .bar i { width: 12px; height: 12px; border-radius: 50%; background: var(--line); display: block; }
+  .row { display: flex; justify-content: space-between; gap: 18px; }
+  .ok { color: var(--ok); } .warn { color: var(--warn); } .dim { color: var(--muted); }
+  .foot { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 17px; }
+</style>
+<div class="wrap">
+  <div>
+    <div class="tag">Incident response · root-cause analysis</div>
+    <h1>OpsPulse <span>AI</span></h1>
+    <p>Evidence-grounded RCA for a crash. <b>A human decides.</b> Nothing merges itself.</p>
+  </div>
+  <div class="card" aria-hidden="true">
+    <div class="bar"><i></i><i></i><i></i></div>
+    <div class="row"><span>quotes verbatim</span><span class="ok">pass</span></div>
+    <div class="row"><span>trace matches code</span><span class="ok">pass</span></div>
+    <div class="row"><span>diff applies</span><span class="ok">pass</span></div>
+    <div class="row"><span>fix location</span><span class="warn">warn</span></div>
+    <div class="row"><span>patch sha256</span><span class="dim">b46e89c6…</span></div>
+    <div class="foot">awaiting approval · reviewer ≠ submitter</div>
+  </div>
+</div>

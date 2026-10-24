@@ -11,7 +11,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import JSON, DateTime, Float, ForeignKey, Index, Integer, String, Text, Uuid
+from sqlalchemy import JSON, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, Uuid
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -52,6 +52,7 @@ class Incident(Base):
     error_category: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)  # migration 0002
     submitted_by: Mapped[str | None] = mapped_column(String(100), nullable=True)  # migration 0003
     request_id: Mapped[str | None] = mapped_column(String(64), nullable=True)  # migration 0007
+    commit_sha: Mapped[str | None] = mapped_column(String(40), nullable=True)  # migration 0008
     # Job queue (migration 0004): how often a worker claimed the incident, and until when its claim is valid.
     job_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -85,3 +86,26 @@ class RemediationApproval(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class AuditEntry(Base):
+    """One link of an incident's append-only, hash-chained approval log (migration 0009).
+
+    `entry_hash` covers the entry's own fields and the previous entry's hash, so changing or deleting an earlier entry
+    breaks every later one. Rows are only ever inserted by the service.
+    """
+
+    __tablename__ = "audit_entries"
+    __table_args__ = (UniqueConstraint("incident_id", "seq", name="uq_audit_incident_seq"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    incident_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("incidents.id"), index=True, nullable=False)
+    seq: Mapped[int] = mapped_column(Integer, nullable=False)
+    approval_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    event: Mapped[str] = mapped_column(String(32), nullable=False)
+    actor: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    patch_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    detail: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    at: Mapped[str] = mapped_column(String(40), nullable=False)  # UTC ISO text: the hash never depends on a driver
+    prev_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    entry_hash: Mapped[str] = mapped_column(String(64), nullable=False)

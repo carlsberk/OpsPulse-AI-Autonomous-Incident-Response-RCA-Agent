@@ -13,6 +13,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from src.api.integrations import router as integrations_router
+from src.api.limits import BodyLimitMiddleware
 from src.api.routes import router
 from src.config import AGENT_VERSION, settings
 from src.console import mount_console, security_headers
@@ -75,6 +76,7 @@ app = FastAPI(
 )
 app.include_router(router)
 app.include_router(integrations_router)
+app.add_middleware(BodyLimitMiddleware)  # inside security_headers, so a 413 still carries X-Request-ID
 app.middleware("http")(security_headers)
 if settings.console_enabled:
     mount_console(app)

@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-AGENT_VERSION = "1.4.0-opspulse"
+AGENT_VERSION = "1.8.0-opspulse"
 
 
 class ConfigError(ValueError):
@@ -184,6 +184,24 @@ class Settings:
     max_patch_changed_lines: int = field(
         default_factory=lambda: int(_number(("MAX_PATCH_CHANGED_LINES",), 40, int, 1, 400))
     )
+
+    # Past reviewer decisions (approved / rejected, with the note) are shown to the model next to similar earlier
+    # incidents, as context about what this team accepts. Off switch for evaluation or for teams that prefer not to.
+    history_reviewer_notes: bool = field(default_factory=lambda: _bool("HISTORY_REVIEWER_NOTES", True))
+
+    # --- Sandboxed test run (optional, off by default) ---
+    # Runs the target repository's tests in a throwaway Docker container (no network, read-only root, capped
+    # memory/CPU/processes) before and after the patch, and shows the result to the reviewer.
+    sandbox_enabled: bool = field(default_factory=lambda: _bool("SANDBOX_ENABLED", False))
+    sandbox_image: str = field(default_factory=lambda: _env("SANDBOX_IMAGE", default="python:3.11-slim"))
+    sandbox_command: str = field(
+        default_factory=lambda: _env("SANDBOX_COMMAND", default="python -m pytest -q -x -p no:cacheprovider")
+    )
+    sandbox_timeout_seconds: int = field(
+        default_factory=lambda: int(_number(("SANDBOX_TIMEOUT_SECONDS",), 120, int, 10, 900))
+    )
+    sandbox_memory_mb: int = field(default_factory=lambda: int(_number(("SANDBOX_MEMORY_MB",), 512, int, 128, 8192)))
+    sandbox_max_repo_mb: int = field(default_factory=lambda: int(_number(("SANDBOX_MAX_REPO_MB",), 50, int, 1, 500)))
 
     # --- Inbound integrations ---
     sentry_client_secret: str = field(default_factory=lambda: _env("SENTRY_CLIENT_SECRET"))
