@@ -31,6 +31,8 @@ All notable changes are listed here. Versions of behaviour-critical components a
   deciding them as a reviewer, and the two commands that measure the result).
 
 ### Changed
+- README: a "Try it in two minutes" block (two commands, no keys needed) and a short "Why it is built this way" section ahead of
+  the numbers, and the contents list now links the sections it was missing. Every in-page link was checked to resolve.
 - API responses now carry `Cache-Control: no-store` (the console already did), so incidents, patches and audit records
   are not kept in a browser or proxy cache.
 - CI runs on `ubuntu-24.04` instead of `ubuntu-latest` (GitHub is migrating `latest` to Ubuntu 26, which would change Python,
