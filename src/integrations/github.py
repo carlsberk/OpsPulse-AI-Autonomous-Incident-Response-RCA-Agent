@@ -291,8 +291,7 @@ def create_fix_pull_request(
             raise
     except GithubException as exc:
         raise api_error(exc) from exc
-
-           try:
+    try:
             try:
                 repo.get_label(PR_LABEL)
             except GithubException:
@@ -307,7 +306,6 @@ def create_fix_pull_request(
 
 
 def download_repository_snapshot(repo_name: str, dest: Path, max_bytes: int) -> str:
-    """Extract the default branch head into `dest` (an empty directory) and return its commit SHA.
 
     Only regular files and directories are extracted (no links, no absolute or `..` paths) and the download and
     the extracted size are both capped, because the archive comes from a repository we do not control.
