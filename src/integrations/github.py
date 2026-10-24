@@ -289,9 +289,10 @@ def create_fix_pull_request(
         except GithubException:
             _delete_branch(repo, branch)  # do not leave a half-made branch that would block every retry
             raise
-    except GithubException as exc:
+   except GithubException as exc:
         raise api_error(exc) from exc
-try:
+
+    try:
         try:
             repo.get_label(PR_LABEL)
         except GithubException:
