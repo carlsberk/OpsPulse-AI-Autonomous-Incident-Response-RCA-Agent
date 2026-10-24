@@ -100,6 +100,7 @@ def test_pr_is_created_on_deterministic_branch_without_touching_default_branch(r
     assert repo.pulls[0]["base"] == "main" and repo.pulls[0]["draft"] is True
     assert "OpsPulse AI Automated Fix" in repo.pulls[0]["body"]
     assert "ffffffffffff" in repo.pulls[0]["body"]
+    assert "needs-human-review" in repo.pulls[0]["labels"]
 
 
 def test_existing_open_pr_is_reused_not_duplicated(repo):
