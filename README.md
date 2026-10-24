@@ -23,6 +23,32 @@ which waits for an **explicit human approval** and is never merged automatically
 
 ![Review console: incident list (demo data, scripted model)](docs/images/console-list-light.png)
 
+## Try it in two minutes
+
+No API keys, Docker, database server or GitHub account needed (a scripted model stands in for the LLM and GitHub is stubbed):
+
+```bash
+pip install -r requirements-dev.txt
+python -m scripts.e2e_flow       # 25 checks: crash -> alert -> analysis -> review -> one draft PR -> the patch fixes the service
+python -m scripts.demo_console   # the review console with ten sample cases: http://127.0.0.1:8000/console , API key: demo-key
+```
+
+The first command is also a unit test and a CI step: it shows that nothing reaches GitHub before a reviewer decides, that the
+submitter cannot approve their own incident, and that a repeated approval opens no second PR. It proves the plumbing and the
+safety rules, **not** the model's quality; the [evaluation](#evaluation) measures that, with caveats.
+
+## Why it is built this way
+
+- **Every claim is checked against the code the model was shown.** Quotes must appear verbatim in the retrieved source; a trace
+  that contradicts the code, a diff that does not apply, or a patch that changes nothing is refused by a deterministic gate,
+  not by another model.
+- **A person decides, and the decision is bound to the exact patch.** Approval carries the patch's SHA-256, comes from a
+  different identity than the submitter, and opens a *draft* pull request. Merging is not implemented anywhere.
+- **The record can show tampering.** Proposals and decisions form a hash chain that is cross-checked against the approval
+  rows (see [Human approval](#human-approval-and-remediation-safety)).
+- **It tells you what it has not shown.** Every number below comes with its sample size and caveats, and
+  [docs/LIMITATIONS.md](docs/LIMITATIONS.md) lists what is proven, what is measured with caveats and what is not done.
+
 ## At a glance
 
 What was measured (all on small, author-labelled synthetic sets - indicative, not benchmarks; details and
@@ -77,9 +103,10 @@ publishes a GitHub Release using that version's section of `CHANGELOG.md` as its
 
 ## Contents
 
-- [Features](#features) · [Architecture](#architecture) · [Workflow and statuses](#workflow-and-statuses)
+- [Try it](#try-it-in-two-minutes) · [Why it is built this way](#why-it-is-built-this-way) · [At a glance](#at-a-glance) · [Features](#features) · [Architecture](#architecture) · [Workflow and statuses](#workflow-and-statuses)
 - [Quality gate](#quality-gate) · [Evaluation](#evaluation) · [Retrieval](#retrieval)
-- [Human approval](#human-approval-and-remediation-safety) · [Sentry](#sentry-integration) · [Ask](#ask-about-this-incident) · [Alertmanager](#alertmanager-integration) · [Notifications](#reviewer-notifications) · [Review console](#review-console) · [Observability](#observability-langfuse)
+- [Human approval](#human-approval-and-remediation-safety) · [Learning from reviewers](#learning-from-reviewers) · [Test evidence](#test-evidence-the-sandbox-and-a-reproduction-test) · [Deployed code](#analysing-the-code-that-actually-failed)
+- [Sentry](#sentry-integration) · [Alertmanager](#alertmanager-integration) · [Ask](#ask-about-this-incident) · [Notifications](#reviewer-notifications) · [Review console](#review-console) · [Observability](#observability-langfuse)
 - [Setup](#setup) · [API](#api) · [Testing and CI](#testing-and-ci) · [Demo](#demo)
 - [Security](#security-model) · [Limitations](#known-limitations) · [Roadmap](#roadmap)
 
