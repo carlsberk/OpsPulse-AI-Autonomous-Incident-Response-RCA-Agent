@@ -29,7 +29,7 @@ caveats in [Evaluation](#evaluation)):
 | | Result | Where |
 |---|---|---|
 | Live model, 26 tuning cases (`gpt-oss-120b`, prompt v4) | category 18/22, quotes verified 52/52, 4/4 inconclusive cases not accepted, 1.31 attempts/case | [Live results](#live-results-openaigpt-oss-120b-on-groq-2026-10-09) |
-| Held-out set (never used for tuning; prompt v6, 1 run) | category 9/10 under the old label, 0 invented quotes (25/25 verified) | [Held-out](#live-results-openaigpt-oss-120b-on-groq-2026-10-09) |
+| Held-out set (never used for tuning; prompt v7.1, two runs on two days) | category 9/10 in both runs, 0 invented quotes (21/21 and 23/23 verified); the same case (`ho-upstream-shape`) is wrongly diagnosed *and accepted* both times; 4 of 15 replies failed schema validation in the second run | [Held-out](#live-results-openaigpt-oss-120b-on-groq-2026-10-09) |
 | Caller-vs-callee set (prompt v6.1, 3 runs per case) | category 13/13, correct fix file 13/13; the control case accepted 2/2 | [Limitations](docs/LIMITATIONS.md) |
 | Real public repository, 4 injected bugs, 3 runs | correct fix file 12/12, 0 invented quotes (bugs are injected, so easier than real incidents) | [Limitations](docs/LIMITATIONS.md) |
 | Reproduction test written by the model, run in the sandbox | 4 of 6 pilot runs `reproduced_and_fixed`; the model writes both the test and the fix | [Test evidence](#test-evidence-the-sandbox-and-a-reproduction-test) |

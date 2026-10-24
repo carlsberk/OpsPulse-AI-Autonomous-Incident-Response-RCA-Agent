@@ -6,6 +6,9 @@ All notable changes are listed here. Versions of behaviour-critical components a
 ## [Unreleased]
 
 ### Added
+- A second live holdout run with the current prompt and gate (`rca-prompt-v7.1`, `quality-gate-v8`, 12 cases) and a
+  run-to-run comparison with the first: the same category result (9/10), but the two runs disagreed on 3 of 12 cases, and
+  one case is wrongly diagnosed and accepted in both. LIMITATIONS and the README table quote both runs.
 - First measurement on real bug-fix history (`evals/results/history-real-*`): the gate accepted 10 of 10 analysed runs with the
   right file, yet only 2 of those patches made the real regression test pass. Recorded in `docs/LIMITATIONS.md`.
 - `python -m evals.history_real_repo build|verify`: a dataset built from a real repository's bug-fix history instead of
