@@ -1,6 +1,8 @@
 # OpsPulse AI
 
 [![CI](https://github.com/codcreater1/OpsPulse-AI-Autonomous-Incident-Response-RCA-Agent/actions/workflows/ci.yml/badge.svg)](https://github.com/codcreater1/OpsPulse-AI-Autonomous-Incident-Response-RCA-Agent/actions/workflows/ci.yml)
+[![Security](https://github.com/codcreater1/OpsPulse-AI-Autonomous-Incident-Response-RCA-Agent/actions/workflows/security.yml/badge.svg)](https://github.com/codcreater1/OpsPulse-AI-Autonomous-Incident-Response-RCA-Agent/actions/workflows/security.yml)
+[![Release](https://img.shields.io/github/v/release/codcreater1/OpsPulse-AI-Autonomous-Incident-Response-RCA-Agent)](https://github.com/codcreater1/OpsPulse-AI-Autonomous-Incident-Response-RCA-Agent/releases/latest)
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue) ![License: MIT](https://img.shields.io/badge/license-MIT-green)
 
 An AI-powered incident investigation and root-cause analysis assistant that combines repository context,
