@@ -19,6 +19,17 @@ write branches and pull requests to GitHub. The main controls are documented in 
 - model output is treated as untrusted; authorization decisions never depend on the prompt;
 - telemetry masks long content and credential-shaped strings by default.
 
+## What is checked automatically
+
+- Every pull request: strict lint with the bandit rule set (`S`), strict typing, the whole test suite, a scan of tracked
+  files for credential-shaped strings (`tests/unit/test_no_secrets.py`; only deliberate fakes in test fixtures are exempt),
+  and a test that every workflow action is pinned to a commit and every job runs on a pinned runner image.
+- Weekly and on `main`: `pip-audit` of the runtime, development and documentation requirements, CodeQL for Python and
+  JavaScript, and property-based and fuzz tests hunting for new counterexamples.
+- Responses of the API and the console are `Cache-Control: no-store`; the console also sets a strict CSP.
+- The approval log is a hash chain that detects partial tampering (`python -m src.services.audit_chain`); it does not stop
+  someone who can rewrite the whole table, see `docs/LIMITATIONS.md`.
+
 ## Known residual risks
 
 - Prompt injection can still influence the *content* of an analysis that a reviewer later trusts.
