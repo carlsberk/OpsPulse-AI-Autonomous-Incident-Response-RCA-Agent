@@ -370,4 +370,3 @@ def _extract_regular_files(archive: Path, dest: Path, max_bytes: int) -> None:
             target.parent.mkdir(parents=True, exist_ok=True)
             with source, target.open("wb") as out:
                 shutil.copyfileobj(source, out)
-                
