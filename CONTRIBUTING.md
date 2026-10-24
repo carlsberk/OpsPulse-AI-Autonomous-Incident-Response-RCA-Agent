@@ -45,6 +45,11 @@ binding rather than advisory:
   date, and disallow force pushes and deletion. (`Sandbox against a real Docker daemon` and `Docs` can be required too.)
 - **Tag protection** for `v*`: a pushed tag publishes a release.
 - **Private vulnerability reporting** and **Dependabot alerts** on; the weekly `Security` workflow also audits dependencies.
+- **About box and social preview** (Settings, General). Suggested description: *Evidence-grounded root-cause analysis for
+  production crashes: a deterministic quality gate, a human approval bound to the exact patch, and a draft pull request that
+  is never merged automatically.* Suggested topics: `incident-response`, `root-cause-analysis`, `llm`, `langgraph`,
+  `fastapi`, `human-in-the-loop`, `observability`, `sre`, `ai-agents`, `evaluation`. Upload `docs/images/social-preview.png`
+  (1280x640) as the social preview; `docs/images/social-preview.html` is its source (render it with headless Edge or Chrome).
 - **Automatically delete head branches** (a stale `opspulse/fix-*` branch blocks the next pull request for that failure).
 
 Workflow actions are pinned to full commit SHAs (a test fails otherwise); Dependabot proposes the updates and keeps the

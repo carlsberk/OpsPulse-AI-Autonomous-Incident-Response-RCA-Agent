@@ -6,6 +6,9 @@ All notable changes are listed here. Versions of behaviour-critical components a
 ## [Unreleased]
 
 ### Added
+- A social preview image for the repository (`docs/images/social-preview.png`, source `.html`), Security and Release badges
+  in the README, and the suggested About text and topics in CONTRIBUTING (those live in GitHub's settings, so they are not applied
+  by a merge).
 - A second live holdout run with the current prompt and gate (`rca-prompt-v7.1`, `quality-gate-v8`, 12 cases) and a
   run-to-run comparison with the first: the same category result (9/10), but the two runs disagreed on 3 of 12 cases, and
   one case is wrongly diagnosed and accepted in both. LIMITATIONS and the README table quote both runs.
