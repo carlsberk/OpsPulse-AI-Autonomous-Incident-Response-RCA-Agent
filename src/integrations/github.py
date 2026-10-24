@@ -292,18 +292,18 @@ def create_fix_pull_request(
     except GithubException as exc:
         raise api_error(exc) from exc
 
-   try:
-        try:
-            repo.get_label(PR_LABEL)
-        except GithubException:
-            repo.create_label(PR_LABEL, "0e8a16", "Fix proposed by OpsPulse AI")
-        try:
-            repo.get_label(REVIEW_LABEL)
-        except GithubException:
-            repo.create_label(REVIEW_LABEL, "fbca04", "Requires manual engineer review before merge")
-        pr.add_to_labels(PR_LABEL, REVIEW_LABEL)
-    except GithubException as exc:
-        logger.warning("could not label PR: %s", describe_github_error(exc))
+       try:
+            try:
+                repo.get_label(PR_LABEL)
+            except GithubException:
+                repo.create_label(PR_LABEL, "0e8a16", "Fix proposed by OpsPulse AI")
+            try:
+                repo.get_label(REVIEW_LABEL)
+            except GithubException:
+                repo.create_label(REVIEW_LABEL, "fbca04", "Requires manual engineer review before merge")
+            pr.add_to_labels(PR_LABEL, REVIEW_LABEL)
+        except GithubException as exc:
+            logger.warning("could not label PR: %s", describe_github_error(exc))
 
 
 def download_repository_snapshot(repo_name: str, dest: Path, max_bytes: int) -> str:
