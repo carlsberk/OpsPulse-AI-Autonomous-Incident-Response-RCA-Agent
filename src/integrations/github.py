@@ -292,7 +292,7 @@ def create_fix_pull_request(
     except GithubException as exc:
         raise api_error(exc) from exc
 
-       try:
+           try:
             try:
                 repo.get_label(PR_LABEL)
             except GithubException:
