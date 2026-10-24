@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 
 MAX_FILE_BYTES = 1_000_000  # the contents API only returns inline content up to 1 MB
 PR_LABEL = "opspulse-ai"
+REVIEW_LABEL = "needs-human-review"
 REPO_NAME_RE = re.compile(r"^[A-Za-z0-9_.-]{1,100}/[A-Za-z0-9_.-]{1,100}$")
 FORBIDDEN_PATH_PREFIXES = (".github/",)
 
@@ -291,15 +292,18 @@ def create_fix_pull_request(
     except GithubException as exc:
         raise api_error(exc) from exc
 
-    try:
+   try:
         try:
             repo.get_label(PR_LABEL)
         except GithubException:
-            repo.create_label(PR_LABEL, "0e8a16", "Fix proposed by OpsPulse AI - requires human review")
-        pr.add_to_labels(PR_LABEL)
+            repo.create_label(PR_LABEL, "0e8a16", "Fix proposed by OpsPulse AI")
+        try:
+            repo.get_label(REVIEW_LABEL)
+        except GithubException:
+            repo.create_label(REVIEW_LABEL, "fbca04", "Requires manual engineer review before merge")
+        pr.add_to_labels(PR_LABEL, REVIEW_LABEL)
     except GithubException as exc:
         logger.warning("could not label PR: %s", describe_github_error(exc))
-    return PullRequestResult(pr.html_url, pr.number, branch, already_existed=False)
 
 
 def download_repository_snapshot(repo_name: str, dest: Path, max_bytes: int) -> str:
