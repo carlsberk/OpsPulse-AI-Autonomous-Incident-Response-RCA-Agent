@@ -26,6 +26,15 @@ def test_api_responses_carry_baseline_security_headers(client):
     assert resp.headers["x-frame-options"] == "DENY" and resp.headers["referrer-policy"] == "no-referrer"
 
 
+def test_api_responses_are_never_cacheable(client):
+    from tests.unit.conftest import API_HEADERS
+
+    for path in ("/healthz", "/incidents", "/openapi.json"):
+        resp = client.get(path, headers=API_HEADERS)
+        assert resp.headers["cache-control"] == "no-store", path
+    assert client.get("/incidents").headers["cache-control"] == "no-store"  # errors too (401)
+
+
 def test_console_has_no_inline_script_or_unsafe_dom_sinks():
     html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
     assert not re.search(r"<script(?![^>]*\bsrc=)[^>]*>", html), "inline <script> would violate the CSP"

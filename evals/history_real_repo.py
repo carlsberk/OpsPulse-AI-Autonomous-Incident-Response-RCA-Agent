@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import pathlib
 import re
 import shutil
@@ -96,6 +97,10 @@ def find_candidates(repo: pathlib.Path, limit: int, since: str) -> list[Candidat
 
 def run_tests(python: str, work: pathlib.Path, tests: tuple[str, ...]) -> tuple[int, str]:
     env = {"PATH": "/usr/bin:/bin", "PYTHONPATH": str(work), "PYTHONDONTWRITEBYTECODE": "1", "HOME": str(work)}
+    if os.environ.get(
+        "SYSTEMROOT"
+    ):  # Windows: without it asyncio (and so pytest's anyio plugin) cannot start; not a secret
+        env["SYSTEMROOT"] = os.environ["SYSTEMROOT"]
     try:
         done = subprocess.run(  # noqa: S603 - fixed argument list, minimal environment (no credentials)
             [python, "-m", "pytest", *tests, "-x", "-q", "--tb=native", "-p", "no:cacheprovider"],

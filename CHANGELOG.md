@@ -6,6 +6,9 @@ All notable changes are listed here. Versions of behaviour-critical components a
 ## [Unreleased]
 
 ### Added
+- A test that scans every tracked file for credential-shaped strings (Groq, GitHub, AWS, Slack, OpenAI-style and Langfuse keys,
+  private keys, database URLs with a password) and fails on any outside the files that hold fakes on purpose; the weekly
+  dependency audit now covers the development and documentation requirements too. SECURITY.md lists what is checked.
 - A social preview image for the repository (`docs/images/social-preview.png`, source `.html`), Security and Release badges
   in the README, and the suggested About text and topics in CONTRIBUTING (those live in GitHub's settings, so they are not applied
   by a merge).
@@ -28,6 +31,8 @@ All notable changes are listed here. Versions of behaviour-critical components a
   deciding them as a reviewer, and the two commands that measure the result).
 
 ### Changed
+- API responses now carry `Cache-Control: no-store` (the console already did), so incidents, patches and audit records
+  are not kept in a browser or proxy cache.
 - CI runs on `ubuntu-24.04` instead of `ubuntu-latest` (GitHub is migrating `latest` to Ubuntu 26, which would change Python,
   Docker and tooling under every job without a commit here); a test fails if a job uses a floating label.
 - CI hardening: every workflow action is pinned to a full commit SHA (the tag stays in a comment; Dependabot updates both),
@@ -37,6 +42,9 @@ All notable changes are listed here. Versions of behaviour-critical components a
   limits in the "At a glance" table, CI jobs, coverage and verified versions.
 
 ### Fixed
+- The history evaluation (`evals/history_real_repo.py`) runs the target repository's tests in a minimal environment; on Windows
+  that left out `SYSTEMROOT`, so pytest's anyio plugin could not start asyncio and the red-to-green test failed. It is passed
+  through now (it is not a secret). Linux was not affected.
 - `history_real_repo` stripped neither the test runner's own frames nor host paths from the traceback it builds, which made
   every request exceed the provider's size limit (HTTP 413). Only frames inside the repository are kept now.
 - The PostgreSQL CI job failed on the pilot-check tests (merged in #37): that job migrates the test database before the tests
