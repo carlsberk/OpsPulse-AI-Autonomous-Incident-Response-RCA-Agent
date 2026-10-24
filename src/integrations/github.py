@@ -268,15 +268,23 @@ def create_fix_pull_request(
                 sha=current.sha,
                 branch=branch,
             )
+            pr_footer = (
+                "\n\n---\n"
+                "> 🤖 **OpsPulse AI Automated Fix**\n"
+                f"> **Fingerprint:** `{fingerprint[:12]}`\n"
+                "> ⚠️ *Please review the proposed diff carefully before merging.*"
+            )
+            enriched_body = f"{body.strip()}{pr_footer}"
+
             try:
                 pr = repo.create_pull(
-                    base=base, head=branch, title=title[:200], body=body, draft=settings.github_pr_draft
+                    base=base, head=branch, title=title[:200], body=enriched_body, draft=settings.github_pr_draft
                 )
             except GithubException as exc:
                 if not (settings.github_pr_draft and exc.status == 422):
                     raise
                 # Draft PRs are not available on every plan; fall back to a regular (still unmerged) PR.
-                pr = repo.create_pull(base=base, head=branch, title=title[:200], body=body, draft=False)
+                pr = repo.create_pull(base=base, head=branch, title=title[:200], body=enriched_body, draft=False)
         except GithubException:
             _delete_branch(repo, branch)  # do not leave a half-made branch that would block every retry
             raise
