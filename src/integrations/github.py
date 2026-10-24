@@ -34,6 +34,14 @@ REVIEW_LABEL = "needs-human-review"
 REPO_NAME_RE = re.compile(r"^[A-Za-z0-9_.-]{1,100}/[A-Za-z0-9_.-]{1,100}$")
 FORBIDDEN_PATH_PREFIXES = (".github/",)
 
+# Two trailing spaces force a line break inside the Markdown blockquote.
+PR_FOOTER_TEMPLATE = (
+    "\n\n---\n"
+    "> 🤖 **OpsPulse AI Automated Fix**  \n"
+    "> **Fingerprint:** `{fingerprint}`  \n"
+    "> ⚠️ *Please review the proposed diff carefully before merging.*"
+)
+
 # Network-level failures PyGithub can surface; callers degrade gracefully on these.
 TRANSPORT_ERRORS = (GithubException, requests.RequestException)
 
@@ -226,6 +234,22 @@ def _delete_branch(repo: Repository, branch: str) -> None:
         logger.warning("could not remove branch %s after a failure: %s", branch, describe_github_error(exc))
 
 
+def _ensure_labels_and_attach(repo: Repository, pr: Any) -> None:
+    """Best-effort: a labelling failure must never turn an already-opened PR into an error."""
+    try:
+        try:
+            repo.get_label(PR_LABEL)
+        except GithubException:
+            repo.create_label(PR_LABEL, "0e8a16", "Fix proposed by OpsPulse AI")
+        try:
+            repo.get_label(REVIEW_LABEL)
+        except GithubException:
+            repo.create_label(REVIEW_LABEL, "fbca04", "Requires manual engineer review before merge")
+        pr.add_to_labels(PR_LABEL, REVIEW_LABEL)
+    except GithubException as exc:
+        logger.warning("could not label PR: %s", describe_github_error(exc))
+
+
 def create_fix_pull_request(
     repo_name: str, file_path: str, unified_diff: str, title: str, body: str, fingerprint: str
 ) -> PullRequestResult:
@@ -269,14 +293,7 @@ def create_fix_pull_request(
                 sha=current.sha,
                 branch=branch,
             )
-            pr_footer = (
-                "\n\n---\n"
-                "> 🤖 **OpsPulse AI Automated Fix**\n"
-                f"> **Fingerprint:** `{fingerprint[:12]}`\n"
-                "> ⚠️ *Please review the proposed diff carefully before merging.*"
-            )
-            enriched_body = f"{body.strip()}{pr_footer}"
-
+            enriched_body = body.strip() + PR_FOOTER_TEMPLATE.format(fingerprint=fingerprint[:12])
             try:
                 pr = repo.create_pull(
                     base=base, head=branch, title=title[:200], body=enriched_body, draft=settings.github_pr_draft
@@ -289,21 +306,11 @@ def create_fix_pull_request(
         except GithubException:
             _delete_branch(repo, branch)  # do not leave a half-made branch that would block every retry
             raise
-   except GithubException as exc:
+    except GithubException as exc:
         raise api_error(exc) from exc
 
-    try:
-        try:
-            repo.get_label(PR_LABEL)
-        except GithubException:
-            repo.create_label(PR_LABEL, "0e8a16", "Fix proposed by OpsPulse AI")
-        try:
-            repo.get_label(REVIEW_LABEL)
-        except GithubException:
-            repo.create_label(REVIEW_LABEL, "fbca04", "Requires manual engineer review before merge")
-        pr.add_to_labels(PR_LABEL, REVIEW_LABEL)
-    except GithubException as exc:
-        logger.warning("could not label PR: %s", describe_github_error(exc))
+    _ensure_labels_and_attach(repo, pr)
+    return PullRequestResult(pr.html_url, pr.number, branch, already_existed=False)
 
 
 def download_repository_snapshot(repo_name: str, dest: Path, max_bytes: int) -> str:
@@ -363,3 +370,4 @@ def _extract_regular_files(archive: Path, dest: Path, max_bytes: int) -> None:
             target.parent.mkdir(parents=True, exist_ok=True)
             with source, target.open("wb") as out:
                 shutil.copyfileobj(source, out)
+                
