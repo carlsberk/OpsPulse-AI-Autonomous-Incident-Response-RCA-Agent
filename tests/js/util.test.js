@@ -119,3 +119,86 @@ test("queuePosition: an id outside the list, an empty list and garbage input hid
   assert.deepEqual(U.queuePosition("a1,b2", "a1"), { position: 0, total: 0, prev: null, next: null });
   assert.equal(U.queuePosition([1, null, "a1"], "a1").total, 1); // non-strings are dropped, never thrown on
 });
+
+// ------------------------------------------------------------------ inline diff and side-by-side layout
+
+const join = (parts) => parts.map((part) => part.text).join("");
+const changedText = (parts) => parts.filter((part) => part.changed).map((part) => part.text).join("|");
+
+test("inlineDiff: marks only what changed on a one-argument edit", () => {
+  const pair = U.inlineDiff('    return STOCK.get(sku)', '    return STOCK.get(sku, 0)');
+  assert.equal(join(pair.left), '    return STOCK.get(sku)');
+  assert.equal(join(pair.right), '    return STOCK.get(sku, 0)');
+  assert.equal(changedText(pair.left), "");
+  assert.equal(changedText(pair.right), ", 0");
+});
+
+test("inlineDiff: a changed word on both sides", () => {
+  const pair = U.inlineDiff("if user is None:", "if account is None:");
+  assert.equal(changedText(pair.left), "user");
+  assert.equal(changedText(pair.right), "account");
+});
+
+test("inlineDiff: unrelated lines, identical lines and over-long lines are not highlighted", () => {
+  assert.equal(U.inlineDiff("alpha beta gamma", "x = 1"), null);
+  assert.equal(U.inlineDiff("same line", "same line"), null);
+  assert.equal(U.inlineDiff("", "x"), null);
+  assert.equal(U.inlineDiff("a ".repeat(300), "b ".repeat(300)), null);
+});
+
+test("inlineDiff: the pieces always concatenate back to the exact input, whatever it contains", () => {
+  const samples = ["", " ", "\t\t", "é ü 漢字", "a<b>&amp;", "x = {'a': [1, 2]}", "😀 emoji", "a\u0000b", "    "];
+  for (const a of samples) {
+    for (const b of samples) {
+      const pair = U.inlineDiff(a, b);
+      if (pair) {
+        assert.equal(join(pair.left), a);
+        assert.equal(join(pair.right), b);
+      }
+    }
+  }
+});
+
+const PATCH = [
+  "--- a/app.py", "+++ b/app.py", "@@ -1,4 +1,5 @@",
+  " def f(x):", "-    return x.value", "+    return x.value or 0", "+    # note", " # tail",
+].join("\n");
+
+test("annotateDiff: pairs a removed line with the added line that replaces it and leaves the rest alone", () => {
+  const rows = U.annotateDiff(U.parseDiff(PATCH));
+  const del = rows.find((row) => row.kind === "del");
+  const adds = rows.filter((row) => row.kind === "add");
+  assert.equal(del.segments.map((s) => s.text).join(""), "    return x.value");
+  assert.equal(adds[0].segments.filter((s) => s.changed).map((s) => s.text).join(""), " or 0");
+  assert.equal(adds[1].segments, null); // an extra added line has nothing to pair with
+  assert.equal(rows.find((row) => row.kind === "ctx").segments, null);
+  assert.equal(rows.find((row) => row.kind === "hunk").segments, null);
+});
+
+test("annotateDiff: does not mutate its input and survives a patch with no changes at all", () => {
+  const parsed = U.parseDiff(PATCH);
+  const copy = JSON.stringify(parsed);
+  U.annotateDiff(parsed);
+  assert.equal(JSON.stringify(parsed), copy);
+  assert.deepEqual(U.annotateDiff([]), []);
+  assert.equal(U.annotateDiff(U.parseDiff("")).length, 1);
+});
+
+test("splitDiff: context on both sides, a removed block beside its replacement, headers across", () => {
+  const split = U.splitDiff(U.annotateDiff(U.parseDiff(PATCH)));
+  assert.equal(split.filter((row) => row.full).length, 3); // ---, +++, @@
+  const changed = split.filter((row) => row.left && row.right && row.left.kind === "del");
+  assert.equal(changed.length, 1);
+  assert.equal(changed[0].right.kind, "add");
+  const padded = split.find((row) => row.left === null);
+  assert.equal(padded.right.text, "+    # note"); // the extra added line sits opposite an empty cell
+  const context = split.filter((row) => row.left && row.left === row.right);
+  assert.equal(context.length, 2);
+});
+
+test("splitDiff: a pure removal and a pure addition leave the other side empty", () => {
+  const removed = U.splitDiff(U.parseDiff("@@ -1,2 +1,1 @@\n keep\n-gone"));
+  assert.equal(removed[removed.length - 1].right, null);
+  const added = U.splitDiff(U.parseDiff("@@ -1,1 +1,2 @@\n keep\n+new"));
+  assert.equal(added[added.length - 1].left, null);
+});

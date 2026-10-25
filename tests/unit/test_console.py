@@ -205,3 +205,17 @@ def test_console_queue_navigation_is_wired_without_unsafe_sinks():
     assert "queuePosition" in source and '"["' in source and '"]"' in source
     assert "textContent" in source[source.index("function renderQueue") : source.index("function stepQueue")]
     assert "@media (pointer: coarse)" in (STATIC_DIR / "styles.css").read_text(encoding="utf-8")
+
+
+def test_console_diff_view_has_a_toggle_inline_highlights_and_no_class_collisions():
+    html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    assert 'id="diff-mode"' in html and 'aria-pressed="false"' in html
+    source = (STATIC_DIR / "app.js").read_text(encoding="utf-8")
+    assert "annotateDiff" in source and "splitDiff" in source and "opspulse.diffMode" in source
+    css = (STATIC_DIR / "styles.css").read_text(encoding="utf-8")
+    assert ".diff .chg" in css and ".diff.split" in css
+    # A class that the page already uses for something else (the padded empty-state box) once made the split view's
+    # blank cells 130 px tall; the diff's own elements must not reuse the page-level names.
+    page_level = {match.group(1) for match in re.finditer(r"^\.([a-z][a-z-]*)\s*\{", css, re.MULTILINE)}
+    diff_classes = set(re.findall(r'pane \$\{[^}]*"(\w[\w-]*)"\}', source))
+    assert diff_classes and not (diff_classes & page_level), diff_classes & page_level

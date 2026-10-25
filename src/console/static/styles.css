@@ -6,7 +6,7 @@
   --accent: #4f46e5; --accent-hover: #4338ca; --accent-soft: #eeefff; --on-accent: #ffffff;
   --ok: #166534; --ok-soft: #e6f5ec; --warn: #92400e; --warn-soft: #fef3c7; --bad: #b91c1c; --bad-soft: #fee2e2;
   --neutral: #52525b; --neutral-soft: #efeff2;
-  --add: #e6f6ea; --del: #fde8e8; --hunk: #eef0fb; --code: #f4f4f7;
+  --add: #e6f6ea; --del: #fde8e8; --add-strong: #b7e4c4; --del-strong: #f6bcbc; --hunk: #eef0fb; --code: #f4f4f7;
   --shadow: 0 1px 2px rgb(24 24 27 / 5%);
   --radius: 12px; --radius-sm: 8px;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
@@ -17,7 +17,7 @@
   --accent: #8b8cf8; --accent-hover: #a5a6ff; --accent-soft: #1c1c3a; --on-accent: #0b0b0e;
   --ok: #4ade80; --ok-soft: #0f2a1a; --warn: #fbbf24; --warn-soft: #2b2110; --bad: #f87171; --bad-soft: #2d1515;
   --neutral: #a1a1ad; --neutral-soft: #1d1d24;
-  --add: #0f2a1a; --del: #321516; --hunk: #181a30; --code: #0e0e12;
+  --add: #0f2a1a; --del: #321516; --add-strong: #1d5a36; --del-strong: #6b2a2c; --hunk: #181a30; --code: #0e0e12;
   --shadow: none;
 }
 @media (prefers-color-scheme: dark) {
@@ -236,6 +236,16 @@ ul.plain { margin: 0; padding-left: 20px; } ul.plain li { margin-bottom: 4px; }
 .diff .add { background: var(--add); } .diff .del { background: var(--del); }
 .diff .hunk { background: var(--hunk); color: var(--muted); } .diff .meta { color: var(--muted); }
 .diff .empty-note { padding: 16px; font-family: var(--sans); color: var(--muted); }
+.diff .chg { border-radius: 3px; font-weight: 600; }
+.diff .add .chg { background: var(--add-strong); }
+.diff .del .chg { background: var(--del-strong); }
+/* side by side: two panes, each with its own line number column */
+.diff.split .row { grid-template-columns: 1fr 1fr; min-width: 0; }
+.diff.split .row.full { grid-template-columns: 1fr; min-width: 0; }
+.diff.split .pane { display: grid; grid-template-columns: 44px 1fr; min-width: 0; }
+.diff.split .pane + .pane { border-left: 1px solid var(--border); }
+.diff.split .pane .code { white-space: pre-wrap; overflow-wrap: anywhere; }
+.diff.split .pane.gap { background: var(--panel-2); }
 .raw { margin: 12px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--mono); font-size: 12.5px;
   background: var(--code); padding: 12px; border-radius: var(--radius-sm); max-height: 320px; overflow: auto; }
 .reported summary { cursor: pointer; font-weight: 600; }

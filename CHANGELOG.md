@@ -6,6 +6,10 @@ All notable changes are listed here. Versions of behaviour-critical components a
 ## [Unreleased]
 
 ### Added
+- Review console, proposed patch: the words that changed inside a replaced line are highlighted (a one-argument edit shows
+  `, 0` or `.get(` instead of two whole lines), and a **Side by side** view puts removed and added lines opposite each other.
+  The comparison is a pure, tested function (pieces always rebuild the line exactly; unrelated lines and lines over 240 tokens
+  are not highlighted), checked with 20 000 fuzz runs.
 - Review console: move through the list from an incident (`[` / `]` or the two arrows, "2 of 5"), so a reviewer can work a queue
   without going back to the list between cases; the position also works when an incident is opened from a link. On touch
   screens buttons, fields and rows get 44 px targets. (Phone-width layout, labels, live regions, focus handling and reduced
