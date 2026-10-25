@@ -260,9 +260,53 @@ function syncUrl() {
   } catch { /* history unavailable (sandboxed frame): the view still works, it just is not shareable */ }
 }
 
+function plural(count, one, many) { return `${count} ${count === 1 ? one : many}`; }
+
+function startQueue(ids) {
+  if (!ids.length) return;
+  state.queue = ids; // ] and [ now walk the lane from the oldest
+  location.hash = `#/incident/${encodeURIComponent(ids[0])}`;
+}
+
+function renderQueueCard() {
+  const summary = U.queueSummary(state.items, Date.now());
+  const { awaiting, review } = summary;
+  const card = $("queue-card");
+  card.hidden = awaiting.count + review.count === 0;
+  if (card.hidden) return;
+  const text = $("qc-text");
+  text.replaceChildren();
+  if (awaiting.count) {
+    text.append(el("strong", plural(awaiting.count, "proposal waits", "proposals wait")), document.createTextNode(" for a decision"));
+    if (awaiting.oldestAgeMs !== null) {
+      text.append(document.createTextNode(`; the oldest has waited ${U.duration(awaiting.oldestAgeMs)}`));
+    }
+    if (awaiting.stale) {
+      text.append(document.createTextNode(" ("), el("span", `${awaiting.stale} over a day`, "qc-warn"), document.createTextNode(")"));
+    }
+    text.append(document.createTextNode(". "));
+  } else {
+    text.append(document.createTextNode("Nothing is waiting for a decision. "));
+  }
+  if (review.count) {
+    text.append(el("strong", plural(review.count, "analysis needs", "analyses need")), document.createTextNode(" a human look."));
+  }
+  $("qc-scope").textContent = state.cursor ? "among the incidents loaded so far" : "";
+  for (const [id, lane, label] of [
+    ["qc-start-awaiting", awaiting, "Start with the oldest proposal"],
+    ["qc-start-review", review, "Review the oldest analysis"],
+  ]) {
+    const button = $(id);
+    button.hidden = lane.count === 0;
+    button.textContent = label;
+    button.onclick = () => startQueue(lane.ids);
+  }
+}
+
 function renderRows() {
   const body = $("incident-table").querySelector("tbody");
   body.replaceChildren();
+  renderQueueCard();
   renderStatusChips();
   updateSortHeaders();
   const items = visibleItems();

@@ -346,3 +346,13 @@ h1:focus { outline: none; }
   .repo-link { display: inline-block; padding: 6px 0; }
   tbody tr[data-id] td { padding-top: 14px; padding-bottom: 14px; }
 }
+
+/* ---- queue summary on the list ---- */
+.queue-card { margin: 0 0 16px; padding: 16px 20px; }
+.queue-card[hidden] { display: none; }
+.qc-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
+.qc-head h2 { margin: 0; font-size: 15px; }
+.qc-text { margin: 4px 0 12px; font-size: 15px; line-height: 1.5; }
+.qc-text strong { font-variant-numeric: tabular-nums; }
+.qc-text .qc-warn { color: var(--warn); font-weight: 600; }
+.qc-actions { display: flex; flex-wrap: wrap; gap: 8px; }

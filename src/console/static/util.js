@@ -250,6 +250,48 @@
     return text ? `?${text}` : "";
   }
 
+  const STALE_MS = 24 * 3600 * 1000;
+
+  /** A span of time as a short phrase: "less than a minute", "5 min", "3 h", "2 d". Garbage and negatives read as the shortest. */
+  function duration(ms) {
+    const value = Number(ms);
+    if (!Number.isFinite(value) || value < 60000) return "less than a minute";
+    const minutes = Math.floor(value / 60000);
+    if (minutes < 60) return `${minutes} min`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 48) return `${hours} h`;
+    return `${Math.floor(hours / 24)} d`;
+  }
+
+  /**
+   * What a reviewer has to work through, from the incidents already loaded: how many wait for a decision or need a look,
+   * which is oldest, and how many have waited more than a day. Oldest first, because waiting is the one thing the list
+   * data says honestly (a "risk" ranking would have to invent a score). Ids without a usable string are skipped.
+   */
+  function queueSummary(items, now) {
+    const clock = Number.isFinite(now) ? now : Date.now();
+    const list = Array.isArray(items) ? items.filter((item) => item && typeof item === "object" && typeof item.incident_id === "string") : [];
+    const created = (item) => {
+      const time = Date.parse(item.created_at);
+      return Number.isFinite(time) ? time : Infinity; // an unreadable date sorts last instead of first
+    };
+    const lane = (status) => {
+      const seen = new Set(); // the same incident can appear twice when pages overlap after a refresh: count it once
+      const members = list.filter((item) => item.status === status).sort((a, b) => created(a) - created(b) || (a.incident_id < b.incident_id ? -1 : 1))
+        .filter((item) => !seen.has(item.incident_id) && seen.add(item.incident_id));
+      const oldest = members[0] || null;
+      const age = oldest && Number.isFinite(created(oldest)) ? Math.max(0, clock - created(oldest)) : null;
+      return {
+        count: members.length,
+        ids: members.map((item) => item.incident_id),
+        oldest,
+        oldestAgeMs: age,
+        stale: members.filter((item) => Number.isFinite(created(item)) && clock - created(item) > STALE_MS).length,
+      };
+    };
+    return { awaiting: lane("awaiting_approval"), review: lane("needs_review") };
+  }
+
   /** Where `id` sits in the ordered list of ids the reviewer is working through: 1-based position, total, neighbours.
    *  Unknown ids and non-arrays give position 0 and no neighbours, so the navigation simply stays hidden. */
   function queuePosition(ids, id) {
@@ -265,7 +307,7 @@
   }
 
   return {
-    inlineDiff, annotateDiff, splitDiff, queuePosition, SORT_KEYS, DEFAULT_SORT, STATUS_OPTIONS,
+    inlineDiff, annotateDiff, splitDiff, queuePosition, queueSummary, duration, STALE_MS, SORT_KEYS, DEFAULT_SORT, STATUS_OPTIONS,
     humanize, ago, toneForScore, plainMarkup, filterItems, sortItems, statusCounts, parseDiff, readState, writeState,
   };
 });
