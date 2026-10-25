@@ -6,6 +6,10 @@ All notable changes are listed here. Versions of behaviour-critical components a
 ## [Unreleased]
 
 ### Added
+- Review console: move through the list from an incident (`[` / `]` or the two arrows, "2 of 5"), so a reviewer can work a queue
+  without going back to the list between cases; the position also works when an incident is opened from a link. On touch
+  screens buttons, fields and rows get 44 px targets. (Phone-width layout, labels, live regions, focus handling and reduced
+  motion were checked and already fine.)
 - A test that scans every tracked file for credential-shaped strings (Groq, GitHub, AWS, Slack, OpenAI-style and Langfuse keys,
   private keys, database URLs with a password) and fails on any outside the files that hold fakes on purpose; the weekly
   dependency audit now covers the development and documentation requirements too. SECURITY.md lists what is checked.

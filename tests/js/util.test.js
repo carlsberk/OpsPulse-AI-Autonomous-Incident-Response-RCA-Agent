@@ -104,3 +104,18 @@ test("parseDiff: an absurd hunk number is shown as a plain integer, not as 1e+21
   assert.equal(rows[1].left, "0");
   assert.equal(rows[1].right, "5");
 });
+
+test("queuePosition: position, neighbours and the edges of the list", () => {
+  const ids = ["a1", "b2", "c3"];
+  assert.deepEqual(U.queuePosition(ids, "b2"), { position: 2, total: 3, prev: "a1", next: "c3" });
+  assert.deepEqual(U.queuePosition(ids, "a1"), { position: 1, total: 3, prev: null, next: "b2" });
+  assert.deepEqual(U.queuePosition(ids, "c3"), { position: 3, total: 3, prev: "b2", next: null });
+});
+
+test("queuePosition: an id outside the list, an empty list and garbage input hide the navigation", () => {
+  assert.equal(U.queuePosition(["a1"], "zz").position, 0);
+  assert.equal(U.queuePosition([], "a1").total, 0);
+  assert.deepEqual(U.queuePosition(null, "a1"), { position: 0, total: 0, prev: null, next: null });
+  assert.deepEqual(U.queuePosition("a1,b2", "a1"), { position: 0, total: 0, prev: null, next: null });
+  assert.equal(U.queuePosition([1, null, "a1"], "a1").total, 1); // non-strings are dropped, never thrown on
+});

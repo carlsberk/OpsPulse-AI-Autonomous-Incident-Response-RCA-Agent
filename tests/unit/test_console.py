@@ -194,3 +194,14 @@ def test_console_shows_the_test_evidence_card_with_text_nodes_only():
     assert "function renderTests(" in script and "renderTests(analysis);" in script
     code = "\n".join(line for line in script.splitlines() if not line.strip().startswith("//"))
     assert '$("repro-code").textContent' in code and "innerHTML" not in code
+
+
+def test_console_queue_navigation_is_wired_without_unsafe_sinks():
+    html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    for needle in ('id="queue"', 'id="queue-prev"', 'id="queue-next"', 'id="queue-pos"', 'aria-live="polite"'):
+        assert needle in html, needle
+    assert re.search(r'<nav id="queue"[^>]*aria-label="[^"]+"', html), "the navigation needs an accessible name"
+    source = (STATIC_DIR / "app.js").read_text(encoding="utf-8")
+    assert "queuePosition" in source and '"["' in source and '"]"' in source
+    assert "textContent" in source[source.index("function renderQueue") : source.index("function stepQueue")]
+    assert "@media (pointer: coarse)" in (STATIC_DIR / "styles.css").read_text(encoding="utf-8")

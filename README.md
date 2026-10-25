@@ -900,7 +900,8 @@ privileges of its own.
 
 - **Navigation:** every incident has a deep link (`#/incident/<id>`, works with back/forward and in a new tab);
   search across loaded incidents, sortable columns (a selector on phones), status chips with counts, optional
-  auto-refresh (15 s), keyboard shortcuts (`/` search, `j`/`k` move, `Enter` open, `r` refresh, `Esc` back).
+  auto-refresh (15 s), keyboard shortcuts (`/` search, `j`/`k` move, `Enter` open, `r` refresh, `Esc` back, and in an incident `[` / `]` for the
+  previous / next one in the list you came from, shown as "2 of 5" with the same two arrows).
   Filter, search and sort live in the URL (`?status=&q=&sort=score:asc&theme=`), validated on read, so a reload
   or a copied link restores the view.
 - **Robustness:** the latest request wins (a slow response never overwrites a newer view, changing a filter
