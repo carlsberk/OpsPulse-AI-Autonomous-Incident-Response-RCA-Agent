@@ -143,8 +143,22 @@
     return text ? `?${text}` : "";
   }
 
+  /** Where `id` sits in the ordered list of ids the reviewer is working through: 1-based position, total, neighbours.
+   *  Unknown ids and non-arrays give position 0 and no neighbours, so the navigation simply stays hidden. */
+  function queuePosition(ids, id) {
+    const list = Array.isArray(ids) ? ids.filter((value) => typeof value === "string") : [];
+    const index = list.indexOf(id);
+    if (index < 0) return { position: 0, total: list.length, prev: null, next: null };
+    return {
+      position: index + 1,
+      total: list.length,
+      prev: index > 0 ? list[index - 1] : null,
+      next: index < list.length - 1 ? list[index + 1] : null,
+    };
+  }
+
   return {
-    SORT_KEYS, DEFAULT_SORT, STATUS_OPTIONS,
+    queuePosition, SORT_KEYS, DEFAULT_SORT, STATUS_OPTIONS,
     humanize, ago, toneForScore, plainMarkup, filterItems, sortItems, statusCounts, parseDiff, readState, writeState,
   };
 });

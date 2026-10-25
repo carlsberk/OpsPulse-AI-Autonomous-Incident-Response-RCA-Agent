@@ -20,7 +20,7 @@ const DEFAULT_STATUS = "awaiting_approval";
 const SORT_DEFAULT_DIR = { created: "desc", score: "desc", attempts: "desc", status: "asc", repo: "asc" };
 const state = {
   askFor: null, askHistory: [], cursor: null, items: [], current: null, evidenceFilter: "all", loading: false,
-  focusIndex: -1, memoryKey: "", chip: "", sort: { ...U.DEFAULT_SORT },
+  focusIndex: -1, memoryKey: "", chip: "", sort: { ...U.DEFAULT_SORT }, queue: [],
 };
 // Latest-request-wins: a slow response for an earlier request must never overwrite a newer view.
 const seq = { list: 0, detail: 0 };
@@ -265,6 +265,7 @@ function renderRows() {
   renderStatusChips();
   updateSortHeaders();
   const items = visibleItems();
+  state.queue = items.map((item) => item.incident_id); // the order the reviewer is working through
   state.focusIndex = -1;
   for (const item of items) {
     const row = document.createElement("tr");
@@ -331,6 +332,28 @@ function moveFocus(delta) {
 
 // ------------------------------------------------------------------ detail
 
+function renderQueue() {
+  const nav = $("queue");
+  const here = state.current ? state.current.incident_id : (location.hash.match(/^#\/incident\/([0-9A-Fa-f-]{8,64})$/) || [])[1];
+  const place = U.queuePosition(state.queue, here);
+  nav.hidden = place.position === 0 || place.total < 2;
+  if (nav.hidden) return;
+  $("queue-pos").textContent = `${place.position} of ${place.total}`;
+  for (const [id, target] of [["queue-prev", place.prev], ["queue-next", place.next]]) {
+    const link = $(id);
+    link.href = target ? `#/incident/${encodeURIComponent(target)}` : "#/";
+    if (target) link.removeAttribute("aria-disabled"); else link.setAttribute("aria-disabled", "true");
+    link.tabIndex = target ? 0 : -1;
+  }
+}
+
+function stepQueue(delta) {
+  const here = state.current && state.current.incident_id;
+  const place = U.queuePosition(state.queue, here);
+  const target = delta < 0 ? place.prev : place.next;
+  if (target) location.hash = `#/incident/${encodeURIComponent(target)}`;
+}
+
 function resetDetail() {
   state.current = null;
   $("d-title").textContent = "Loading incident…";
@@ -358,6 +381,8 @@ async function showDetail(incidentId) {
     $("net-banner").hidden = true;
     setConnection("on", "Connected");
     renderDetail(incident);
+    renderQueue();
+    if (!state.items.length) loadList().then(renderQueue, () => {}); // opened by link: fetch the list quietly for the position
     window.scrollTo(0, 0);
     $("d-title").focus({ preventScroll: true });
   } catch (error) {
@@ -912,6 +937,10 @@ document.addEventListener("keydown", (event) => {
   if (event.metaKey || event.ctrlKey || event.altKey || $("confirm").open) return;
   if (event.key === "Escape" && !$("detail-view").hidden) {
     location.hash = "#/";
+    return;
+  }
+  if (!typing(event.target) && !$("detail-view").hidden && (event.key === "[" || event.key === "]")) {
+    stepQueue(event.key === "[" ? -1 : 1);
     return;
   }
   if (typing(event.target) || !$("detail-view").hidden) return;

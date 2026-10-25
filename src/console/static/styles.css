@@ -111,8 +111,18 @@ h2 .muted { font-size: 12px; margin-left: 6px; font-weight: 500; }
   color: var(--text); border-left: 3px solid var(--warn); }
 .banner.bad { background: var(--bad-soft); border-left-color: var(--bad); }
 .prose { margin: 0; overflow-wrap: anywhere; }
-.back { display: inline-block; margin-bottom: 16px; text-decoration: none; font-weight: 550; color: var(--muted);
-  font-size: 14px; }
+.crumbs { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.back { display: inline-block; text-decoration: none; font-weight: 550; color: var(--muted); font-size: 14px; }
+.queue { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--muted);
+  font-variant-numeric: tabular-nums; }
+.queue[hidden] { display: none; }
+.queue-step { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--panel); color: var(--text); text-decoration: none; font-size: 18px;
+  line-height: 1; }
+.queue-step:hover { background: var(--panel-2); border-color: var(--muted); }
+.queue-step:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.queue-step[aria-disabled="true"] { opacity: .35; pointer-events: none; }
+.queue-pos { min-width: 4.5em; text-align: center; }
 .back:hover { color: var(--text); }
 
 /* ---- detail layout: reading column + decision sidebar ---- */
@@ -317,3 +327,12 @@ th[aria-sort="descending"] .sort-mark::after { border-top: 5px solid currentColo
 h1:focus { outline: none; }
 .sort-select { display: none; }  /* the column headers sort on wide screens; phones get this selector instead */
 @media (max-width: 760px) { .sort-select { display: block; } }
+
+/* ---- touch: fingers need bigger targets than a mouse pointer ---- */
+@media (pointer: coarse) {
+  .btn, .chip-btn, .queue-step, .back, select, input[type="search"], input[type="password"], input[type="text"] { min-height: 44px; }
+  .queue-step { width: 44px; height: 44px; }
+  .back { display: inline-flex; align-items: center; }
+  .repo-link { display: inline-block; padding: 6px 0; }
+  tbody tr[data-id] td { padding-top: 14px; padding-bottom: 14px; }
+}
