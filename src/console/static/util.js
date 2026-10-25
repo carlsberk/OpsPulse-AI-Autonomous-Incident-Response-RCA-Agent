@@ -118,6 +118,113 @@
     return rows;
   }
 
+  const MAX_TOKENS = 240; // longer lines are shown without inline highlighting (the table below is O(n*m))
+
+  /** Words, runs of spaces and single punctuation marks: the unit a reader sees a change in. */
+  function tokenize(text) {
+    return String(text || "").match(/[A-Za-z0-9_]+|\s+|[^A-Za-z0-9_\s]/g) || [];
+  }
+
+  function mergeSegments(parts) {
+    const merged = [];
+    for (const part of parts) {
+      const last = merged[merged.length - 1];
+      if (last && last.changed === part.changed) last.text += part.text;
+      else merged.push({ text: part.text, changed: part.changed });
+    }
+    return merged;
+  }
+
+  /**
+   * Which parts of a removed line and the added line that replaces it actually differ.
+   * Returns { left, right } as arrays of { text, changed } whose texts concatenate back to the inputs exactly, or null
+   * when highlighting would only add noise (lines too long, nothing in common, or identical).
+   */
+  function inlineDiff(before, after) {
+    const a = tokenize(before);
+    const b = tokenize(after);
+    if (!a.length || !b.length || a.length > MAX_TOKENS || b.length > MAX_TOKENS) return null;
+    // Longest common subsequence of tokens, bottom-up.
+    const table = Array.from({ length: a.length + 1 }, () => new Uint16Array(b.length + 1));
+    for (let i = a.length - 1; i >= 0; i -= 1) {
+      for (let j = b.length - 1; j >= 0; j -= 1) {
+        table[i][j] = a[i] === b[j] ? table[i + 1][j + 1] + 1 : Math.max(table[i + 1][j], table[i][j + 1]);
+      }
+    }
+    const left = [];
+    const right = [];
+    let i = 0;
+    let j = 0;
+    let shared = 0;
+    while (i < a.length && j < b.length) {
+      if (a[i] === b[j]) {
+        left.push({ text: a[i], changed: false });
+        right.push({ text: b[j], changed: false });
+        if (/\S/.test(a[i])) shared += 1;
+        i += 1;
+        j += 1;
+      } else if (table[i + 1][j] >= table[i][j + 1]) {
+        left.push({ text: a[i], changed: true });
+        i += 1;
+      } else {
+        right.push({ text: b[j], changed: true });
+        j += 1;
+      }
+    }
+    for (; i < a.length; i += 1) left.push({ text: a[i], changed: true });
+    for (; j < b.length; j += 1) right.push({ text: b[j], changed: true });
+    const words = (tokens) => tokens.filter((token) => /\S/.test(token)).length;
+    if (shared === 0 || shared < 0.3 * Math.min(words(a), words(b))) return null; // different lines, not an edit
+    if (!left.some((part) => part.changed) && !right.some((part) => part.changed)) return null;
+    return { left: mergeSegments(left), right: mergeSegments(right) };
+  }
+
+  /**
+   * parseDiff rows plus `segments`: for a block of removed lines directly followed by added lines, line k of one is
+   * paired with line k of the other and the differing parts are marked. Unpaired and unrelated lines get no segments.
+   * The leading "+"/"-" marker is not part of the segments.
+   */
+  function annotateDiff(rows) {
+    const out = rows.map((row) => ({ ...row, segments: null }));
+    let index = 0;
+    while (index < out.length) {
+      if (out[index].kind !== "del") { index += 1; continue; }
+      const dels = [];
+      while (index < out.length && out[index].kind === "del") dels.push(index++);
+      const adds = [];
+      while (index < out.length && out[index].kind === "add") adds.push(index++);
+      for (let k = 0; k < Math.min(dels.length, adds.length); k += 1) {
+        const pair = inlineDiff(out[dels[k]].text.slice(1), out[adds[k]].text.slice(1));
+        if (pair) {
+          out[dels[k]].segments = pair.left;
+          out[adds[k]].segments = pair.right;
+        }
+      }
+    }
+    return out;
+  }
+
+  /**
+   * The same rows laid out side by side: context on both sides, a removed block next to the lines that replace it
+   * (padded with empty cells), hunk and meta lines across the full width.
+   * Every row: { full: row } for hunk/meta, or { left: row|null, right: row|null }.
+   */
+  function splitDiff(rows) {
+    const out = [];
+    let index = 0;
+    while (index < rows.length) {
+      const row = rows[index];
+      if (row.kind === "hunk" || row.kind === "meta") { out.push({ full: row }); index += 1; continue; }
+      if (row.kind === "ctx") { out.push({ left: row, right: row }); index += 1; continue; }
+      const dels = [];
+      const adds = [];
+      while (index < rows.length && rows[index].kind === "del") dels.push(rows[index++]);
+      while (index < rows.length && rows[index].kind === "add") adds.push(rows[index++]);
+      for (let k = 0; k < Math.max(dels.length, adds.length); k += 1) out.push({ left: dels[k] || null, right: adds[k] || null });
+    }
+    return out;
+  }
+
   /** Query string -> view state. Everything is validated: a hand-edited URL can never put the page in a bad state. */
   function readState(search) {
     const params = new URLSearchParams(search || "");
@@ -158,7 +265,7 @@
   }
 
   return {
-    queuePosition, SORT_KEYS, DEFAULT_SORT, STATUS_OPTIONS,
+    inlineDiff, annotateDiff, splitDiff, queuePosition, SORT_KEYS, DEFAULT_SORT, STATUS_OPTIONS,
     humanize, ago, toneForScore, plainMarkup, filterItems, sortItems, statusCounts, parseDiff, readState, writeState,
   };
 });

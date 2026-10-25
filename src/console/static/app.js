@@ -5,6 +5,7 @@
 const KEY_STORAGE = "opspulse.apiKey";      // sessionStorage: dies with the tab
 const THEME_STORAGE = "opspulse.theme";      // localStorage: auto | light | dark
 const REFRESH_STORAGE = "opspulse.autoRefresh";
+const DIFF_STORAGE = "opspulse.diffMode";   // localStorage: unified | split
 const REFRESH_MS = 15000;
 const THEMES = ["auto", "light", "dark"];
 const THEME_GLYPH = { auto: "◐", light: "☀", dark: "☾" };
@@ -573,18 +574,55 @@ function renderAttempts(attempts) {
   if (!attempts.length) list.append(el("li", "No attempts recorded.", "muted"));
 }
 
+function diffCode(row) {
+  const code = el("span", null, "code");
+  if (!row.segments) { code.textContent = row.text; return code; }
+  code.append(document.createTextNode(row.text.slice(0, 1))); // the "+" / "-" marker
+  for (const part of row.segments) {
+    if (part.changed) code.append(el("span", part.text, "chg")); else code.append(document.createTextNode(part.text));
+  }
+  return code;
+}
+
+function diffPane(row, side) {
+  const pane = el("div", null, `pane ${row ? row.kind : "gap"}`);
+  if (!row) return pane;
+  pane.append(el("span", side === "left" ? row.left : row.right, "ln"), diffCode(row));
+  return pane;
+}
+
 function renderDiff(patch) {
   const view = $("d-patch");
   view.replaceChildren();
+  const split = store("local", DIFF_STORAGE) === "split";
+  view.classList.toggle("split", split);
   $("copy-patch").hidden = !patch;
   $("download-patch").hidden = !patch;
+  $("diff-mode").hidden = !patch;
+  $("diff-mode").setAttribute("aria-pressed", String(split));
+  $("diff-mode").textContent = split ? "Unified" : "Side by side";
   if (!patch) {
     view.append(el("div", "No patch proposed.", "empty-note"));
     return;
   }
-  for (const line of U.parseDiff(patch)) {
+  const rows = U.annotateDiff(U.parseDiff(patch));
+  if (split) {
+    for (const pair of U.splitDiff(rows)) {
+      if (pair.full) {
+        const full = el("div", null, `row full ${pair.full.kind}`);
+        full.append(el("span", pair.full.text, "code"));
+        view.append(full);
+      } else {
+        const row = el("div", null, "row");
+        row.append(diffPane(pair.left, "left"), diffPane(pair.right, "right"));
+        view.append(row);
+      }
+    }
+    return;
+  }
+  for (const line of rows) {
     const row = el("div", null, `row ${line.kind}`);
-    row.append(el("span", line.left, "ln"), el("span", line.right, "ln"), el("span", line.text, "code"));
+    row.append(el("span", line.left, "ln"), el("span", line.right, "ln"), diffCode(line));
     view.append(row);
   }
 }
@@ -970,6 +1008,8 @@ function applyQueryOptions() {
   }
   $("search").value = view.query;
   state.sort = view.sort;
+  const diffMode = new URLSearchParams(location.search).get("diff"); // ?diff=split|unified: a shareable link opens in that view
+  if (diffMode === "split" || diffMode === "unified") store("local", DIFF_STORAGE, diffMode);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -1031,6 +1071,10 @@ document.addEventListener("DOMContentLoaded", () => {
     ask($("ask-input").value);
   });
   $("copy-id").addEventListener("click", () => state.current && copyText(state.current.incident_id, "Incident id"));
+  $("diff-mode").addEventListener("click", () => {
+    store("local", DIFF_STORAGE, store("local", DIFF_STORAGE) === "split" ? "unified" : "split");
+    if (state.current) renderDiff(state.current.suggested_patch);
+  });
   $("copy-patch").addEventListener("click", () => state.current && copyText(state.current.suggested_patch || "", "Patch"));
   $("download-patch").addEventListener("click", downloadPatch);
   for (const button of document.querySelectorAll(".seg-btn")) {
