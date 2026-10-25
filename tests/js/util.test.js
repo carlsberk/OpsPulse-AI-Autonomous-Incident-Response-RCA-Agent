@@ -202,3 +202,65 @@ test("splitDiff: a pure removal and a pure addition leave the other side empty",
   const added = U.splitDiff(U.parseDiff("@@ -1,1 +1,2 @@\n keep\n+new"));
   assert.equal(added[added.length - 1].left, null);
 });
+
+// ------------------------------------------------------------------ queue summary
+
+const SUMMARY_NOW = Date.parse("2026-10-26T12:00:00Z");
+const waiting = (id, status, createdAt) => ({ incident_id: id, status, created_at: createdAt });
+
+test("duration: short phrases, never negative or NaN", () => {
+  assert.equal(U.duration(0), "less than a minute");
+  assert.equal(U.duration(59_999), "less than a minute");
+  assert.equal(U.duration(5 * 60_000), "5 min");
+  assert.equal(U.duration(3 * 3_600_000 + 20 * 60_000), "3 h");
+  assert.equal(U.duration(47 * 3_600_000), "47 h");
+  assert.equal(U.duration(72 * 3_600_000), "3 d");
+  for (const bad of [-5, NaN, Infinity, "x", null, undefined, {}]) assert.equal(U.duration(bad), "less than a minute");
+});
+
+test("queueSummary: oldest first per lane, counts, age of the oldest and the over-a-day count", () => {
+  const items = [
+    waiting("new", "awaiting_approval", "2026-10-26T11:30:00Z"),
+    waiting("old", "awaiting_approval", "2026-10-24T08:00:00Z"),
+    waiting("day", "awaiting_approval", "2026-10-25T10:00:00Z"),
+    waiting("r1", "needs_review", "2026-10-26T09:00:00Z"),
+    waiting("done", "pr_created", "2026-10-01T09:00:00Z"),
+  ];
+  const summary = U.queueSummary(items, SUMMARY_NOW);
+  assert.deepEqual(summary.awaiting.ids, ["old", "day", "new"]);
+  assert.equal(summary.awaiting.count, 3);
+  assert.equal(summary.awaiting.oldest.incident_id, "old");
+  assert.equal(summary.awaiting.oldestAgeMs, SUMMARY_NOW - Date.parse("2026-10-24T08:00:00Z"));
+  assert.equal(summary.awaiting.stale, 2); // "old" and "day" are past 24 h; "new" is not
+  assert.deepEqual(summary.review.ids, ["r1"]);
+  assert.equal(summary.review.stale, 0);
+});
+
+test("queueSummary: empty lanes, bad dates and garbage input", () => {
+  const empty = U.queueSummary([], SUMMARY_NOW);
+  assert.deepEqual([empty.awaiting.count, empty.awaiting.oldest, empty.awaiting.oldestAgeMs], [0, null, null]);
+  const bad = U.queueSummary([waiting("a", "awaiting_approval", "not a date"), waiting("b", "awaiting_approval", "2026-10-26T11:00:00Z")], SUMMARY_NOW);
+  assert.deepEqual(bad.awaiting.ids, ["b", "a"]); // an unreadable date sorts last, never first
+  assert.equal(bad.awaiting.oldest.incident_id, "b");
+  assert.equal(bad.awaiting.stale, 0);
+  const future = U.queueSummary([waiting("f", "awaiting_approval", "2026-12-01T00:00:00Z")], SUMMARY_NOW);
+  assert.equal(future.awaiting.oldestAgeMs, 0); // clock skew: never a negative wait
+  for (const junk of [null, undefined, "x", 3, {}, [null, 1, "a", { status: "awaiting_approval" }, { incident_id: 5, status: "awaiting_approval" }]]) {
+    assert.equal(U.queueSummary(junk, SUMMARY_NOW).awaiting.count, 0);
+  }
+});
+
+test("queueSummary: ties break by id so the order is stable", () => {
+  const same = "2026-10-26T10:00:00Z";
+  const summary = U.queueSummary([waiting("b", "awaiting_approval", same), waiting("a", "awaiting_approval", same)], SUMMARY_NOW);
+  assert.deepEqual(summary.awaiting.ids, ["a", "b"]);
+});
+
+test("queueSummary: an incident that appears twice (overlapping pages) counts once, at its oldest entry", () => {
+  const summary = U.queueSummary([
+    waiting("a", "awaiting_approval", "2026-10-26T11:00:00Z"),
+    waiting("a", "awaiting_approval", "2026-10-26T10:00:00Z"),
+  ], SUMMARY_NOW);
+  assert.deepEqual(summary.awaiting.ids, ["a"]);
+  assert.equal(summary.awaiting.count, 1);
+});

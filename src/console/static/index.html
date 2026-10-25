@@ -79,6 +79,18 @@
         <p id="list-message" class="message" role="status"></p>
         <button type="button" id="list-retry" class="btn tiny" hidden>Retry</button>
       </div>
+      <section id="queue-card" class="card queue-card" aria-labelledby="qc-title" hidden>
+        <div class="qc-head">
+          <h2 id="qc-title">Your queue</h2>
+          <span id="qc-scope" class="muted small"></span>
+        </div>
+        <p id="qc-text" class="qc-text"></p>
+        <div class="qc-actions">
+          <button type="button" id="qc-start-awaiting" class="btn primary" hidden></button>
+          <button type="button" id="qc-start-review" class="btn" hidden></button>
+        </div>
+      </section>
+
       <div id="status-chips" class="status-chips" role="group" aria-label="Filter loaded incidents by status" hidden></div>
 
       <div id="list-card" class="card flush" hidden>

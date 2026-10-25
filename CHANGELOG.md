@@ -6,6 +6,10 @@ All notable changes are listed here. Versions of behaviour-critical components a
 ## [Unreleased]
 
 ### Added
+- Review console: a **Your queue** card above the list (proposals waiting for a decision, how long the oldest has waited, how many
+  are past 24 h, analyses that need a look) with "Start with the oldest proposal" / "Review the oldest analysis"; `]` then
+  walks the lane oldest first. Ordered by waiting time only. The fuzz test found that an incident listed twice (overlapping pages)
+  would be counted twice; it now counts once.
 - Review console, proposed patch: the words that changed inside a replaced line are highlighted (a one-argument edit shows
   `, 0` or `.get(` instead of two whole lines), and a **Side by side** view puts removed and added lines opposite each other.
   The comparison is a pure, tested function (pieces always rebuild the line exactly; unrelated lines and lines over 240 tokens

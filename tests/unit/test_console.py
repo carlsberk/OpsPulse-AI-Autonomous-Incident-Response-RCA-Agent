@@ -219,3 +219,19 @@ def test_console_diff_view_has_a_toggle_inline_highlights_and_no_class_collision
     page_level = {match.group(1) for match in re.finditer(r"^\.([a-z][a-z-]*)\s*\{", css, re.MULTILINE)}
     diff_classes = set(re.findall(r'pane \$\{[^}]*"(\w[\w-]*)"\}', source))
     assert diff_classes and not (diff_classes & page_level), diff_classes & page_level
+
+
+def test_console_queue_card_is_wired_and_uses_only_text_nodes():
+    html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    for needle in (
+        'id="queue-card"',
+        'id="qc-text"',
+        'id="qc-start-awaiting"',
+        'id="qc-start-review"',
+        'aria-labelledby="qc-title"',
+    ):
+        assert needle in html, needle
+    source = (STATIC_DIR / "app.js").read_text(encoding="utf-8")
+    block = source[source.index("function renderQueueCard") : source.index("function renderRows")]
+    assert "U.queueSummary" in block and "U.duration" in block
+    assert "innerHTML" not in block and "insertAdjacentHTML" not in block

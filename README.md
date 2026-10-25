@@ -903,7 +903,10 @@ privileges of its own.
   auto-refresh (15 s), keyboard shortcuts (`/` search, `j`/`k` move, `Enter` open, `r` refresh, `Esc` back, and in an incident `[` / `]` for the
   previous / next one in the list you came from, shown as "2 of 5" with the same two arrows). The proposed patch marks the
   words that changed inside a replaced line, and a **Side by side** toggle (remembered per browser; `?diff=split` in a link
-  opens it that way) shows removed and added lines opposite each other.
+  opens it that way) shows removed and added lines opposite each other. The list starts with a **Your queue** card: how many
+  proposals wait for a decision, how long the oldest has waited (and how many are past a day), how many analyses need a human
+  look, and one button per lane that opens the oldest first and lets `]` walk the rest. It is computed from the incidents
+  already loaded, says so when more pages exist, and ranks by waiting time only (the list data has no honest risk score).
   Filter, search and sort live in the URL (`?status=&q=&sort=score:asc&theme=`), validated on read, so a reload
   or a copied link restores the view.
 - **Robustness:** the latest request wins (a slow response never overwrites a newer view, changing a filter
