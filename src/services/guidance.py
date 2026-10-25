@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from src.agent.patching import PatchError, parse_unified_diff
+from src.services.category_hints import external_response_hint
 
 # gate check -> (what it verifies, what to do when it fails)
 CHECK_ADVICE: dict[str, tuple[str, str]] = {
@@ -415,6 +416,9 @@ def build_guidance(incident: dict[str, Any], now: datetime | None = None) -> dic
             "or passes it, the real fix belongs there. (This is a heuristic; it also fires when the model quotes a "
             "caller only to rule it out.)",
         )
+    hint = external_response_hint(analysis)
+    if hint:
+        add("check", "reviewer", hint)
     patch = patch_facts(incident.get("suggested_patch"))
     if patch and patch.get("pattern") == "guard_or_default":
         add(

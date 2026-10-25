@@ -48,6 +48,15 @@ provider failures excluded from every rate).
   it repeated the rejected patch in 9 of 9, on three synthetic cases built for exactly that. It has not been tested on real
   review history (there is none yet), on vague notes, or on a note that does not fit the new incident, where applying it
   would be a mistake.
+- **The category hint is narrow on purpose.** When the diagnosis blames our own code (`missing_key`, `null_reference`,
+  `attribute_error`, `type_error`) and the failing statement reads a variable that the same window shows being assigned from an
+  HTTP call, the reviewer is told the other service may have answered differently (`invalid_external_response`). It would have
+  caught `ho-upstream-shape`, the case that was wrongly diagnosed and accepted in both live holdout runs. Checked on the 54
+  labelled cases (no model call): it fires on 2, both labelled `invalid_external_response`, and on none of the other 52; it
+  stays silent for a function that receives the response as a parameter (`api-missing-field`), because the window cannot show
+  where the value came from. The rule was written after seeing `ho-upstream-shape`, so that case is not independent evidence;
+  nothing is known about its behaviour on real incidents. It is advice in the guidance card and the evidence flags; it never
+  changes the gate score and never blocks.
 - **A passing gate is not a correct fix.** The gate proves structure: grounded quotes, a diff that applies, a patch that
   changes something. It does **not** run the target repository's tests. The PR text says so, and the reviewer decides.
 - **The model sometimes patches the symptom.** When the evidence quotes only a caller, `fix_location` warns but does not

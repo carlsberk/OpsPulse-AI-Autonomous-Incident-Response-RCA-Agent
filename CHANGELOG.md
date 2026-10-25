@@ -6,6 +6,12 @@ All notable changes are listed here. Versions of behaviour-critical components a
 ## [Unreleased]
 
 ### Added
+- **Category hint for the reviewer** (`src/services/category_hints.py`, shown in the guidance card and as an evidence-graph flag; the
+  gate score and version are unchanged). When the diagnosis blames our own code but the failing statement reads a variable the
+  window shows coming from an HTTP call, the reviewer is told the upstream may have answered differently. It would have caught
+  `ho-upstream-shape`, wrongly diagnosed and accepted in both live holdout runs. `python -m evals.category_hint_check` (no model call)
+  runs the rule over the 54 labelled cases: 2 hits, both correct, 0 false alarms. A first version fired on `misleading-trace`
+  because it treated any `session.get(...)` as HTTP; a bare `session` or `client` now counts only when built from an HTTP client class.
 - Review console: a **Your queue** card above the list (proposals waiting for a decision, how long the oldest has waited, how many
   are past 24 h, analyses that need a look) with "Start with the oldest proposal" / "Review the oldest analysis"; `]` then
   walks the lane oldest first. Ordered by waiting time only. The fuzz test found that an incident listed twice (overlapping pages)

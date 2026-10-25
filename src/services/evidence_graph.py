@@ -15,6 +15,7 @@ import re
 from typing import Any
 
 from src.agent.patching import PatchError, parse_code_window
+from src.services.category_hints import external_response_hint
 
 _PROBLEM = re.compile(r"observed evidence #(\d+)")
 _MIN_ANCHOR_CHARS = 12
@@ -137,6 +138,9 @@ def build_evidence_graph(incident: dict[str, Any]) -> dict[str, Any]:
             flags.append("no evidence quote touches the code the patch changes")
     if observed == 0:
         flags.append("no observed evidence: the diagnosis rests on inference only")
+    hint = external_response_hint(analysis)
+    if hint:
+        flags.append("category: " + hint[:300])
     fix_location = checks.get("fix_location") or {}
     if fix_location.get("detail") and fix_location.get("score", 0) < fix_location.get("max", 0):
         flags.append("fix_location: " + str(fix_location["detail"])[:300])
