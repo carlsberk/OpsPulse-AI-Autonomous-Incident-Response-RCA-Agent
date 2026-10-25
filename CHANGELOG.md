@@ -44,6 +44,9 @@ All notable changes are listed here. Versions of behaviour-critical components a
   limits in the "At a glance" table, CI jobs, coverage and verified versions.
 
 ### Fixed
+- The credential scan added in the security PR flagged its own planted examples once the file was tracked, so CI was red on `main`
+  for two merges (#42, #43). Its exempt list is now exactly the five test files that hold fakes, and a test fails if an entry is
+  stale or holds no fake.
 - The history evaluation (`evals/history_real_repo.py`) runs the target repository's tests in a minimal environment; on Windows
   that left out `SYSTEMROOT`, so pytest's anyio plugin could not start asyncio and the red-to-green test failed. It is passed
   through now (it is not a secret). Linux was not affected.

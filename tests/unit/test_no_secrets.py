@@ -26,9 +26,9 @@ PATTERNS = {
 FIXTURES = {
     "tests/unit/test_agent_security.py",
     "tests/unit/test_api.py",
-    "tests/unit/test_pilot_check.py",
-    "tests/unit/test_logging_redaction.py",
+    "tests/unit/test_no_secrets.py",  # the scanner's own planted examples
     "tests/unit/test_observability.py",
+    "tests/unit/test_pilot_check.py",
 }
 
 
@@ -67,9 +67,21 @@ def test_no_credential_shaped_strings_outside_the_fixtures():
     )
 
 
-def test_the_scanner_itself_catches_a_planted_secret(tmp_path):
+def test_the_scanner_itself_catches_a_planted_secret():
     planted = "token = 'ghp_" + "A" * 36 + "'"
     assert PATTERNS["GitHub token"].search(planted)
     assert PATTERNS["private key"].search("-----BEGIN OPENSSH PRIVATE KEY-----")
     assert not PATTERNS["database URL with a password"].search("postgresql://USER:PASSWORD@HOST/DB")
     assert PATTERNS["database URL with a password"].search("postgresql://app:hunter22@db.example/app")
+
+
+def test_the_scanner_does_not_exempt_files_by_accident():
+    """Every exempt file must exist and really hold a fake; a stale entry would silently widen the exemption."""
+    tracked = {p.relative_to(ROOT).as_posix() for p in _tracked_files()}
+    missing = sorted(name for name in FIXTURES if name not in tracked)
+    assert not missing, f"remove from FIXTURES (not tracked): {missing}"
+    for name in sorted(FIXTURES):
+        text = (ROOT / name).read_text(encoding="utf-8")
+        assert any(pattern.search(text) for pattern in PATTERNS.values()), (
+            f"{name} holds no fake credential; drop it from FIXTURES"
+        )
