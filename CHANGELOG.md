@@ -62,6 +62,9 @@ All notable changes are listed here. Versions of behaviour-critical components a
   limits in the "At a glance" table, CI jobs, coverage and verified versions.
 
 ### Fixed
+- The category hint raised `TypeError: unhashable type` when a record's `root_cause_category` was a list (or `evidence` a number). Hypothesis
+  found it in the weekly property run and in the Python 3.13 unit tests, so CI on `main` was red after #48. Every field the hint reads is
+  type-checked now, with regression tests for the exact counterexample and other shapes.
 - The credential scan added in the security PR flagged its own planted examples once the file was tracked, so CI was red on `main`
   for two merges (#42, #43). Its exempt list is now exactly the five test files that hold fakes, and a test fails if an entry is
   stale or holds no fake.

@@ -85,12 +85,20 @@ def _comes_from_http(lines: list[str], name: str, depth: int = 0) -> str | None:
 
 def external_response_hint(analysis: dict[str, Any] | None) -> str | None:
     """A sentence for the reviewer when the diagnosis blames our code but the failing line reads an HTTP response."""
-    if not isinstance(analysis, dict) or analysis.get("root_cause_category") not in INTERNAL_CATEGORIES:
+    # A stored analysis is schema-checked, but this runs on whatever a record holds (fuzzers feed it lists and numbers):
+    # every field is type-checked before use, because a set lookup with a list raises and so does iterating a number.
+    if not isinstance(analysis, dict):
+        return None
+    category = analysis.get("root_cause_category")
+    if not isinstance(category, str) or category not in INTERNAL_CATEGORIES:
+        return None
+    evidence = analysis.get("evidence")
+    if not isinstance(evidence, list):
         return None
     lines = _window_lines(analysis)
     if not lines:
         return None
-    for item in analysis.get("evidence") or []:
+    for item in evidence:
         if not (isinstance(item, dict) and item.get("kind") == "observed" and item.get("source") == "code_context"):
             continue
         quote = str(item.get("quote") or "")

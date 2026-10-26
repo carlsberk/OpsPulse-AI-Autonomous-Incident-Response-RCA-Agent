@@ -133,3 +133,25 @@ def test_the_dataset_check_has_no_false_alarms_and_still_catches_the_known_miss(
     assert category_hint_check.main([]) == 0  # exit code 1 means a case labelled something else got the hint
     out = capsys.readouterr().out
     assert "holdout/ho-upstream-shape" in out and "false alarms (label is something else):        0" in out
+
+
+@pytest.mark.parametrize("category", [[], {}, [1], {"a": 1}, 3.5, True, b"missing_key", ("missing_key",)])
+def test_a_category_of_any_type_is_never_an_error(category):
+    """Hypothesis found this in CI: `root_cause_category: []` raised 'unhashable type' from a set lookup."""
+    assert external_response_hint(_analysis(category=category)) is None
+
+
+@pytest.mark.parametrize(
+    "evidence", ["x", 5, 2.5, None, {}, {"kind": "observed"}, [None, 1, "a", [], {"kind": "observed"}]]
+)
+def test_evidence_of_any_shape_is_never_an_error(evidence):
+    analysis = {**_analysis(), "evidence": evidence}
+    assert external_response_hint(analysis) is None
+
+
+@pytest.mark.parametrize(
+    "quote", [None, 5, ["a"], {"b": 1}, "", "\u200b", pytest.param("payload" * 5000, id="very-long")]
+)
+def test_a_quote_of_any_type_is_never_an_error(quote):
+    analysis = {**_analysis(), "evidence": [{"kind": "observed", "source": "code_context", "quote": quote}]}
+    external_response_hint(analysis)  # must not raise; the answer depends on the quote
