@@ -5,79 +5,70 @@ All notable changes are listed here. Versions of behaviour-critical components a
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-10-27
+
+A reviewer who works through a queue instead of one case at a time, an advisory that points at a diagnosis the code contradicts,
+and a tougher CI and repository. The prompt (`rca-prompt-v7.1`), the quality gate (`quality-gate-v8`) and the database schema
+are unchanged, so analyses behave as in 1.8.0.
+
+### Upgrade notes
+- **No migration, nothing to configure.**
+- Every API response now carries `Cache-Control: no-store` (the console already did). A proxy that used to cache incident, patch or
+  audit responses will stop doing so.
+- The guidance card and the evidence-graph flags can show one extra line, a *category hint* (below). It is advice: the gate score,
+  the approval rules and the PR text are untouched.
+- Contributors: CI runs on `ubuntu-24.04`, workflow actions are pinned to commit SHAs, and a test scans tracked files for
+  credential-shaped strings (fake ones belong in the five fixture files it lists).
+
 ### Added
-- **Category hint for the reviewer** (`src/services/category_hints.py`, shown in the guidance card and as an evidence-graph flag; the
-  gate score and version are unchanged). When the diagnosis blames our own code but the failing statement reads a variable the
-  window shows coming from an HTTP call, the reviewer is told the upstream may have answered differently. It would have caught
-  `ho-upstream-shape`, wrongly diagnosed and accepted in both live holdout runs. `python -m evals.category_hint_check` (no model call)
-  runs the rule over the 54 labelled cases: 2 hits, both correct, 0 false alarms. A first version fired on `misleading-trace`
-  because it treated any `session.get(...)` as HTTP; a bare `session` or `client` now counts only when built from an HTTP client class.
-- Review console: a **Your queue** card above the list (proposals waiting for a decision, how long the oldest has waited, how many
-  are past 24 h, analyses that need a look) with "Start with the oldest proposal" / "Review the oldest analysis"; `]` then
-  walks the lane oldest first. Ordered by waiting time only. The fuzz test found that an incident listed twice (overlapping pages)
-  would be counted twice; it now counts once.
-- Review console, proposed patch: the words that changed inside a replaced line are highlighted (a one-argument edit shows
-  `, 0` or `.get(` instead of two whole lines), and a **Side by side** view puts removed and added lines opposite each other.
-  The comparison is a pure, tested function (pieces always rebuild the line exactly; unrelated lines and lines over 240 tokens
-  are not highlighted), checked with 20 000 fuzz runs.
-- Review console: move through the list from an incident (`[` / `]` or the two arrows, "2 of 5"), so a reviewer can work a queue
-  without going back to the list between cases; the position also works when an incident is opened from a link. On touch
-  screens buttons, fields and rows get 44 px targets. (Phone-width layout, labels, live regions, focus handling and reduced
-  motion were checked and already fine.)
-- A test that scans every tracked file for credential-shaped strings (Groq, GitHub, AWS, Slack, OpenAI-style and Langfuse keys,
-  private keys, database URLs with a password) and fails on any outside the files that hold fakes on purpose; the weekly
-  dependency audit now covers the development and documentation requirements too. SECURITY.md lists what is checked.
-- A social preview image for the repository (`docs/images/social-preview.png`, source `.html`), Security and Release badges
-  in the README, and the suggested About text and topics in CONTRIBUTING (those live in GitHub's settings, so they are not applied
-  by a merge).
-- A second live holdout run with the current prompt and gate (`rca-prompt-v7.1`, `quality-gate-v8`, 12 cases) and a
-  run-to-run comparison with the first: the same category result (9/10), but the two runs disagreed on 3 of 12 cases, and
-  one case is wrongly diagnosed and accepted in both. LIMITATIONS and the README table quote both runs.
-- First measurement on real bug-fix history (`evals/results/history-real-*`): the gate accepted 10 of 10 analysed runs with the
-  right file, yet only 2 of those patches made the real regression test pass. Recorded in `docs/LIMITATIONS.md`.
-- `python -m evals.history_real_repo build|verify`: a dataset built from a real repository's bug-fix history instead of
-  injected bugs. A case is a commit that fixed a bug and added a test; the parent plus that test is the incident, and only
-  commits where the real fix turns the test green are kept. `verify` applies the model's patch to the parent and runs the
-  real regression test. The category label is a heuristic from the exception type.
-- Reliability reports show 95 % Wilson intervals next to every rate.
-- The live holdout result for prompt v7.1 (`evals/results/`), with the honest reading in `docs/LIMITATIONS.md`: no evidence
-  that v7.1 is better or worse than v6.
-- `python -m scripts.pilot_check [--online]`: tells you what blocks a first pilot (missing token, remediation or approval
-  switched off, no reviewer identity, repository not allow-listed, unmigrated database, a token that cannot push, no Docker
-  image for the sandbox) and what is only a warning. It prints setting names, never values; exit 1 while something blocks.
-- Runbook: a checklist for a first real pilot on a test repository (token scope, configuration, how many failures to report,
-  deciding them as a reviewer, and the two commands that measure the result).
+- **Category hint for the reviewer** (`src/services/category_hints.py`). When the diagnosis blames our own code (`missing_key`,
+  `null_reference`, `attribute_error`, `type_error`) but the failing statement reads a variable that the same window shows coming
+  from an HTTP call, the reviewer is told the other service may have answered differently (`invalid_external_response`). It would
+  have caught `ho-upstream-shape`, wrongly diagnosed and accepted in both live holdout runs. `python -m evals.category_hint_check`
+  (no model call) runs the rule over the 54 labelled cases.
+- **Review console, working a queue.** A *Your queue* card above the list (proposals waiting, how long the oldest has waited, how many
+  are past a day, analyses that need a look) with one button per lane that opens the oldest first; inside an incident `[` / `]` (or
+  the two arrows, "2 of 5") step through the list you came from, also when the incident was opened from a link.
+- **Review console, patch view.** The words that changed inside a replaced line are highlighted, and a *Side by side* view (remembered
+  per browser; `?diff=split` in a link opens it that way) puts removed and added lines opposite each other. Buttons, fields and rows
+  get 44 px targets on touch screens. Layout at phone width, labels, live regions, focus and reduced motion were checked and were fine.
+- `python -m scripts.pilot_check [--online]`: says what blocks a first pilot (missing token, remediation or approval switched off, no
+  reviewer identity, repository not allow-listed, unmigrated database, a token that cannot push, no Docker image for the sandbox) and
+  what is only a warning. It prints setting names, never values. The runbook has the checklist it follows.
+- **Measurement.** `python -m evals.history_real_repo build|verify` builds a dataset from a real repository's bug-fix history (a commit that
+  fixed a bug and added a test; only commits where the real fix turns the test green are kept) and checks a model's patch against the
+  real regression test. Reliability reports show 95 % Wilson intervals. A second live holdout run with the current prompt and gate, and a
+  run-to-run comparison.
+- **Security checks.** A test fails on any credential-shaped string outside deliberate fakes; the weekly dependency audit covers the development
+  and documentation requirements; SECURITY.md lists what is checked automatically.
+- A social preview image, Security and Release badges, and suggested About text and topics (in CONTRIBUTING; GitHub settings are not changed by a merge).
 
 ### Changed
-- README: a "Try it in two minutes" block (two commands, no keys needed) and a short "Why it is built this way" section ahead of
-  the numbers, and the contents list now links the sections it was missing. Every in-page link was checked to resolve.
-- API responses now carry `Cache-Control: no-store` (the console already did), so incidents, patches and audit records
-  are not kept in a browser or proxy cache.
-- CI runs on `ubuntu-24.04` instead of `ubuntu-latest` (GitHub is migrating `latest` to Ubuntu 26, which would change Python,
-  Docker and tooling under every job without a commit here); a test fails if a job uses a floating label.
-- CI hardening: every workflow action is pinned to a full commit SHA (the tag stays in a comment; Dependabot updates both),
-  test workflows no longer keep the checkout token (`persist-credentials: false`), and `tests/unit/test_workflows.py` fails if
-  an action is unpinned or a workflow loses its `permissions`. CONTRIBUTING lists the repository settings the code cannot enforce.
-- README brought up to 1.8.0: current gate, features (sandbox, commit pinning, reviewer memory, audit chain), live results and
-  limits in the "At a glance" table, CI jobs, coverage and verified versions.
+- CI: workflow actions pinned to full commit SHAs, test workflows no longer keep the checkout token, runner image pinned to `ubuntu-24.04`;
+  tests fail if an action is unpinned, a workflow loses its `permissions`, or a job uses a floating runner label.
+- README: a two-command "Try it" block, a short "Why it is built this way", a complete contents list, current numbers and limits.
 
 ### Fixed
-- The category hint raised `TypeError: unhashable type` when a record's `root_cause_category` was a list (or `evidence` a number). Hypothesis
-  found it in the weekly property run and in the Python 3.13 unit tests, so CI on `main` was red after #48. Every field the hint reads is
-  type-checked now, with regression tests for the exact counterexample and other shapes.
-- The credential scan added in the security PR flagged its own planted examples once the file was tracked, so CI was red on `main`
-  for two merges (#42, #43). Its exempt list is now exactly the five test files that hold fakes, and a test fails if an entry is
-  stale or holds no fake.
-- The history evaluation (`evals/history_real_repo.py`) runs the target repository's tests in a minimal environment; on Windows
-  that left out `SYSTEMROOT`, so pytest's anyio plugin could not start asyncio and the red-to-green test failed. It is passed
-  through now (it is not a secret). Linux was not affected.
-- `history_real_repo` stripped neither the test runner's own frames nor host paths from the traceback it builds, which made
-  every request exceed the provider's size limit (HTTP 413). Only frames inside the repository are kept now.
-- The PostgreSQL CI job failed on the pilot-check tests (merged in #37): that job migrates the test database before the tests
-  run, so an `alembic_version` table already existed and two tests assumed it did not. They now start from a known state.
-- Documentation: the README quoted 245 and 320 tests and the 1.8.0 notes said the audit log was not run on PostgreSQL. The
-  CI "postgres" job runs migration `0009`, its downgrade round trip and the whole suite (including the audit chain tests)
-  on PostgreSQL 16; what has not been run is a managed or production database.
+- The category hint raised `TypeError: unhashable type` when a record's `root_cause_category` was a list (or `evidence` a number). Hypothesis found
+  it; every field the hint reads is type-checked now. CI on `main` was red for one merge (#48) until this was fixed.
+- The credential scan flagged its own planted examples once tracked, which left CI red on `main` for two merges (#42, #43). Its exempt list is exactly
+  the files that hold fakes now, and a test fails if an entry is stale.
+- The history evaluation stripped neither the test runner's frames nor host paths from the traceback it builds (every request exceeded the provider's
+  size limit), and on Windows its minimal environment left out `SYSTEMROOT`, so pytest could not start.
+- The PostgreSQL CI job failed on two pilot-check tests that assumed no `alembic_version` table; they now start from a known state.
+- Documentation: stale test counts, and the claim that the audit log had not run on PostgreSQL (the CI job runs the migration and the whole suite on PostgreSQL 16).
+
+### Measured (small samples, one provider tier, read the caveats)
+- **Holdout, prompt v7.1 and gate v8, two runs on two days:** category 9/10 in both, no invented quotes (21/21 and 23/23 verified), no false rejections; but the runs
+  disagreed on 3 of 12 cases and `ho-upstream-shape` was accepted with the wrong category in both. There is no evidence that v7.1 is better or worse than v6.
+- **Real bug-fix history:** the gate accepted 10 of 10 analysed runs with the right file, yet only 2 of those patches made the real regression test pass.
+- **Category hint:** on the 54 labelled cases it fires on 2, both labelled `invalid_external_response`, and on none of the other 52. It was written after seeing
+  `ho-upstream-shape`, so that case is not independent evidence, and nothing is known about real incidents.
+
+### What this does not do
+- No real pilot has been run: no real review history, no production use. The queue card ranks by waiting time only because the list data holds no honest risk score.
+- The category hint stays silent when the window does not show where a value came from, and it never blocks or changes a score.
+- The new console features were checked in a browser against demo data and with unit and fuzz tests, not by reviewers working a real queue.
 
 ## [1.8.0] - 2026-10-24
 
