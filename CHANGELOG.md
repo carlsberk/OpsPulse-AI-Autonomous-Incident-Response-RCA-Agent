@@ -5,6 +5,19 @@ All notable changes are listed here. Versions of behaviour-critical components a
 
 ## [Unreleased]
 
+### Changed
+- **Prompt `rca-prompt-v7.2` and quality gate `quality-gate-v9` (not yet measured live).** Motivated by the first
+  real bug-fix-history run, where the gate accepted 10 of 10 analysed runs but only 2 patches passed the real regression
+  test. The eight failures were: a sibling copy of the faulty statement left unfixed (2), the crash avoided with a wrong
+  value (2), an underdetermined behaviour choice (3) and a new `UnboundLocalError` (1).
+  - The prompt now asks the model to fix every reachable copy of the faulty statement, to check that each variable its
+    patch uses is assigned on every path, to state the output the caller should get, and to ask for human review when the
+    intended behaviour is a design choice.
+  - The gate warns (non-blocking, inside `patch_locality`, weight unchanged) when a statement the patch removes still
+    occurs unchanged elsewhere in the retrieved source.
+  - Offline: 5 mock datasets show no regression against the committed baselines. Live: a rerun on the 5 real cases is
+    pending, so **there is no evidence yet that either change helps**.
+
 ## [1.9.0] - 2026-10-27
 
 A reviewer who works through a queue instead of one case at a time, an advisory that points at a diagnosis the code contradicts,
