@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import ast
 import re
+from collections import Counter
 from dataclasses import dataclass
 from typing import Any
 
@@ -329,6 +330,30 @@ def check_self_assessment(analysis: dict[str, Any]) -> CheckResult:
     return CheckResult(0.0, "self_assessed_confidence missing")
 
 
+MIN_COPY_CHARS = 15
+
+
+def surviving_copies(hunks: Any, patched: list[str]) -> list[tuple[str, int]]:
+    """Statements the patch removed that still appear, character for character, in the patched source.
+
+    A copied block or a sibling branch usually carries the same defect; fixing one copy leaves the failing input able to
+    reach the other (measured: a patch for an empty-table crash fixed one of two identical `num_cols = ...` lines).
+    Only substantial code lines count (not comments, brackets or one-word lines), so this stays a warning with few false
+    alarms; it never blocks.
+    """
+    added = Counter(t.strip() for hunk in hunks for op, t in hunk.ops if op == "+")
+    kept = Counter(line.strip() for line in patched) - added  # a line the patch itself writes back is not a survivor
+    found: list[tuple[str, int]] = []
+    for hunk in hunks:
+        for op, raw in hunk.ops:
+            text = raw.strip()
+            if op != "-" or len(text) < MIN_COPY_CHARS or text.startswith("#") or not any(c.isalnum() for c in text):
+                continue
+            if kept.get(text, 0) > 0 and all(text != f for f, _ in found):
+                found.append((text, kept[text]))
+    return found
+
+
 def check_patch(inp: EvaluationInput) -> dict[str, CheckResult]:
     names = ("diff_wellformed", "diff_applies", "patch_minimal", "patch_locality", "patch_effective")
     if not inp.patch:
@@ -373,7 +398,15 @@ def check_patch(inp: EvaluationInput) -> dict[str, CheckResult]:
     results["patch_effective"] = (
         CheckResult(1.0, "ok") if effective else CheckResult(0.0, "patch changes only whitespace / nothing")
     )
-    if inp.trigger is None:
+    surviving = surviving_copies(parsed.hunks, patched)
+    if surviving:
+        results["patch_locality"] = CheckResult(
+            0.4,
+            f"the patch removes {surviving[0][0]!r}, which still occurs {surviving[0][1]} more time(s) in the "
+            "retrieved source: the same defect may exist there. Fix every copy the failing input can reach, "
+            "or say why not",
+        )
+    elif inp.trigger is None:
         results["patch_locality"] = CheckResult(0.4, "no failing line to compare against")
     else:
         near = any(abs(pos - inp.trigger.line) <= LOCALITY_RADIUS for pos in positions)
