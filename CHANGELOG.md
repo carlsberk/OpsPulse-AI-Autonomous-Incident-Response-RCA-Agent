@@ -15,8 +15,9 @@ All notable changes are listed here. Versions of behaviour-critical components a
     intended behaviour is a design choice.
   - The gate warns (non-blocking, inside `patch_locality`, weight unchanged) when a statement the patch removes still
     occurs unchanged elsewhere in the retrieved source.
-  - Offline: 5 mock datasets show no regression against the committed baselines. Live: a rerun on the 5 real cases is
-    pending, so **there is no evidence yet that either change helps**.
+  - Offline: 5 mock datasets show no regression against the committed baselines. Live, on the 5 real cases: on the four
+    cases that had verdicts before, 2 of 9 accepted patches pass the real test against 2 of 10 under v7.1, so
+    **no measured improvement** (`evals/results/history-real-*2026-10-27*`).
 
 ## [1.9.0] - 2026-10-27
 
