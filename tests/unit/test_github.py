@@ -46,8 +46,13 @@ class FakeRepo:
         self.updates.append(kwargs)
 
     def create_pull(self, **kwargs):
-        self.pulls.append(kwargs)
-        return SimpleNamespace(html_url="https://github.com/o/r/pull/9", number=9, add_to_labels=lambda *_: None)
+        record = {**kwargs, "labels": []}
+        self.pulls.append(record)
+        return SimpleNamespace(
+            html_url="https://github.com/o/r/pull/9",
+            number=9,
+            add_to_labels=lambda *names: record["labels"].extend(names),
+        )
 
     def get_label(self, name):
         return name
