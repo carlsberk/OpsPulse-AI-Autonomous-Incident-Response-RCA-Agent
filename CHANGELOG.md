@@ -5,6 +5,11 @@ All notable changes are listed here. Versions of behaviour-critical components a
 
 ## [Unreleased]
 
+### Documentation
+- Recorded a negative result: making the gate-v9 sibling-copy warning trigger a retry (gate v10, not merged) did not raise the
+  share of accepted patches that pass the real regression test and made one case worse through a false positive. Results in
+  `evals/results/history-real-*2026-10-28*` and `docs/LIMITATIONS.md`.
+
 ### Changed
 - **Prompt `rca-prompt-v7.2` and quality gate `quality-gate-v9` (not yet measured live).** Motivated by the first
   real bug-fix-history run, where the gate accepted 10 of 10 analysed runs but only 2 patches passed the real regression
