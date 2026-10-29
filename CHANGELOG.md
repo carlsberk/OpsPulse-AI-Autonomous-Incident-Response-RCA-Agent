@@ -5,6 +5,12 @@ All notable changes are listed here. Versions of behaviour-critical components a
 
 ## [Unreleased]
 
+### Changed
+- `evals.history_real_repo` runs a repository's tests in a Docker container by default (no network, read-only root, no
+  capabilities, unprivileged user, memory/CPU/process/time caps) instead of on the host. Build the image with
+  `docker build -t opspulse-history-tests -f evals/history_tests.Dockerfile evals`; a host interpreter can still be passed
+  with `--python`, for a library you trust. Checked against the real Docker daemon (`RUN_DOCKER_TESTS=1`).
+
 ### Documentation
 - Recorded a negative result: making the gate-v9 sibling-copy warning trigger a retry (gate v10, not merged) did not raise the
   share of accepted patches that pass the real regression test and made one case worse through a false positive. Results in
