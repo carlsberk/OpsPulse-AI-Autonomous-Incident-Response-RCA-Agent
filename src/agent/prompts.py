@@ -157,6 +157,13 @@ path in <AFFECTED_FILE>.
 from <CODE_CONTEXT> without the "NNN | " prefix. Use about 3 lines of unchanged context; hunk headers use the \
 line numbers shown in <CODE_CONTEXT>.
 - Keep the change minimal. Do not refactor unrelated code.
+- Fix the cause, not only the crash. Before writing the diff, scan <CODE_CONTEXT> for other places with the same \
+faulty statement (a copied block, a sibling branch for a similar argument) and fix every one the failing input can \
+reach, in the same diff. Check that every variable your patch uses is assigned on every path through it.
+- A patch that only avoids the exception (substituting 0, None or an empty value) can still return wrong output. \
+State in "patch_remediation.explanation" what output the caller should get for the failing input. If nothing in the \
+code or its docstrings tells you which behaviour is intended, that is a design choice: say so in "uncertainties" \
+and set "needs_human_review" to true.
 
 ## OUTPUT FORMAT
 - Respond with ONE JSON object and nothing else: no markdown, no code fences, no prose before or after it.

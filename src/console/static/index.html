@@ -79,6 +79,18 @@
         <p id="list-message" class="message" role="status"></p>
         <button type="button" id="list-retry" class="btn tiny" hidden>Retry</button>
       </div>
+      <section id="queue-card" class="card queue-card" aria-labelledby="qc-title" hidden>
+        <div class="qc-head">
+          <h2 id="qc-title">Your queue</h2>
+          <span id="qc-scope" class="muted small"></span>
+        </div>
+        <p id="qc-text" class="qc-text"></p>
+        <div class="qc-actions">
+          <button type="button" id="qc-start-awaiting" class="btn primary" hidden></button>
+          <button type="button" id="qc-start-review" class="btn" hidden></button>
+        </div>
+      </section>
+
       <div id="status-chips" class="status-chips" role="group" aria-label="Filter loaded incidents by status" hidden></div>
 
       <div id="list-card" class="card flush" hidden>
@@ -108,7 +120,14 @@
     </section>
 
     <section id="detail-view" aria-labelledby="d-title" hidden>
-      <a href="#/" id="back" class="back">&larr; All incidents</a>
+      <div class="crumbs">
+        <a href="#/" id="back" class="back">&larr; All incidents</a>
+        <nav id="queue" class="queue" aria-label="Move through the list" hidden>
+          <a id="queue-prev" class="queue-step" href="#/" rel="prev" aria-label="Previous incident" title="Previous ( [ )">&lsaquo;</a>
+          <span id="queue-pos" class="queue-pos" aria-live="polite"></span>
+          <a id="queue-next" class="queue-step" href="#/" rel="next" aria-label="Next incident" title="Next ( ] )">&rsaquo;</a>
+        </nav>
+      </div>
 
       <div class="detail-head">
         <h1 id="d-title" tabindex="-1"></h1>
@@ -161,6 +180,7 @@
             <div class="section-head">
               <h2>Proposed patch</h2>
               <div class="btn-row">
+                <button type="button" id="diff-mode" class="btn ghost tiny" aria-pressed="false" title="Show removed and added lines side by side" hidden>Side by side</button>
                 <button type="button" id="copy-patch" class="btn ghost tiny" hidden>Copy</button>
                 <button type="button" id="download-patch" class="btn ghost tiny" hidden>Download .patch</button>
               </div>

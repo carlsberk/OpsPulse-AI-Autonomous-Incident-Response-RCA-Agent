@@ -26,6 +26,15 @@ def test_api_responses_carry_baseline_security_headers(client):
     assert resp.headers["x-frame-options"] == "DENY" and resp.headers["referrer-policy"] == "no-referrer"
 
 
+def test_api_responses_are_never_cacheable(client):
+    from tests.unit.conftest import API_HEADERS
+
+    for path in ("/healthz", "/incidents", "/openapi.json"):
+        resp = client.get(path, headers=API_HEADERS)
+        assert resp.headers["cache-control"] == "no-store", path
+    assert client.get("/incidents").headers["cache-control"] == "no-store"  # errors too (401)
+
+
 def test_console_has_no_inline_script_or_unsafe_dom_sinks():
     html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
     assert not re.search(r"<script(?![^>]*\bsrc=)[^>]*>", html), "inline <script> would violate the CSP"
@@ -185,3 +194,44 @@ def test_console_shows_the_test_evidence_card_with_text_nodes_only():
     assert "function renderTests(" in script and "renderTests(analysis);" in script
     code = "\n".join(line for line in script.splitlines() if not line.strip().startswith("//"))
     assert '$("repro-code").textContent' in code and "innerHTML" not in code
+
+
+def test_console_queue_navigation_is_wired_without_unsafe_sinks():
+    html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    for needle in ('id="queue"', 'id="queue-prev"', 'id="queue-next"', 'id="queue-pos"', 'aria-live="polite"'):
+        assert needle in html, needle
+    assert re.search(r'<nav id="queue"[^>]*aria-label="[^"]+"', html), "the navigation needs an accessible name"
+    source = (STATIC_DIR / "app.js").read_text(encoding="utf-8")
+    assert "queuePosition" in source and '"["' in source and '"]"' in source
+    assert "textContent" in source[source.index("function renderQueue") : source.index("function stepQueue")]
+    assert "@media (pointer: coarse)" in (STATIC_DIR / "styles.css").read_text(encoding="utf-8")
+
+
+def test_console_diff_view_has_a_toggle_inline_highlights_and_no_class_collisions():
+    html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    assert 'id="diff-mode"' in html and 'aria-pressed="false"' in html
+    source = (STATIC_DIR / "app.js").read_text(encoding="utf-8")
+    assert "annotateDiff" in source and "splitDiff" in source and "opspulse.diffMode" in source
+    css = (STATIC_DIR / "styles.css").read_text(encoding="utf-8")
+    assert ".diff .chg" in css and ".diff.split" in css
+    # A class that the page already uses for something else (the padded empty-state box) once made the split view's
+    # blank cells 130 px tall; the diff's own elements must not reuse the page-level names.
+    page_level = {match.group(1) for match in re.finditer(r"^\.([a-z][a-z-]*)\s*\{", css, re.MULTILINE)}
+    diff_classes = set(re.findall(r'pane \$\{[^}]*"(\w[\w-]*)"\}', source))
+    assert diff_classes and not (diff_classes & page_level), diff_classes & page_level
+
+
+def test_console_queue_card_is_wired_and_uses_only_text_nodes():
+    html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    for needle in (
+        'id="queue-card"',
+        'id="qc-text"',
+        'id="qc-start-awaiting"',
+        'id="qc-start-review"',
+        'aria-labelledby="qc-title"',
+    ):
+        assert needle in html, needle
+    source = (STATIC_DIR / "app.js").read_text(encoding="utf-8")
+    block = source[source.index("function renderQueueCard") : source.index("function renderRows")]
+    assert "U.queueSummary" in block and "U.duration" in block
+    assert "innerHTML" not in block and "insertAdjacentHTML" not in block

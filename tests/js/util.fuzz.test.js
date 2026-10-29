@@ -156,3 +156,39 @@ forAll("view state survives a write and read round trip", (g) => {
   const again = U.readState(U.writeState(state));
   assert.deepEqual(again, state);
 });
+
+forAll("inlineDiff pieces always rebuild their input; annotateDiff and splitDiff are total", (g) => {
+  const a = g.pick([g.text(), g.text() + " " + g.text(), "x".repeat(g.int(0, 300)), "a b c ".repeat(g.int(0, 120))]);
+  const b = g.pick([g.text(), a + g.text(), a.slice(0, g.int(0, a.length)), a.split(" ").reverse().join(" ")]);
+  const pair = U.inlineDiff(a, b);
+  if (pair !== null) {
+    assert.equal(pair.left.map((part) => part.text).join(""), a);
+    assert.equal(pair.right.map((part) => part.text).join(""), b);
+    assert.ok(pair.left.concat(pair.right).every((part) => part.text.length > 0 && typeof part.changed === "boolean"));
+  }
+  const lines = Array.from({ length: g.int(0, 14) }, () => g.pick(["+" + g.text(), "-" + g.text(), " " + g.text(), "@@ -1,2 +1,2 @@", "--- a/x", "+++ b/x", g.text()]));
+  const rows = U.annotateDiff(U.parseDiff(lines.join("\n")));
+  assert.ok(Array.isArray(rows));
+  const split = U.splitDiff(rows);
+  const shown = split.reduce((count, row) => count + (row.full ? 1 : (row.left && row.left.kind !== "ctx" ? 1 : 0) + (row.right && row.right.kind !== "ctx" ? 1 : 0) + (row.left && row.left.kind === "ctx" ? 1 : 0)), 0);
+  assert.equal(shown, rows.length); // every input row is shown exactly once
+});
+
+forAll("queueSummary is total, counts only its own statuses, and lists each id once in age order", (g) => {
+  const items = g.items();
+  const now = g.pick([Date.now(), NaN, 0, 1e15, undefined, "x"]);
+  const summary = U.queueSummary(items, now);
+  for (const lane of [summary.awaiting, summary.review]) {
+    assert.equal(lane.count, lane.ids.length);
+    assert.equal(new Set(lane.ids).size, lane.ids.length);
+    assert.ok(lane.stale >= 0 && lane.stale <= lane.count);
+    if (lane.count === 0) assert.equal(lane.oldest, null);
+    else assert.equal(lane.oldest.incident_id, lane.ids[0]);
+    if (lane.oldestAgeMs !== null) assert.ok(Number.isFinite(lane.oldestAgeMs) && lane.oldestAgeMs >= 0);
+  }
+  const valid = items.filter((item) => typeof item.incident_id === "string");
+  const unique = (status) => new Set(valid.filter((item) => item.status === status).map((item) => item.incident_id)).size;
+  assert.equal(summary.awaiting.count, unique("awaiting_approval")); // an id that appears twice counts once
+  assert.equal(summary.review.count, unique("needs_review"));
+  assert.equal(typeof U.duration(g.scalar()), "string");
+});

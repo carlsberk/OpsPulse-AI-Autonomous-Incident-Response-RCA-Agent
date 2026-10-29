@@ -104,3 +104,163 @@ test("parseDiff: an absurd hunk number is shown as a plain integer, not as 1e+21
   assert.equal(rows[1].left, "0");
   assert.equal(rows[1].right, "5");
 });
+
+test("queuePosition: position, neighbours and the edges of the list", () => {
+  const ids = ["a1", "b2", "c3"];
+  assert.deepEqual(U.queuePosition(ids, "b2"), { position: 2, total: 3, prev: "a1", next: "c3" });
+  assert.deepEqual(U.queuePosition(ids, "a1"), { position: 1, total: 3, prev: null, next: "b2" });
+  assert.deepEqual(U.queuePosition(ids, "c3"), { position: 3, total: 3, prev: "b2", next: null });
+});
+
+test("queuePosition: an id outside the list, an empty list and garbage input hide the navigation", () => {
+  assert.equal(U.queuePosition(["a1"], "zz").position, 0);
+  assert.equal(U.queuePosition([], "a1").total, 0);
+  assert.deepEqual(U.queuePosition(null, "a1"), { position: 0, total: 0, prev: null, next: null });
+  assert.deepEqual(U.queuePosition("a1,b2", "a1"), { position: 0, total: 0, prev: null, next: null });
+  assert.equal(U.queuePosition([1, null, "a1"], "a1").total, 1); // non-strings are dropped, never thrown on
+});
+
+// ------------------------------------------------------------------ inline diff and side-by-side layout
+
+const join = (parts) => parts.map((part) => part.text).join("");
+const changedText = (parts) => parts.filter((part) => part.changed).map((part) => part.text).join("|");
+
+test("inlineDiff: marks only what changed on a one-argument edit", () => {
+  const pair = U.inlineDiff('    return STOCK.get(sku)', '    return STOCK.get(sku, 0)');
+  assert.equal(join(pair.left), '    return STOCK.get(sku)');
+  assert.equal(join(pair.right), '    return STOCK.get(sku, 0)');
+  assert.equal(changedText(pair.left), "");
+  assert.equal(changedText(pair.right), ", 0");
+});
+
+test("inlineDiff: a changed word on both sides", () => {
+  const pair = U.inlineDiff("if user is None:", "if account is None:");
+  assert.equal(changedText(pair.left), "user");
+  assert.equal(changedText(pair.right), "account");
+});
+
+test("inlineDiff: unrelated lines, identical lines and over-long lines are not highlighted", () => {
+  assert.equal(U.inlineDiff("alpha beta gamma", "x = 1"), null);
+  assert.equal(U.inlineDiff("same line", "same line"), null);
+  assert.equal(U.inlineDiff("", "x"), null);
+  assert.equal(U.inlineDiff("a ".repeat(300), "b ".repeat(300)), null);
+});
+
+test("inlineDiff: the pieces always concatenate back to the exact input, whatever it contains", () => {
+  const samples = ["", " ", "\t\t", "é ü 漢字", "a<b>&amp;", "x = {'a': [1, 2]}", "😀 emoji", "a\u0000b", "    "];
+  for (const a of samples) {
+    for (const b of samples) {
+      const pair = U.inlineDiff(a, b);
+      if (pair) {
+        assert.equal(join(pair.left), a);
+        assert.equal(join(pair.right), b);
+      }
+    }
+  }
+});
+
+const PATCH = [
+  "--- a/app.py", "+++ b/app.py", "@@ -1,4 +1,5 @@",
+  " def f(x):", "-    return x.value", "+    return x.value or 0", "+    # note", " # tail",
+].join("\n");
+
+test("annotateDiff: pairs a removed line with the added line that replaces it and leaves the rest alone", () => {
+  const rows = U.annotateDiff(U.parseDiff(PATCH));
+  const del = rows.find((row) => row.kind === "del");
+  const adds = rows.filter((row) => row.kind === "add");
+  assert.equal(del.segments.map((s) => s.text).join(""), "    return x.value");
+  assert.equal(adds[0].segments.filter((s) => s.changed).map((s) => s.text).join(""), " or 0");
+  assert.equal(adds[1].segments, null); // an extra added line has nothing to pair with
+  assert.equal(rows.find((row) => row.kind === "ctx").segments, null);
+  assert.equal(rows.find((row) => row.kind === "hunk").segments, null);
+});
+
+test("annotateDiff: does not mutate its input and survives a patch with no changes at all", () => {
+  const parsed = U.parseDiff(PATCH);
+  const copy = JSON.stringify(parsed);
+  U.annotateDiff(parsed);
+  assert.equal(JSON.stringify(parsed), copy);
+  assert.deepEqual(U.annotateDiff([]), []);
+  assert.equal(U.annotateDiff(U.parseDiff("")).length, 1);
+});
+
+test("splitDiff: context on both sides, a removed block beside its replacement, headers across", () => {
+  const split = U.splitDiff(U.annotateDiff(U.parseDiff(PATCH)));
+  assert.equal(split.filter((row) => row.full).length, 3); // ---, +++, @@
+  const changed = split.filter((row) => row.left && row.right && row.left.kind === "del");
+  assert.equal(changed.length, 1);
+  assert.equal(changed[0].right.kind, "add");
+  const padded = split.find((row) => row.left === null);
+  assert.equal(padded.right.text, "+    # note"); // the extra added line sits opposite an empty cell
+  const context = split.filter((row) => row.left && row.left === row.right);
+  assert.equal(context.length, 2);
+});
+
+test("splitDiff: a pure removal and a pure addition leave the other side empty", () => {
+  const removed = U.splitDiff(U.parseDiff("@@ -1,2 +1,1 @@\n keep\n-gone"));
+  assert.equal(removed[removed.length - 1].right, null);
+  const added = U.splitDiff(U.parseDiff("@@ -1,1 +1,2 @@\n keep\n+new"));
+  assert.equal(added[added.length - 1].left, null);
+});
+
+// ------------------------------------------------------------------ queue summary
+
+const SUMMARY_NOW = Date.parse("2026-10-26T12:00:00Z");
+const waiting = (id, status, createdAt) => ({ incident_id: id, status, created_at: createdAt });
+
+test("duration: short phrases, never negative or NaN", () => {
+  assert.equal(U.duration(0), "less than a minute");
+  assert.equal(U.duration(59_999), "less than a minute");
+  assert.equal(U.duration(5 * 60_000), "5 min");
+  assert.equal(U.duration(3 * 3_600_000 + 20 * 60_000), "3 h");
+  assert.equal(U.duration(47 * 3_600_000), "47 h");
+  assert.equal(U.duration(72 * 3_600_000), "3 d");
+  for (const bad of [-5, NaN, Infinity, "x", null, undefined, {}]) assert.equal(U.duration(bad), "less than a minute");
+});
+
+test("queueSummary: oldest first per lane, counts, age of the oldest and the over-a-day count", () => {
+  const items = [
+    waiting("new", "awaiting_approval", "2026-10-26T11:30:00Z"),
+    waiting("old", "awaiting_approval", "2026-10-24T08:00:00Z"),
+    waiting("day", "awaiting_approval", "2026-10-25T10:00:00Z"),
+    waiting("r1", "needs_review", "2026-10-26T09:00:00Z"),
+    waiting("done", "pr_created", "2026-10-01T09:00:00Z"),
+  ];
+  const summary = U.queueSummary(items, SUMMARY_NOW);
+  assert.deepEqual(summary.awaiting.ids, ["old", "day", "new"]);
+  assert.equal(summary.awaiting.count, 3);
+  assert.equal(summary.awaiting.oldest.incident_id, "old");
+  assert.equal(summary.awaiting.oldestAgeMs, SUMMARY_NOW - Date.parse("2026-10-24T08:00:00Z"));
+  assert.equal(summary.awaiting.stale, 2); // "old" and "day" are past 24 h; "new" is not
+  assert.deepEqual(summary.review.ids, ["r1"]);
+  assert.equal(summary.review.stale, 0);
+});
+
+test("queueSummary: empty lanes, bad dates and garbage input", () => {
+  const empty = U.queueSummary([], SUMMARY_NOW);
+  assert.deepEqual([empty.awaiting.count, empty.awaiting.oldest, empty.awaiting.oldestAgeMs], [0, null, null]);
+  const bad = U.queueSummary([waiting("a", "awaiting_approval", "not a date"), waiting("b", "awaiting_approval", "2026-10-26T11:00:00Z")], SUMMARY_NOW);
+  assert.deepEqual(bad.awaiting.ids, ["b", "a"]); // an unreadable date sorts last, never first
+  assert.equal(bad.awaiting.oldest.incident_id, "b");
+  assert.equal(bad.awaiting.stale, 0);
+  const future = U.queueSummary([waiting("f", "awaiting_approval", "2026-12-01T00:00:00Z")], SUMMARY_NOW);
+  assert.equal(future.awaiting.oldestAgeMs, 0); // clock skew: never a negative wait
+  for (const junk of [null, undefined, "x", 3, {}, [null, 1, "a", { status: "awaiting_approval" }, { incident_id: 5, status: "awaiting_approval" }]]) {
+    assert.equal(U.queueSummary(junk, SUMMARY_NOW).awaiting.count, 0);
+  }
+});
+
+test("queueSummary: ties break by id so the order is stable", () => {
+  const same = "2026-10-26T10:00:00Z";
+  const summary = U.queueSummary([waiting("b", "awaiting_approval", same), waiting("a", "awaiting_approval", same)], SUMMARY_NOW);
+  assert.deepEqual(summary.awaiting.ids, ["a", "b"]);
+});
+
+test("queueSummary: an incident that appears twice (overlapping pages) counts once, at its oldest entry", () => {
+  const summary = U.queueSummary([
+    waiting("a", "awaiting_approval", "2026-10-26T11:00:00Z"),
+    waiting("a", "awaiting_approval", "2026-10-26T10:00:00Z"),
+  ], SUMMARY_NOW);
+  assert.deepEqual(summary.awaiting.ids, ["a"]);
+  assert.equal(summary.awaiting.count, 1);
+});

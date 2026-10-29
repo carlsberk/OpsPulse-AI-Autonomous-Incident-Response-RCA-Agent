@@ -51,6 +51,8 @@ async def security_headers(request: Request, call_next: Callable[[Request], Awai
     forwarded = request.headers.get("x-forwarded-proto", "").split(",")[0].strip().lower()
     if request.url.scheme == "https" or forwarded == "https":  # only meaningful (and only sent) over TLS
         response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+    # Incidents, patches and audit records must not sit in a browser or proxy cache.
+    response.headers.setdefault("Cache-Control", "no-store")
     if request.url.path.startswith("/console"):
         response.headers["Content-Security-Policy"] = CONSOLE_CSP
         response.headers["Cache-Control"] = "no-store"

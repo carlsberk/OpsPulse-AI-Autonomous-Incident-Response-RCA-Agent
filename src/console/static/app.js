@@ -5,6 +5,7 @@
 const KEY_STORAGE = "opspulse.apiKey";      // sessionStorage: dies with the tab
 const THEME_STORAGE = "opspulse.theme";      // localStorage: auto | light | dark
 const REFRESH_STORAGE = "opspulse.autoRefresh";
+const DIFF_STORAGE = "opspulse.diffMode";   // localStorage: unified | split
 const REFRESH_MS = 15000;
 const THEMES = ["auto", "light", "dark"];
 const THEME_GLYPH = { auto: "◐", light: "☀", dark: "☾" };
@@ -20,7 +21,7 @@ const DEFAULT_STATUS = "awaiting_approval";
 const SORT_DEFAULT_DIR = { created: "desc", score: "desc", attempts: "desc", status: "asc", repo: "asc" };
 const state = {
   askFor: null, askHistory: [], cursor: null, items: [], current: null, evidenceFilter: "all", loading: false,
-  focusIndex: -1, memoryKey: "", chip: "", sort: { ...U.DEFAULT_SORT },
+  focusIndex: -1, memoryKey: "", chip: "", sort: { ...U.DEFAULT_SORT }, queue: [],
 };
 // Latest-request-wins: a slow response for an earlier request must never overwrite a newer view.
 const seq = { list: 0, detail: 0 };
@@ -259,12 +260,57 @@ function syncUrl() {
   } catch { /* history unavailable (sandboxed frame): the view still works, it just is not shareable */ }
 }
 
+function plural(count, one, many) { return `${count} ${count === 1 ? one : many}`; }
+
+function startQueue(ids) {
+  if (!ids.length) return;
+  state.queue = ids; // ] and [ now walk the lane from the oldest
+  location.hash = `#/incident/${encodeURIComponent(ids[0])}`;
+}
+
+function renderQueueCard() {
+  const summary = U.queueSummary(state.items, Date.now());
+  const { awaiting, review } = summary;
+  const card = $("queue-card");
+  card.hidden = awaiting.count + review.count === 0;
+  if (card.hidden) return;
+  const text = $("qc-text");
+  text.replaceChildren();
+  if (awaiting.count) {
+    text.append(el("strong", plural(awaiting.count, "proposal waits", "proposals wait")), document.createTextNode(" for a decision"));
+    if (awaiting.oldestAgeMs !== null) {
+      text.append(document.createTextNode(`; the oldest has waited ${U.duration(awaiting.oldestAgeMs)}`));
+    }
+    if (awaiting.stale) {
+      text.append(document.createTextNode(" ("), el("span", `${awaiting.stale} over a day`, "qc-warn"), document.createTextNode(")"));
+    }
+    text.append(document.createTextNode(". "));
+  } else {
+    text.append(document.createTextNode("Nothing is waiting for a decision. "));
+  }
+  if (review.count) {
+    text.append(el("strong", plural(review.count, "analysis needs", "analyses need")), document.createTextNode(" a human look."));
+  }
+  $("qc-scope").textContent = state.cursor ? "among the incidents loaded so far" : "";
+  for (const [id, lane, label] of [
+    ["qc-start-awaiting", awaiting, "Start with the oldest proposal"],
+    ["qc-start-review", review, "Review the oldest analysis"],
+  ]) {
+    const button = $(id);
+    button.hidden = lane.count === 0;
+    button.textContent = label;
+    button.onclick = () => startQueue(lane.ids);
+  }
+}
+
 function renderRows() {
   const body = $("incident-table").querySelector("tbody");
   body.replaceChildren();
+  renderQueueCard();
   renderStatusChips();
   updateSortHeaders();
   const items = visibleItems();
+  state.queue = items.map((item) => item.incident_id); // the order the reviewer is working through
   state.focusIndex = -1;
   for (const item of items) {
     const row = document.createElement("tr");
@@ -331,6 +377,28 @@ function moveFocus(delta) {
 
 // ------------------------------------------------------------------ detail
 
+function renderQueue() {
+  const nav = $("queue");
+  const here = state.current ? state.current.incident_id : (location.hash.match(/^#\/incident\/([0-9A-Fa-f-]{8,64})$/) || [])[1];
+  const place = U.queuePosition(state.queue, here);
+  nav.hidden = place.position === 0 || place.total < 2;
+  if (nav.hidden) return;
+  $("queue-pos").textContent = `${place.position} of ${place.total}`;
+  for (const [id, target] of [["queue-prev", place.prev], ["queue-next", place.next]]) {
+    const link = $(id);
+    link.href = target ? `#/incident/${encodeURIComponent(target)}` : "#/";
+    if (target) link.removeAttribute("aria-disabled"); else link.setAttribute("aria-disabled", "true");
+    link.tabIndex = target ? 0 : -1;
+  }
+}
+
+function stepQueue(delta) {
+  const here = state.current && state.current.incident_id;
+  const place = U.queuePosition(state.queue, here);
+  const target = delta < 0 ? place.prev : place.next;
+  if (target) location.hash = `#/incident/${encodeURIComponent(target)}`;
+}
+
 function resetDetail() {
   state.current = null;
   $("d-title").textContent = "Loading incident…";
@@ -358,6 +426,8 @@ async function showDetail(incidentId) {
     $("net-banner").hidden = true;
     setConnection("on", "Connected");
     renderDetail(incident);
+    renderQueue();
+    if (!state.items.length) loadList().then(renderQueue, () => {}); // opened by link: fetch the list quietly for the position
     window.scrollTo(0, 0);
     $("d-title").focus({ preventScroll: true });
   } catch (error) {
@@ -548,18 +618,55 @@ function renderAttempts(attempts) {
   if (!attempts.length) list.append(el("li", "No attempts recorded.", "muted"));
 }
 
+function diffCode(row) {
+  const code = el("span", null, "code");
+  if (!row.segments) { code.textContent = row.text; return code; }
+  code.append(document.createTextNode(row.text.slice(0, 1))); // the "+" / "-" marker
+  for (const part of row.segments) {
+    if (part.changed) code.append(el("span", part.text, "chg")); else code.append(document.createTextNode(part.text));
+  }
+  return code;
+}
+
+function diffPane(row, side) {
+  const pane = el("div", null, `pane ${row ? row.kind : "gap"}`);
+  if (!row) return pane;
+  pane.append(el("span", side === "left" ? row.left : row.right, "ln"), diffCode(row));
+  return pane;
+}
+
 function renderDiff(patch) {
   const view = $("d-patch");
   view.replaceChildren();
+  const split = store("local", DIFF_STORAGE) === "split";
+  view.classList.toggle("split", split);
   $("copy-patch").hidden = !patch;
   $("download-patch").hidden = !patch;
+  $("diff-mode").hidden = !patch;
+  $("diff-mode").setAttribute("aria-pressed", String(split));
+  $("diff-mode").textContent = split ? "Unified" : "Side by side";
   if (!patch) {
     view.append(el("div", "No patch proposed.", "empty-note"));
     return;
   }
-  for (const line of U.parseDiff(patch)) {
+  const rows = U.annotateDiff(U.parseDiff(patch));
+  if (split) {
+    for (const pair of U.splitDiff(rows)) {
+      if (pair.full) {
+        const full = el("div", null, `row full ${pair.full.kind}`);
+        full.append(el("span", pair.full.text, "code"));
+        view.append(full);
+      } else {
+        const row = el("div", null, "row");
+        row.append(diffPane(pair.left, "left"), diffPane(pair.right, "right"));
+        view.append(row);
+      }
+    }
+    return;
+  }
+  for (const line of rows) {
     const row = el("div", null, `row ${line.kind}`);
-    row.append(el("span", line.left, "ln"), el("span", line.right, "ln"), el("span", line.text, "code"));
+    row.append(el("span", line.left, "ln"), el("span", line.right, "ln"), diffCode(line));
     view.append(row);
   }
 }
@@ -914,6 +1021,10 @@ document.addEventListener("keydown", (event) => {
     location.hash = "#/";
     return;
   }
+  if (!typing(event.target) && !$("detail-view").hidden && (event.key === "[" || event.key === "]")) {
+    stepQueue(event.key === "[" ? -1 : 1);
+    return;
+  }
   if (typing(event.target) || !$("detail-view").hidden) return;
   if (event.key === "/") { event.preventDefault(); $("search").focus(); }
   else if (event.key === "r") loadList();
@@ -941,6 +1052,8 @@ function applyQueryOptions() {
   }
   $("search").value = view.query;
   state.sort = view.sort;
+  const diffMode = new URLSearchParams(location.search).get("diff"); // ?diff=split|unified: a shareable link opens in that view
+  if (diffMode === "split" || diffMode === "unified") store("local", DIFF_STORAGE, diffMode);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -1002,6 +1115,10 @@ document.addEventListener("DOMContentLoaded", () => {
     ask($("ask-input").value);
   });
   $("copy-id").addEventListener("click", () => state.current && copyText(state.current.incident_id, "Incident id"));
+  $("diff-mode").addEventListener("click", () => {
+    store("local", DIFF_STORAGE, store("local", DIFF_STORAGE) === "split" ? "unified" : "split");
+    if (state.current) renderDiff(state.current.suggested_patch);
+  });
   $("copy-patch").addEventListener("click", () => state.current && copyText(state.current.suggested_patch || "", "Patch"));
   $("download-patch").addEventListener("click", downloadPatch);
   for (const button of document.querySelectorAll(".seg-btn")) {
