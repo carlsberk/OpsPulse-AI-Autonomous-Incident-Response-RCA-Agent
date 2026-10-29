@@ -193,3 +193,38 @@ def test_a_test_that_passes_on_the_unpatched_code_does_not_reproduce_anything(co
 def test_a_hostile_reproduction_test_is_refused_before_it_runs(configured):
     report = _repro("import subprocess\n\n\ndef test_x():\n    subprocess.run(['id'])\n")
     assert report.status == "invalid" and report.before is None
+
+
+def test_history_builder_runs_a_repository_in_the_isolated_container(tmp_path):
+    """The history dataset builder's default runner: a real red-to-green commit becomes a case, with no host paths."""
+    from evals import history_real_repo as h
+
+    image = "opspulse-history-tests"
+    if subprocess.run(["docker", "image", "inspect", image], capture_output=True, check=False).returncode != 0:  # noqa: S603, S607
+        pytest.skip(f"build the image first: docker build -t {image} -f evals/history_tests.Dockerfile evals")
+    repo = tmp_path / "r"
+    (repo / "pkg").mkdir(parents=True)
+    (repo / "tests").mkdir()
+
+    def git(*args):
+        subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True)  # noqa: S603, S607
+
+    subprocess.run(["git", "init", "-q", "-b", "main", str(repo)], check=True, capture_output=True)  # noqa: S603, S607
+    git("config", "user.email", "t@example.com")
+    git("config", "user.name", "t")
+    (repo / "pkg" / "__init__.py").write_text("")
+    (repo / "pkg" / "mod.py").write_text("def first(items):\n    return items[0]\n")
+    git("add", ".")
+    git("commit", "-q", "-m", "Add first")
+    (repo / "pkg" / "mod.py").write_text("def first(items):\n    return items[0] if items else None\n")
+    (repo / "tests" / "test_mod.py").write_text(
+        "from pkg.mod import first\n\n\ndef test_empty():\n    assert first([]) is None\n"
+    )
+    git("add", ".")
+    git("commit", "-q", "-m", "Fix crash on empty input")
+    cand = h.find_candidates(repo, 5, "2000-01-01")[0]
+    built = h.build_case(repo, h.DEFAULT_RUNNER, cand, "o/r")
+    assert not isinstance(built, str), built
+    case, _ = built
+    assert "IndexError" in case["error_message"] and "/srv/pkg/mod.py" in case["stack_trace"]
+    assert "/tmp/" not in case["stack_trace"] and "/private/" not in case["stack_trace"]

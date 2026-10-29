@@ -15,8 +15,10 @@ applies the model's patch to the parent and runs the same tests, which is a far 
 Limits worth stating:
 * The category label is a heuristic from the exception type (a bug's real cause is rarely one of ten tidy labels).
   Read `relevant_file_hit_rate` and the `verify` result, not `category_accuracy`.
-* The repository's code and tests run on THIS machine (in a throwaway worktree, with the interpreter you pass). Use a
-  small, well-known library and a virtualenv without your credentials in the environment.
+* The repository's tests are third-party code. By default they run in a Docker container with no network, a
+  read-only root filesystem, no capabilities and caps on memory, CPU and processes (`--python docker:<image>`; build
+  the image with `docker build -t opspulse-history-tests -f evals/history_tests.Dockerfile evals`). Passing a host
+  interpreter instead runs them on this machine; do that only for a library you trust.
 * Libraries with few bug-fix commits give few cases; that is a proof of method, not a benchmark.
 """
 
@@ -24,13 +26,13 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import pathlib
 import re
 import shutil
 import subprocess
 import sys
 import tempfile
+import uuid
 from dataclasses import dataclass
 
 from evals.pilot_real_repo import _native_failure
@@ -95,12 +97,46 @@ def find_candidates(repo: pathlib.Path, limit: int, since: str) -> list[Candidat
     return found
 
 
+DOCKER_PREFIX = "docker:"
+DEFAULT_RUNNER = DOCKER_PREFIX + "opspulse-history-tests"
+CONTAINER_WORKDIR = "/tmp/w"  # noqa: S108 - a path inside the container's tmpfs
+
+
+def docker_command(name: str, image: str, work: pathlib.Path, tests: tuple[str, ...]) -> list[str]:
+    """The repository's tests run in a container with no network, a read-only root, no capabilities and caps on
+    memory, CPU and processes; the checkout is mounted read-only and copied to a size-capped tmpfs."""
+    pytest = " ".join(["python", "-m", "pytest", *tests, "-x", "-q", "--tb=native", "-p", "no:cacheprovider"])
+    return [
+        "docker", "run", "--rm", "--name", name,
+        "--network", "none",
+        "--read-only", "--tmpfs", "/tmp:rw,exec,nosuid,size=256m",  # noqa: S108
+        "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
+        "--user", "65534:65534",
+        "--pids-limit", "256", "--memory", "768m", "--memory-swap", "768m", "--cpus", "1",
+        "--env", "HOME=/tmp", "--env", "PYTHONDONTWRITEBYTECODE=1", "--env", f"PYTHONPATH={CONTAINER_WORKDIR}",
+        "-v", f"{work.resolve()}:/src:ro",
+        "-w", "/tmp",  # noqa: S108
+        image, "sh", "-c", f"cp -r /src {CONTAINER_WORKDIR} && cd {CONTAINER_WORKDIR} && {pytest}",
+    ]  # fmt: skip
+
+
+def trace_root(python: str, work: pathlib.Path) -> pathlib.Path:
+    """The directory the traceback prints for the repository root (resolved path on the host, /tmp/w in a container)."""
+    return pathlib.Path(CONTAINER_WORKDIR) if python.startswith(DOCKER_PREFIX) else work.resolve()
+
+
 def run_tests(python: str, work: pathlib.Path, tests: tuple[str, ...]) -> tuple[int, str]:
+    """Run `tests` in `work`. `python` is `docker:<image>` (default, isolated) or the path of a host interpreter."""
+    if python.startswith(DOCKER_PREFIX):
+        name = f"opspulse-history-{uuid.uuid4().hex[:12]}"
+        argv = docker_command(name, python[len(DOCKER_PREFIX) :], work, tests)
+        try:
+            done = subprocess.run(argv, capture_output=True, text=True, timeout=TEST_TIMEOUT + 30, check=False)  # noqa: S603
+        except subprocess.TimeoutExpired:
+            subprocess.run(["docker", "rm", "-f", name], capture_output=True, timeout=30, check=False)  # noqa: S603, S607
+            return 124, ""
+        return done.returncode, done.stdout + done.stderr
     env = {"PATH": "/usr/bin:/bin", "PYTHONPATH": str(work), "PYTHONDONTWRITEBYTECODE": "1", "HOME": str(work)}
-    if os.environ.get(
-        "SYSTEMROOT"
-    ):  # Windows: without it asyncio (and so pytest's anyio plugin) cannot start; not a secret
-        env["SYSTEMROOT"] = os.environ["SYSTEMROOT"]
     try:
         done = subprocess.run(  # noqa: S603 - fixed argument list, minimal environment (no credentials)
             [python, "-m", "pytest", *tests, "-x", "-q", "--tb=native", "-p", "no:cacheprovider"],
@@ -165,7 +201,7 @@ def build_case(repo: pathlib.Path, python: str, cand: Candidate, repo_name: str)
         try:
             git(work, "checkout", cand.sha, "--", *cand.test_files)
             code, output = run_tests(python, work, cand.test_files)
-            failure = _native_failure(output, work.resolve())  # tracebacks print the resolved path (macOS /private/var)
+            failure = _native_failure(output, trace_root(python, work))
             if code == 0 or failure is None:
                 return "the tests do not fail at the parent with a Python traceback"
             trace, error = failure
@@ -290,7 +326,12 @@ def main(argv: list[str] | None = None) -> int:
     for name in ("build", "verify"):
         p = sub.add_parser(name)
         p.add_argument("--repo-dir", type=pathlib.Path, required=name == "build")
-        p.add_argument("--python", default=sys.executable, help="interpreter that can run the repository's tests")
+        p.add_argument(
+            "--python",
+            default=DEFAULT_RUNNER,
+            help="docker:<image> (default: no network, read-only, capped) or a host interpreter, which runs the "
+            "repository's code on this machine",
+        )
         if name == "build":
             p.add_argument("--repo-name", required=True, help="owner/repo, used only as a label")
             p.add_argument("--out", type=pathlib.Path, required=True)

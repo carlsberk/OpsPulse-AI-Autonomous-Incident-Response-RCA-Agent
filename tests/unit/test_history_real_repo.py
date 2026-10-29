@@ -89,3 +89,13 @@ def test_frames_outside_the_repository_are_dropped_from_the_trace():
     out = h.repo_frames_only(trace)
     assert "_pytest" not in out and "/venv/" not in out
     assert "/srv/pkg/mod.py" in out and "return items[0]" in out and out.endswith("IndexError: list index out of range")
+
+
+def test_the_default_runner_is_an_isolated_container():
+    cmd = h.docker_command("n", "img", pathlib.Path("/tmp/x"), ("t/test_a.py",))
+    joined = " ".join(cmd)
+    for flag in ("--network none", "--read-only", "--cap-drop ALL", "no-new-privileges", "--user 65534:65534"):
+        assert flag in joined
+    assert "--privileged" not in cmd and ":/src:ro" in joined and "t/test_a.py" in joined
+    assert h.DEFAULT_RUNNER.startswith("docker:")
+    assert h.trace_root(h.DEFAULT_RUNNER, pathlib.Path("/tmp/x")) == pathlib.Path("/tmp/w")
