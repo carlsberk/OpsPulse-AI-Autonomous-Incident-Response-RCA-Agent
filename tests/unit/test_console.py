@@ -261,3 +261,46 @@ def test_stacked_list_cells_carry_their_own_labels_and_touch_targets_are_large()
     coarse = styles[start : styles.index("\n}\n", start)]
     for selector in (".btn.tiny", ".seg-btn", ".icon-btn", ".gate summary"):
         assert selector in coarse
+
+
+def _outside_blocks(css: str, marker: str) -> str:
+    """The stylesheet with every `@media ...marker... { ... }` block removed (brace matching, nesting aware)."""
+    out, i = [], 0
+    while True:
+        j = css.find(marker, i)
+        if j < 0:
+            out.append(css[i:])
+            return "".join(out)
+        start = css.rfind("@media", 0, j)
+        out.append(css[i:start])
+        depth, k = 0, css.index("{", j)
+        while True:
+            depth += css[k] == "{"
+            depth -= css[k] == "}"
+            k += 1
+            if depth == 0:
+                break
+        i = k
+
+
+def test_all_motion_sits_inside_the_no_preference_query_and_dark_is_the_default():
+    """Anyone who asked their system for less motion gets none, and a first visit is dark (the stored choice wins).
+
+    Two older animations (toast, skeleton shimmer) live outside the query; the `reduce` block switches both off.
+    Anything else that animates must be inside `prefers-reduced-motion: no-preference`."""
+    styles = (STATIC_DIR / "styles.css").read_text(encoding="utf-8")
+    still = _outside_blocks(styles, "prefers-reduced-motion: no-preference")
+    animated = {
+        selector.strip().split("}")[-1].strip()
+        for selector in re.findall(r"([^{}]+)\{[^{}]*animation:\s*(?!none)\S", still)
+    }
+    assert animated == {".toast", ".skeleton td > span"}, animated
+    reduce = styles[styles.index("@media (prefers-reduced-motion: reduce)") :]
+    assert ".skeleton td > span, .toast { animation: none; }" in reduce
+    keyframes_outside = re.findall(r"@keyframes ([\w-]+)", still)
+    assert set(keyframes_outside) == {"toast-in", "shimmer"}, keyframes_outside
+    page = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    script = (STATIC_DIR / "app.js").read_text(encoding="utf-8")
+    assert '<html lang="en" data-theme="dark">' in page
+    assert script.count('store("local", THEME_STORAGE) || "dark"') == 2
+    assert 'store("local", THEME_STORAGE, next);' in script  # "auto" is stored, so choosing it survives a reload

@@ -77,7 +77,9 @@ def shoot(browser: str, url: str, out: pathlib.Path, size: tuple[int, int]) -> N
     out.parent.mkdir(parents=True, exist_ok=True)
     command = [
         browser, "--headless=new", "--disable-gpu", "--hide-scrollbars", "--force-device-scale-factor=1",
-        f"--window-size={size[0]},{size[1]}", "--virtual-time-budget=7000", f"--screenshot={out}", url,
+        f"--window-size={size[0]},{size[1]}", "--virtual-time-budget=7000",
+        "--force-prefers-reduced-motion",  # the page settles into its final state: no capture mid-animation
+        f"--screenshot={out}", url,
     ]  # fmt: skip
     subprocess.run(command, check=True, capture_output=True, timeout=120)
 

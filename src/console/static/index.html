@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -79,11 +79,16 @@
         <p id="list-message" class="message" role="status"></p>
         <button type="button" id="list-retry" class="btn tiny" hidden>Retry</button>
       </div>
-      <p id="key-help" class="muted small" hidden>
+      <div id="key-help" hidden>
+      <div class="stage3d" aria-hidden="true">
+        <div class="stack3d"><span class="plate p1"></span><span class="plate p2"></span><span class="plate p3"></span><span class="gem"></span></div>
+      </div>
+      <p class="muted small">
         Keys are issued by whoever runs this server: <code>python -m scripts.make_api_key &lt;name&gt; reviewer</code> creates one.
         A reporter key can submit and read incidents; a reviewer key can also approve or reject a proposed fix.
         The key stays in this browser tab and is forgotten when you close it.
       </p>
+      </div>
       <section id="queue-card" class="card queue-card" aria-labelledby="qc-title" hidden>
         <div class="qc-head">
           <h2 id="qc-title">Your queue</h2>

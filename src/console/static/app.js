@@ -155,9 +155,9 @@ function applyTheme(mode) {
 }
 
 function cycleTheme() {
-  const current = store("local", THEME_STORAGE) || "auto";
+  const current = store("local", THEME_STORAGE) || "dark";
   const next = THEMES[(THEMES.indexOf(current) + 1) % THEMES.length];
-  store("local", THEME_STORAGE, next === "auto" ? null : next);
+  store("local", THEME_STORAGE, next); // "auto" is stored too: the default (nothing stored) is dark
   applyTheme(next);
 }
 
@@ -206,6 +206,7 @@ async function loadList(append = false) {
     $("net-banner").hidden = true;
     setConnection("on", "Connected");
     $("key-help").hidden = true;
+    state.enter = !append; // a fresh page of results may animate in; re-filtering and searching must not replay it
     renderRows();
   } catch (error) {
     if (isAbort(error) || mine !== seq.list) return;
@@ -322,8 +323,12 @@ function renderRows() {
   const items = visibleItems();
   state.queue = items.map((item) => item.incident_id); // the order the reviewer is working through
   state.focusIndex = -1;
+  body.classList.toggle("enter", Boolean(state.enter));
+  state.enter = false;
+  let order = 0;
   for (const item of items) {
     const row = document.createElement("tr");
+    row.style.setProperty("--i", String(Math.min(order++, 14))); // CSSOM: drives the staggered entrance (css)
     row.tabIndex = 0;
     row.dataset.id = item.incident_id;
     const target = `#/incident/${encodeURIComponent(item.incident_id)}`;
@@ -1072,8 +1077,48 @@ function applyQueryOptions() {
   if (diffMode === "split" || diffMode === "unified") store("local", DIFF_STORAGE, diffMode);
 }
 
+/** The decision card follows the pointer by a few degrees. Skipped for reduced motion, touch, and while typing. */
+function initTilt() {
+  const calm = matchMedia("(prefers-reduced-motion: reduce)").matches || matchMedia("(pointer: coarse)").matches;
+  const card = $("approval");
+  if (calm || !card) return;
+  let frame = 0;
+  const reset = () => { card.style.setProperty("--rx", "0deg"); card.style.setProperty("--ry", "0deg"); };
+  card.addEventListener("pointermove", (event) => {
+    if (frame || card.matches(":focus-within")) return;
+    frame = requestAnimationFrame(() => {
+      frame = 0;
+      const box = card.getBoundingClientRect();
+      const x = (event.clientX - box.left) / box.width - 0.5;
+      const y = (event.clientY - box.top) / box.height - 0.5;
+      card.style.setProperty("--ry", `${(x * 4).toFixed(2)}deg`);
+      card.style.setProperty("--rx", `${(-y * 4).toFixed(2)}deg`);
+    });
+  });
+  card.addEventListener("pointerleave", reset);
+  card.addEventListener("focusin", reset);
+}
+
+/** The first-run plate stack leans toward the pointer. Same rules as the tilt: not for reduced motion or touch. */
+function initStage() {
+  const calm = matchMedia("(prefers-reduced-motion: reduce)").matches || matchMedia("(pointer: coarse)").matches;
+  const stage = document.querySelector(".stage3d");
+  if (calm || !stage) return;
+  let frame = 0;
+  document.addEventListener("pointermove", (event) => {
+    if (frame || $("key-help").hidden) return;
+    frame = requestAnimationFrame(() => {
+      frame = 0;
+      stage.style.setProperty("--sx", `${((event.clientX / innerWidth - 0.5) * 36).toFixed(1)}deg`);
+      stage.style.setProperty("--sy", `${(-(event.clientY / innerHeight - 0.5) * 24).toFixed(1)}deg`);
+    });
+  });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
-  applyTheme(store("local", THEME_STORAGE) || "auto");
+  initTilt();
+  initStage();
+  applyTheme(store("local", THEME_STORAGE) || "dark");
   applyQueryOptions();
   $("theme").addEventListener("click", cycleTheme);
   $("key-form").addEventListener("submit", (event) => {
