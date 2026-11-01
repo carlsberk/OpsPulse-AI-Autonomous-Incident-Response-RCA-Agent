@@ -155,9 +155,9 @@ function applyTheme(mode) {
 }
 
 function cycleTheme() {
-  const current = store("local", THEME_STORAGE) || "auto";
+  const current = store("local", THEME_STORAGE) || "dark";
   const next = THEMES[(THEMES.indexOf(current) + 1) % THEMES.length];
-  store("local", THEME_STORAGE, next === "auto" ? null : next);
+  store("local", THEME_STORAGE, next); // "auto" is stored too: the default (nothing stored) is dark
   applyTheme(next);
 }
 
@@ -1099,9 +1099,26 @@ function initTilt() {
   card.addEventListener("focusin", reset);
 }
 
+/** The first-run plate stack leans toward the pointer. Same rules as the tilt: not for reduced motion or touch. */
+function initStage() {
+  const calm = matchMedia("(prefers-reduced-motion: reduce)").matches || matchMedia("(pointer: coarse)").matches;
+  const stage = document.querySelector(".stage3d");
+  if (calm || !stage) return;
+  let frame = 0;
+  document.addEventListener("pointermove", (event) => {
+    if (frame || $("key-help").hidden) return;
+    frame = requestAnimationFrame(() => {
+      frame = 0;
+      stage.style.setProperty("--sx", `${((event.clientX / innerWidth - 0.5) * 36).toFixed(1)}deg`);
+      stage.style.setProperty("--sy", `${(-(event.clientY / innerHeight - 0.5) * 24).toFixed(1)}deg`);
+    });
+  });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   initTilt();
-  applyTheme(store("local", THEME_STORAGE) || "auto");
+  initStage();
+  applyTheme(store("local", THEME_STORAGE) || "dark");
   applyQueryOptions();
   $("theme").addEventListener("click", cycleTheme);
   $("key-form").addEventListener("submit", (event) => {

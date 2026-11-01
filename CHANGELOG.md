@@ -83,6 +83,12 @@ All notable changes are listed here. Versions of behaviour-critical components a
   follows the pointer by up to 2 degrees, 3D toasts and dialog, and a slowly turning stack of plates (the layers of evidence) on
   the first-run screen. Everything that moves sits inside `prefers-reduced-motion: no-preference`; the tilt is also off on touch
   and while typing; entrances play on a fresh load only, never on a search keystroke or a filter change.
+- **Console, night mode by default.** A first visit is dark (the theme button still offers automatic and light; the choice, including
+  automatic, is remembered). Deeper near-black palette with an ember accent and a glow, a faint blueprint grid and a slow ember
+  drifting behind the page; a pulsing connection marker, a blinking marker on anything awaiting approval, a beacon on the logo, a
+  shine sweep on primary buttons, ordered entrances for evidence and timeline, a one-time flash on added and removed diff lines,
+  and a first-run plate stack that leans toward the pointer. A new test fails if any animation is added outside
+  `prefers-reduced-motion: no-preference`. Contrast re-measured in both themes: no failures.
 
 ## [1.9.0] - 2026-10-27
 

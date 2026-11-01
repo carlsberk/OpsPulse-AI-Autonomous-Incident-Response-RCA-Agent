@@ -10,28 +10,30 @@
   --ok: #1d5e36; --ok-soft: #e1ecdb; --warn: #7a4400; --warn-soft: #f5e5c0; --bad: #a6281c; --bad-soft: #f4dbd5;
   --neutral: #5b574c; --neutral-soft: #e7e2d6;
   --add: #e0eed6; --del: #f3dad3; --add-strong: #b3d6a3; --del-strong: #e5b0a5; --hunk: #e9e4d6; --code: #efebe0;
-  --shadow: none;
+  --shadow: none; --glow: rgb(138 59 18 / 18%); --grid: rgb(28 26 22 / 5%);
   --radius: 3px; --radius-sm: 2px;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
   --serif: ui-serif, "Iowan Old Style", "New York", "Palatino Linotype", Palatino, Georgia, serif;
 }
 :root[data-theme="dark"] {
-  --bg: #13120f; --panel: #1a1814; --panel-2: #221f1a; --text: #ece7da; --muted: #a8a292; --border: #36322a;
-  --rule: #ece7da; --on-ink: #13120f;
-  --accent: #e0a070; --accent-hover: #efb88c; --accent-soft: #2c2218; --on-accent: #13120f;
-  --ok: #7bd08f; --ok-soft: #16261b; --warn: #e7b04a; --warn-soft: #2a2210; --bad: #f08a7c; --bad-soft: #2f1a16;
-  --neutral: #a8a292; --neutral-soft: #25221c;
-  --add: #17261a; --del: #2f1b18; --add-strong: #2d5a3a; --del-strong: #6a2e28; --hunk: #201e17; --code: #17150f;
+  --bg: #08080a; --panel: #101012; --panel-2: #17171a; --text: #ece9e1; --muted: #9c978a; --border: #26252a;
+  --rule: #ece9e1; --on-ink: #08080a;
+  --accent: #ff9a52; --accent-hover: #ffb27a; --accent-soft: #2a1a0e; --on-accent: #08080a;
+  --glow: rgb(255 154 82 / 28%); --grid: rgb(255 255 255 / 3.2%);
+  --ok: #6ee79a; --ok-soft: #0f2418; --warn: #f2bd55; --warn-soft: #2a2008; --bad: #ff8577; --bad-soft: #2c1512;
+  --neutral: #9c978a; --neutral-soft: #1c1c20;
+  --add: #0f2418; --del: #2c1512; --add-strong: #22573a; --del-strong: #6e2c25; --hunk: #15161c; --code: #0c0c0f;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #13120f; --panel: #1a1814; --panel-2: #221f1a; --text: #ece7da; --muted: #a8a292; --border: #36322a;
-    --rule: #ece7da; --on-ink: #13120f;
-    --accent: #e0a070; --accent-hover: #efb88c; --accent-soft: #2c2218; --on-accent: #13120f;
-    --ok: #7bd08f; --ok-soft: #16261b; --warn: #e7b04a; --warn-soft: #2a2210; --bad: #f08a7c; --bad-soft: #2f1a16;
-    --neutral: #a8a292; --neutral-soft: #25221c;
-    --add: #17261a; --del: #2f1b18; --add-strong: #2d5a3a; --del-strong: #6a2e28; --hunk: #201e17; --code: #17150f;
+    --bg: #08080a; --panel: #101012; --panel-2: #17171a; --text: #ece9e1; --muted: #9c978a; --border: #26252a;
+    --rule: #ece9e1; --on-ink: #08080a;
+    --accent: #ff9a52; --accent-hover: #ffb27a; --accent-soft: #2a1a0e; --on-accent: #08080a;
+    --glow: rgb(255 154 82 / 28%); --grid: rgb(255 255 255 / 3.2%);
+    --ok: #6ee79a; --ok-soft: #0f2418; --warn: #f2bd55; --warn-soft: #2a2008; --bad: #ff8577; --bad-soft: #2c1512;
+    --neutral: #9c978a; --neutral-soft: #1c1c20;
+    --add: #0f2418; --del: #2c1512; --add-strong: #22573a; --del-strong: #6e2c25; --hunk: #15161c; --code: #0c0c0f;
   }
 }
 
@@ -345,7 +347,7 @@ th[aria-sort="descending"] .sort-mark::after { border-top: 5px solid currentColo
   color: var(--accent); font-weight: 650; }
 .status-chips .count { color: var(--muted); margin-left: 6px; font-variant-numeric: tabular-nums; }
 .net-banner { margin: 0; border-radius: 0; text-align: center; }
-h1:focus { outline: none; }
+h1:focus, [tabindex="-1"]:focus { outline: none; box-shadow: none; }
 .sort-select { display: none; }  /* the column headers sort on wide screens; phones get this selector instead */
 @media (max-width: 760px) { .sort-select { display: block; } }
 
@@ -438,4 +440,66 @@ h1:focus { outline: none; }
   dialog[open] { animation: dialog-3d .3s cubic-bezier(.2, .8, .3, 1) backwards; }
   @keyframes dialog-3d { from { opacity: 0; transform: perspective(900px) rotateX(10deg) translateY(16px) scale(.97); }
     to { opacity: 1; transform: none; } }
+}
+
+
+/* ---- night: a control room more than a ledger ----
+   Always on: a faint blueprint grid and a warm glow under the header, glowing focus and primary actions, a
+   marker that blinks on anything waiting for a human. Motion is in the block below. */
+body { background-image: radial-gradient(900px 420px at 10% -8%, var(--glow), transparent 65%),
+    linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: auto, 44px 44px, 44px 44px; background-attachment: fixed; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; box-shadow: 0 0 0 5px var(--glow); }
+.logo { box-shadow: 0 0 14px 2px var(--glow); }
+.btn.primary:hover { box-shadow: 0 3px 0 var(--accent-hover), 0 0 24px -2px var(--glow); }
+.approval:hover, .approval:focus-within { border-color: var(--accent);
+  box-shadow: 0 1px 0 var(--border), 0 0 36px -8px var(--glow), 0 14px 28px -18px #000; }
+#incident-table tbody tr:hover { box-shadow: inset 3px 0 0 var(--accent); background: var(--panel-2); }
+.btn.primary { position: relative; overflow: hidden; }
+.btn.primary::after { content: ""; position: absolute; inset: 0; transform: translateX(-130%); pointer-events: none;
+  background: linear-gradient(100deg, transparent 30%, rgb(255 255 255 / 28%) 50%, transparent 70%); }
+.conn-on::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 7px; background: currentColor;
+  vertical-align: 1px; }
+.badge.s-warn::before { box-shadow: 0 0 8px currentColor; }
+.stage3d { transform: rotateY(var(--sx, 0deg)) rotateX(var(--sy, 0deg)); transition: transform .5s cubic-bezier(.2, .7, .2, 1); }
+.stage3d .plate { box-shadow: 0 0 22px -6px var(--glow); }
+
+@media (prefers-reduced-motion: no-preference) {
+  /* a slow ember drifting behind the page */
+  body::before { content: ""; position: fixed; z-index: -1; pointer-events: none; width: 70vmax; height: 70vmax;
+    left: 55%; top: 30%; background: radial-gradient(closest-side, var(--glow), transparent); opacity: .55;
+    animation: drift 38s ease-in-out infinite alternate; }
+  @keyframes drift { from { transform: translate(-30%, -20%) scale(.85); } to { transform: translate(5%, 10%) scale(1.15); } }
+
+  /* alive, waiting, new */
+  .conn-on::before { animation: ping 2.2s ease-out infinite; }
+  @keyframes ping { 0% { box-shadow: 0 0 0 0 currentColor; } 70%, 100% { box-shadow: 0 0 0 7px transparent; } }
+  .badge.s-warn::before { animation: blink 1.8s ease-in-out infinite; }
+  @keyframes blink { 50% { opacity: .25; } }
+  .logo { animation: beacon 3.2s ease-in-out infinite; transition: transform .5s cubic-bezier(.2, .7, .2, 1); }
+  @keyframes beacon { 50% { box-shadow: 0 0 22px 6px var(--glow); } }
+  .brand:hover .logo { transform: rotate(225deg) scale(1.25); }
+
+  .btn.primary:hover::after { transform: translateX(130%); transition: transform .7s cubic-bezier(.2, .7, .2, 1); }
+  .btn:hover { transform: translateY(-1px); }
+  .btn.primary:hover { transform: translateY(-1px); }
+  .btn.primary:active { transform: translateY(2px); }
+
+  /* evidence and timeline entries arrive in order; added diff lines flash once */
+  .evidence li { animation: item-in .45s cubic-bezier(.2, .7, .2, 1) backwards; }
+  .evidence li:nth-child(1) { animation-delay: .25s; } .evidence li:nth-child(2) { animation-delay: .33s; }
+  .evidence li:nth-child(3) { animation-delay: .41s; } .evidence li:nth-child(4) { animation-delay: .49s; }
+  .evidence li:nth-child(n+5) { animation-delay: .55s; }
+  .timeline li { animation: item-in .45s cubic-bezier(.2, .7, .2, 1) backwards; }
+  .timeline li:nth-child(1) { animation-delay: .3s; } .timeline li:nth-child(2) { animation-delay: .4s; }
+  .timeline li:nth-child(3) { animation-delay: .5s; } .timeline li:nth-child(n+4) { animation-delay: .6s; }
+  @keyframes item-in { from { opacity: 0; transform: translateX(-14px); } to { opacity: 1; transform: none; } }
+  .diff .add { animation: flash-add 1.4s ease-out backwards; animation-delay: .6s; }
+  .diff .del { animation: flash-del 1.4s ease-out backwards; animation-delay: .6s; }
+  @keyframes flash-add { from { background: var(--add-strong); } to { background: var(--add); } }
+  @keyframes flash-del { from { background: var(--del-strong); } to { background: var(--del); } }
+
+  /* the queue card breathes while there is work to do */
+  .queue-card:not([hidden]) { animation: card-in .55s cubic-bezier(.2, .7, .2, 1) backwards, edge 4.5s ease-in-out 1s infinite; }
+  @keyframes edge { 50% { border-color: var(--accent); box-shadow: 0 0 30px -10px var(--glow); } }
 }
