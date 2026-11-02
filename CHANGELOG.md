@@ -6,6 +6,12 @@ All notable changes are listed here. Versions of behaviour-critical components a
 ## [Unreleased]
 
 ### Fixed
+- `pilot_check --online` said "token can push" for a fine-grained token that could only read: it trusted the repository's
+  `permissions.push` flag, which describes the account. It now sends two write probes that cannot create anything (a branch with an
+  impossible commit id, a pull request with no title; GitHub checks permission before validating, so 422 means allowed and 403 means
+  denied) and names the missing permission. Found when a real pilot approval failed with `github_permission`.
+
+### Fixed
 - Console, narrow screens: the incident list hides its header row below 760 px and stacked the cells, so a bare "1" or "just now"
   had no meaning. Gate score, attempts and submitted now carry their own label.
 - Console, touch devices: the evidence filters, patch actions (side by side, copy, download), copy-id, section summaries, the

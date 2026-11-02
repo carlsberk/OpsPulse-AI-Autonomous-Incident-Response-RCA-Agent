@@ -166,6 +166,62 @@ def test_github_token_that_cannot_push_blocks():
     assert finding.level == FAIL and "cannot push" in finding.message
 
 
+def test_a_fine_grained_token_that_can_only_read_is_caught_by_the_write_probe():
+    """`permissions.push` describes the account, so it said "token can push" for a read-only fine-grained token."""
+    probe = lambda name: {"Contents": 403, "Pull requests": 403}  # noqa: E731
+    (finding,) = pilot_check.github(_cfg(), lambda name: _repo(), probe)
+    assert finding.level == FAIL
+    assert "Contents (HTTP 403)" in finding.message and "Pull requests (HTTP 403)" in finding.message
+    assert "Read and write" in finding.message
+
+
+def test_the_probe_names_only_the_permission_that_is_missing():
+    probe = lambda name: {"Contents": 422, "Pull requests": 404}  # noqa: E731
+    (finding,) = pilot_check.github(_cfg(), lambda name: _repo(), probe)
+    assert (
+        finding.level == FAIL
+        and "Pull requests (HTTP 404)" in finding.message
+        and "Contents (HTTP" not in finding.message
+    )
+
+
+def test_a_422_from_the_probe_means_the_token_may_write():
+    probe = lambda name: {"Contents": 422, "Pull requests": 422}  # noqa: E731
+    (finding,) = pilot_check.github(_cfg(), lambda name: _repo(), probe)
+    assert finding.level == OK and "token can push" in finding.message and "not probed" not in finding.message
+
+
+def test_an_unreachable_probe_is_a_warning_not_a_pass_or_a_block():
+    probe = lambda name: {"Contents": None, "Pull requests": 422}  # noqa: E731
+    found = pilot_check.github(_cfg(), lambda name: _repo(), probe)
+    assert [f.level for f in found] == [OK, WARN]
+
+
+def test_without_a_probe_the_ok_says_the_token_was_not_probed():
+    (finding,) = pilot_check.github(_cfg(), lambda name: _repo())
+    assert finding.level == OK and "not probed" in finding.message
+
+
+def test_the_real_probe_sends_nothing_that_could_create_a_branch_or_a_pull_request(monkeypatch):
+    sent = []
+
+    class Response:
+        status_code = 422
+
+    def fake_post(url, json, headers, timeout):
+        sent.append((url, json))
+        return Response()
+
+    import requests
+
+    monkeypatch.setattr(requests, "post", fake_post)
+    assert pilot_check.probe_writes("o/r", "token-not-printed") == {"Contents": 422, "Pull requests": 422}
+    refs = next(body for url, body in sent if url.endswith("/git/refs"))
+    pulls = next(body for url, body in sent if url.endswith("/pulls"))
+    assert refs["sha"] == "0" * 40  # no such commit: GitHub cannot create the ref
+    assert pulls["title"] == "" and "nonexistent" in pulls["head"]  # no such branch, no title: cannot open a PR
+
+
 def test_github_archived_blocks():
     (finding,) = pilot_check.github(_cfg(), lambda name: _repo(archived=True))
     assert finding.level == FAIL and "archived" in finding.message

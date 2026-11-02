@@ -4,8 +4,12 @@
     python -m scripts.pilot_check --online    # also ask GitHub about the allowed repositories, and Docker if on
 
 It never prints a secret or any part of one: findings name the setting, not its value. The online mode makes read-only
-GitHub calls with the configured token (repository metadata only). Exit code 1 when something blocks the pilot, 0 when
-only warnings or notes remain. The checklist it follows is in docs/RUNBOOK.md ("Running a real pilot").
+GitHub calls with the configured token (repository metadata), plus two write *probes* that cannot create anything:
+a branch with an impossible commit id and a pull request with no title. GitHub checks the token's permission before it
+validates the body, so 422 means "allowed, but invalid" and 403 means the token cannot write. (The repository's own
+`permissions.push` flag describes the account, not a fine-grained token, and gave a false "token can push".)
+Exit code 1 when something blocks the pilot, 0 when only warnings or notes remain. The checklist it follows is in
+docs/RUNBOOK.md ("Running a real pilot").
 """
 
 from __future__ import annotations
@@ -157,8 +161,36 @@ def database() -> list[Finding]:
     return [Finding(OK, "database", f"reachable, schema at {head}")]
 
 
-def github(cfg: Any, open_repo: Callable[[str], Any]) -> list[Finding]:
-    """Read-only look at each allowed repository: reachable, can the token write, is it archived."""
+PROBES = (
+    ("Contents", "git/refs", {"ref": "refs/heads/opspulse-permission-probe", "sha": "0" * 40}),
+    ("Pull requests", "pulls", {"title": "", "head": "opspulse-permission-probe-nonexistent", "base": "main"}),
+)
+DENIED = frozenset({401, 403, 404})
+
+
+def probe_writes(name: str, token: str) -> dict[str, int | None]:
+    """HTTP status of each write probe (None: GitHub could not be reached). Neither request can create anything."""
+    import requests
+
+    result: dict[str, int | None] = {}
+    for permission, path, body in PROBES:
+        try:
+            response = requests.post(
+                f"https://api.github.com/repos/{name}/{path}",
+                json=body,
+                headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"},
+                timeout=15,
+            )
+            result[permission] = response.status_code
+        except requests.RequestException:
+            result[permission] = None
+    return result
+
+
+def github(
+    cfg: Any, open_repo: Callable[[str], Any], probe: Callable[[str], dict[str, int | None]] | None = None
+) -> list[Finding]:
+    """Look at each allowed repository: reachable, can the token really write, is it archived."""
     found: list[Finding] = []
     for name in sorted(cfg.allowed_repositories):
         try:
@@ -176,9 +208,33 @@ def github(cfg: Any, open_repo: Callable[[str], Any]) -> list[Finding]:
                     )
                 )
             else:
+                denied = []
+                unreachable = False
+                for permission, status in (probe(name) if probe else {}).items():
+                    if status in DENIED:
+                        denied.append(f"{permission} (HTTP {status})")
+                    elif status is None:
+                        unreachable = True
+                if denied:
+                    found.append(
+                        Finding(
+                            FAIL,
+                            f"github:{name}",
+                            f"{visibility}; the token cannot write: {', '.join(denied)}. Edit the token and set "
+                            "Contents and Pull requests to Read and write",
+                        )
+                    )
+                    continue
+                note = "" if probe else " (account permission only; the token's own write access was not probed)"
                 found.append(
-                    Finding(OK, f"github:{name}", f"{visibility}, default branch {repo.default_branch}, token can push")
+                    Finding(
+                        OK,
+                        f"github:{name}",
+                        f"{visibility}, default branch {repo.default_branch}, token can push{note}",
+                    )
                 )
+                if unreachable:
+                    found.append(Finding(WARN, f"github:{name}", "could not probe the token's write access (network)"))
                 if visibility == "public":
                     found.append(
                         Finding(NOTE, f"github:{name}", "public: use a private throwaway repository for a first pilot")
@@ -252,7 +308,7 @@ def main(argv: list[str] | None = None) -> int:
         if settings.github_token and settings.allowed_repositories:
             from src.integrations.github import get_repo
 
-            findings += github(settings, get_repo)
+            findings += github(settings, get_repo, lambda name: probe_writes(name, settings.github_token))
         findings += docker(settings)
     print(render(findings))
     return 1 if any(f.level == FAIL for f in findings) else 0
