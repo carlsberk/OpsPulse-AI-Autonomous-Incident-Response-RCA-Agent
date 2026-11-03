@@ -145,6 +145,34 @@ def retry_incident(incident_id: uuid.UUID, actor: str) -> dict[str, Any]:
     return _load(incident_id)
 
 
+def reopen_approval(incident_id: uuid.UUID, actor: str) -> dict[str, Any]:
+    """Put a `pr_failed` incident back in front of a reviewer with a new approval for the same patch."""
+    try:
+        row = repositories.get_incident(incident_id)
+        if row is None:
+            raise IncidentNotFoundError("incident not found")
+        if row["status"] != "pr_failed" or not row["suggested_patch"]:
+            raise IncidentConflictError("only incidents whose PR creation failed can be re-opened for approval")
+        fix = ProposedFix(
+            incident_id=incident_id,
+            repo_name=row["repo_name"],
+            fingerprint=row["fingerprint"],
+            target_file=row["affected_file"],
+            patch=row["suggested_patch"],
+            analysis=row["analysis"] or {},
+            quality_score=row["quality_score"],
+            iterations=row["iterations"],
+        )
+        outcome = remediation_service.reopen(fix)
+        fields = _outcome_fields(outcome)
+        fields["status_reason"] = redact(f"{outcome.reason} (by {actor})")
+        _persist_or_raise(incident_id, **fields)
+    except SQLAlchemyError as exc:
+        raise DatabaseUnavailableError("database unavailable") from exc
+    logger.info("incident %s re-opened for approval by %s -> %s", incident_id, actor, outcome.status)
+    return _load(incident_id)
+
+
 def _fix_from_state(incident_id: uuid.UUID, fingerprint: str, final: IncidentState) -> ProposedFix:
     return ProposedFix(
         incident_id=incident_id,

@@ -64,6 +64,10 @@ Symptom: approved incidents end as `pr_failed`.
 - "patch does not apply to the default branch head": the code changed since the analysis; re-submit the
   incident so the analysis runs against current code.
 
+After fixing the cause, `POST /incidents/{id}/reopen-approval` (reviewer or admin) returns the incident to
+`awaiting_approval` with a new approval for the same stored patch. Nothing is sent to GitHub by that call; a reviewer
+decides again, on the current configuration. If the patch itself is stale, re-submit the incident instead.
+
 ## Rotating API keys
 
 1. `python -m scripts.make_api_key <name> <role>` for the replacement key.

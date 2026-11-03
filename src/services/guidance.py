@@ -403,7 +403,8 @@ def build_guidance(incident: dict[str, Any], now: datetime | None = None) -> dic
         add(
             "check",
             "operator",
-            "See the runbook section 'PR creation fails' (existing branch, stale patch, token scope).",
+            "See the runbook section 'PR creation fails' (existing branch, stale patch, token scope), fix the cause, "
+            "then POST /incidents/{id}/reopen-approval to put it back in front of a reviewer.",
         )
 
     fix_location = ((analysis.get("evaluation") or {}).get("checks") or {}).get("fix_location") or {}

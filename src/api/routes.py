@@ -228,6 +228,30 @@ def retry_incident(
 
 
 @router.post(
+    "/incidents/{incident_id}/reopen-approval",
+    response_model=IncidentResult,
+    tags=["incidents"],
+    responses={**_ERRORS, 404: {"model": ErrorResponse}, 409: {"model": ErrorResponse}},
+)
+def reopen_approval(
+    incident_id: uuid.UUID, principal: Annotated[Principal, Depends(require_role("reviewer"))]
+) -> IncidentResult:
+    """Ask for a new approval of a `pr_failed` incident (roles: reviewer, admin), after fixing the cause.
+
+    Nothing is sent to GitHub: the incident returns to `awaiting_approval` and a reviewer decides again.
+    """
+    try:
+        row = incident_service.reopen_approval(incident_id, principal.name)
+    except IncidentNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "incident not found") from exc
+    except IncidentConflictError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+    except DatabaseUnavailableError as exc:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "database unavailable") from exc
+    return IncidentResult(**row)
+
+
+@router.post(
     "/incidents/{incident_id}/ask",
     response_model=AskResponse,
     tags=["incidents"],

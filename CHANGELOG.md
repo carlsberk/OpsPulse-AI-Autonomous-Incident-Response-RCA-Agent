@@ -5,6 +5,11 @@ All notable changes are listed here. Versions of behaviour-critical components a
 
 ## [Unreleased]
 
+### Added
+- `POST /incidents/{id}/reopen-approval` (reviewer/admin): a `pr_failed` incident used to be a dead end (the approval was spent,
+  re-submitting re-ran the whole analysis). It now returns to `awaiting_approval` with a new approval for the same stored patch.
+  Nothing is sent to GitHub by the call; a reviewer decides again under the current configuration and the four-eyes rule.
+
 ### Fixed
 - `pilot_check --online` said "token can push" for a fine-grained token that could only read: it trusted the repository's
   `permissions.push` flag, which describes the account. It now sends two write probes that cannot create anything (a branch with an

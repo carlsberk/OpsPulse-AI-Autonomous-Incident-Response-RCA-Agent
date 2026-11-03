@@ -307,6 +307,23 @@ def remediate(fix: ProposedFix) -> RemediationOutcome:
     return _open_pull_request(fix, reviewer=None)
 
 
+def reopen(fix: ProposedFix) -> RemediationOutcome:
+    """A `pr_failed` incident goes back to a human: same stored patch, a fresh pending approval.
+
+    The earlier approval stays `execution_failed` and is not reused: after a failure (stale patch, token scope,
+    configuration change) the reviewer decides again, on the current rules, bound to the patch hash.
+    """
+    blocked = _preconditions(fix)
+    if blocked:
+        return blocked
+    approval = repositories.create_approval(
+        fix.incident_id, fix.target_file or "", patch_sha256(fix.patch), settings.approval_ttl_hours
+    )
+    return RemediationOutcome(
+        "awaiting_approval", "re-opened for a new human decision after PR creation failed", approval=approval
+    )
+
+
 def _expired(approval: dict[str, Any]) -> bool:
     return datetime.fromisoformat(approval["expires_at"]) <= datetime.now(UTC)
 
