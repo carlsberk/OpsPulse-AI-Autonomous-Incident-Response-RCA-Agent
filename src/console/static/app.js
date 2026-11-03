@@ -729,7 +729,7 @@ function renderGuidance(guide) {
 // ------------------------------------------------------------------ test evidence (sandbox + reproduction)
 
 const SANDBOX_TONE = {
-  fixes_failing_tests: "s-ok", no_regression: "s-ok", regression: "s-bad", still_failing: "s-warn",
+  fixes_failing_tests: "s-ok", partly_fixed: "s-warn", no_regression: "s-ok", regression: "s-bad", still_failing: "s-warn",
   reproduced_and_fixed: "s-ok", reproduced_not_fixed: "s-bad", not_reproduced: "s-warn", fails_for_another_reason: "s-warn",
 };
 

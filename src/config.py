@@ -195,7 +195,7 @@ class Settings:
     sandbox_enabled: bool = field(default_factory=lambda: _bool("SANDBOX_ENABLED", False))
     sandbox_image: str = field(default_factory=lambda: _env("SANDBOX_IMAGE", default="python:3.11-slim"))
     sandbox_command: str = field(
-        default_factory=lambda: _env("SANDBOX_COMMAND", default="python -m pytest -q -x -p no:cacheprovider")
+        default_factory=lambda: _env("SANDBOX_COMMAND", default="python -m pytest -q -p no:cacheprovider")
     )
     sandbox_timeout_seconds: int = field(
         default_factory=lambda: int(_number(("SANDBOX_TIMEOUT_SECONDS",), 120, int, 10, 900))
