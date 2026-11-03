@@ -10,7 +10,8 @@ All notable changes are listed here. Versions of behaviour-critical components a
   fixed the failure it targeted, and could not see a patch that broke other tests. When both runs fail, the sandbox now compares the
   failing test ids from pytest's summary: new failures are a `regression` (and block the PR proposal like any regression), fewer
   failures are `partly_fixed`, identical failures stay `still_failing`. Found in the pilot, where one scenario's patch was
-  judged against a pre-existing failing test.
+  judged against a pre-existing failing test. The default `SANDBOX_COMMAND` no longer passes `-x` (stop at the first failure):
+  with it both runs stopped at the same old failure and never reached the targeted test; a full run is slower, bounded by `SANDBOX_TIMEOUT_SECONDS`.
 
 ### Added
 - `POST /incidents/{id}/reopen-approval` (reviewer/admin): a `pr_failed` incident used to be a dead end (the approval was spent,

@@ -239,3 +239,10 @@ def test_the_same_failures_before_and_after_stay_still_failing():
 
 def test_without_test_ids_the_old_behaviour_is_kept():
     assert classify(ran(1, "boom"), failing(PRE_EXISTING))[0] == "still_failing"
+
+
+def test_the_default_command_does_not_stop_at_the_first_failure():
+    """With `-x` both runs stop at the same old failing test and never reach the one the patch targets."""
+    from src.config import Settings
+
+    assert "-x" not in Settings().sandbox_command.split()
