@@ -5,6 +5,13 @@ All notable changes are listed here. Versions of behaviour-critical components a
 
 ## [Unreleased]
 
+### Fixed
+- Sandbox: a repository whose suite already had a failing test reported "tests fail both before and after the patch" even when the patch
+  fixed the failure it targeted, and could not see a patch that broke other tests. When both runs fail, the sandbox now compares the
+  failing test ids from pytest's summary: new failures are a `regression` (and block the PR proposal like any regression), fewer
+  failures are `partly_fixed`, identical failures stay `still_failing`. Found in the pilot, where one scenario's patch was
+  judged against a pre-existing failing test.
+
 ### Added
 - `POST /incidents/{id}/reopen-approval` (reviewer/admin): a `pr_failed` incident used to be a dead end (the approval was spent,
   re-submitting re-ran the whole analysis). It now returns to `awaiting_approval` with a new approval for the same stored patch.
