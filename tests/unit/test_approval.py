@@ -160,3 +160,69 @@ def test_simultaneous_approvals_open_exactly_one_pull_request(client, proposal):
     assert sorted(statuses).count(200) == 1, statuses  # one winner
     assert all(code in (200, 409) for code in statuses), statuses  # everyone else gets a conflict, never a 5xx
     assert len(created) == 1  # and exactly one GitHub write
+
+
+# ------------------------------------------------------------------ re-opening a failed PR
+
+
+@pytest.fixture
+def failed_pr(client, proposal, monkeypatch):
+    """The reviewer approved, but GitHub refused: the incident is `pr_failed` and the approval is spent."""
+    from src.errors import ErrorCategory
+    from src.integrations.github import GitHubError
+
+    incident, created = proposal
+
+    def refuse(**kwargs):
+        raise GitHubError("token cannot write", ErrorCategory.GITHUB_PERMISSION)
+
+    monkeypatch.setattr(remediation_service, "create_fix_pull_request", refuse)
+    failed = decide(client, incident).json()
+    assert failed["status"] == "pr_failed"
+    monkeypatch.setattr(
+        remediation_service,
+        "create_fix_pull_request",
+        lambda **kw: created.append(kw) or PullRequestResult("https://github.com/o/r/pull/12", 12, "b", False),
+    )
+    return failed, created
+
+
+def test_a_failed_pr_can_be_re_opened_and_approved_again(client, failed_pr):
+    failed, created = failed_pr
+    reopened = client.post(f"/incidents/{failed['incident_id']}/reopen-approval", headers=REVIEWER_HEADERS)
+    body = reopened.json()
+    assert reopened.status_code == 200 and body["status"] == "awaiting_approval" and not created
+    assert body["pending_approval"]["patch_sha256"] == remediation_service.patch_sha256(body["suggested_patch"])
+    done = decide(client, body)
+    assert done.status_code == 200 and done.json()["status"] == "pr_created" and len(created) == 1
+
+
+def test_re_opening_sends_nothing_to_github_and_needs_a_new_decision(client, failed_pr):
+    failed, created = failed_pr
+    client.post(f"/incidents/{failed['incident_id']}/reopen-approval", headers=REVIEWER_HEADERS)
+    assert not created  # only a reviewer's decision opens the PR
+
+
+def test_only_failed_prs_can_be_re_opened(client, proposal):
+    incident, _ = proposal  # awaiting_approval
+    resp = client.post(f"/incidents/{incident['incident_id']}/reopen-approval", headers=REVIEWER_HEADERS)
+    assert resp.status_code == 409
+    missing = client.post(f"/incidents/{uuid.uuid4()}/reopen-approval", headers=REVIEWER_HEADERS)
+    assert missing.status_code == 404
+
+
+def test_a_reporter_cannot_re_open_a_failed_pr(client, failed_pr):
+    failed, _ = failed_pr
+    resp = client.post(f"/incidents/{failed['incident_id']}/reopen-approval", headers=REPORTER_HEADERS)
+    assert resp.status_code == 403
+
+
+def test_re_opening_is_blocked_when_the_configuration_no_longer_allows_a_pr(client, failed_pr, set_settings):
+    failed, _ = failed_pr
+    set_settings(enable_github_remediation=False)
+    resp = client.post(f"/incidents/{failed['incident_id']}/reopen-approval", headers=REVIEWER_HEADERS)
+    assert (
+        resp.status_code == 200
+        and resp.json()["status"] == "analysis_ready"
+        and resp.json()["pending_approval"] is None
+    )

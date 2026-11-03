@@ -100,6 +100,28 @@ Re-queue a `failed` incident (roles: reviewer, admin), e.g. after a provider quo
 | 409 | Conflict |
 | 422 | Validation Error |
 
+### `POST /incidents/{incident_id}/reopen-approval`
+
+Ask for a new approval of a `pr_failed` incident (roles: reviewer, admin), after fixing the cause.
+
+Nothing is sent to GitHub: the incident returns to `awaiting_approval` and a reviewer decides again.
+
+**Auth:** API key or Bearer token
+
+| Parameter | In | Type | Required | Description |
+|---|---|---|---|---|
+| `incident_id` | path | string | yes |  |
+
+| Status | Meaning |
+|---|---|
+| 200 | Successful Response |
+| 401 | Missing or invalid API key |
+| 403 | Role not allowed, repository not allowed, or self-approval |
+| 503 | Database unavailable or authentication not configured |
+| 404 | Not Found |
+| 409 | Conflict |
+| 422 | Validation Error |
+
 ### `POST /incidents/{incident_id}/ask`
 
 Ask a question about one incident (roles: reporter, reviewer, admin).
