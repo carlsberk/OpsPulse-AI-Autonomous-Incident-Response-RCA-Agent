@@ -304,3 +304,14 @@ def test_all_motion_sits_inside_the_no_preference_query_and_dark_is_the_default(
     assert '<html lang="en" data-theme="dark">' in page
     assert script.count('store("local", THEME_STORAGE) || "dark"') == 2
     assert 'store("local", THEME_STORAGE, next);' in script  # "auto" is stored, so choosing it survives a reload
+
+
+def test_a_failed_pr_can_be_reopened_from_the_console_and_the_button_is_hidden_otherwise():
+    html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    script = (STATIC_DIR / "app.js").read_text(encoding="utf-8")
+    assert re.search(r'<button[^>]*id="reopen"[^>]*\bhidden\b', html)
+    assert '$("reopen").hidden = incident.status !== "pr_failed"' in script
+    reset = script.split("function resetDetail()", 1)[1].split("\n}\n", 1)[0]
+    assert '"reopen"' in reset  # hidden while another incident loads
+    assert "/reopen-approval" in script and 'method: "POST"' in script
+    assert '$("reopen").addEventListener("click", reopenApproval)' in script

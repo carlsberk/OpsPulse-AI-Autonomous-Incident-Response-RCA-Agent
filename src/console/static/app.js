@@ -424,7 +424,7 @@ function resetDetail() {
   state.current = null;
   $("d-title").textContent = "Loading incident…";
   document.title = "Loading incident - OpsPulse";
-  for (const id of ["guide", "tests-card", "trail", "audit", "approval", "retry", "d-pr", "d-severity", "d-reason"]) {
+  for (const id of ["guide", "tests-card", "trail", "audit", "approval", "retry", "reopen", "d-pr", "d-severity", "d-reason"]) {
     $(id).hidden = true;
   }
   for (const id of ["d-evidence", "d-checks", "d-attempts", "d-patch", "d-uncertainties", "d-tests"]) {
@@ -540,6 +540,7 @@ function renderDetail(incident) {
   $("d-error").textContent = incident.error_message || "";
 
   $("retry").hidden = incident.status !== "failed";
+  $("reopen").hidden = incident.status !== "pr_failed";
   renderAsk(incident);
   renderTests(analysis);
   loadGuidance(incident);
@@ -984,6 +985,23 @@ async function retry() {
   }
 }
 
+async function reopenApproval() {
+  const incident = state.current;
+  if (!incident) return;
+  $("reopen").disabled = true;
+  try {
+    const updated = await api(`/incidents/${encodeURIComponent(incident.incident_id)}/reopen-approval`, { method: "POST" });
+    if (!state.current || state.current.incident_id !== incident.incident_id) return;
+    state.current = updated;
+    renderDetail(updated);
+    toast("Re-opened: a reviewer decides again; nothing was sent to GitHub");
+  } catch (error) {
+    toast(error.message);
+  } finally {
+    $("reopen").disabled = false;
+  }
+}
+
 function confirmApproval(incident, pending) {
   const dialog = $("confirm");
   if (typeof dialog.showModal !== "function") {
@@ -1170,6 +1188,7 @@ document.addEventListener("DOMContentLoaded", () => {
   $("approve").addEventListener("click", () => decide("approve"));
   $("reject").addEventListener("click", () => decide("reject"));
   $("retry").addEventListener("click", retry);
+  $("reopen").addEventListener("click", reopenApproval);
   $("ask-clear").addEventListener("click", clearConversation);
   $("ask-form").addEventListener("submit", (event) => {
     event.preventDefault();
