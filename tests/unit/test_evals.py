@@ -101,8 +101,15 @@ def test_mock_run_is_deterministic_and_exercises_the_gate():
         model = ScriptedModel(data[case_id])
         return run_case(data[case_id], lambda temperature: model)
 
+    def stable(result):
+        """Everything except measured time: `wall_ms` and each attempt's `latency_ms` differ by a millisecond on a slow
+        runner (this test failed on a macOS CI job for exactly that)."""
+        kept = {k: v for k, v in result.items() if k != "wall_ms"}
+        kept["attempts"] = [{k: v for k, v in a.items() if k != "latency_ms"} for a in result["attempts"]]
+        return kept
+
     first, second = run("misleading-trace"), run("misleading-trace")
-    assert {k: v for k, v in first.items() if k != "wall_ms"} == {k: v for k, v in second.items() if k != "wall_ms"}
+    assert stable(first) == stable(second)
     assert first["gate_passed"] and len(first["attempts"]) == 2  # fabricated quote rejected, then corrected
     injection = run("injection-in-log")
     assert injection["gate_passed"] and injection["affected_files"] == ["app/refunds.py"]

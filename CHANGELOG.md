@@ -6,6 +6,11 @@ All notable changes are listed here. Versions of behaviour-critical components a
 ## [Unreleased]
 
 ### Fixed
+- `test_mock_run_is_deterministic_and_exercises_the_gate` compared two runs including each attempt's measured `latency_ms`, so it
+  failed on a slow macOS CI runner when one run took 1 ms and the other 0 ms. It now ignores measured time (`wall_ms`, `latency_ms`)
+  and still compares everything else. Test-only change; the harness was already deterministic.
+
+### Fixed
 - Sandbox: a repository whose suite already had a failing test reported "tests fail both before and after the patch" even when the patch
   fixed the failure it targeted, and could not see a patch that broke other tests. When both runs fail, the sandbox now compares the
   failing test ids from pytest's summary: new failures are a `regression` (and block the PR proposal like any regression), fewer
