@@ -5,6 +5,10 @@ All notable changes are listed here. Versions of behaviour-critical components a
 
 ## [Unreleased]
 
+### Added
+- Console: a "Re-open for approval" button on `pr_failed` incidents, calling `POST /incidents/{id}/reopen-approval`. The incident
+  returns to awaiting approval; nothing is sent to GitHub until a reviewer decides again.
+
 ### Fixed
 - `test_mock_run_is_deterministic_and_exercises_the_gate` compared two runs including each attempt's measured `latency_ms`, so it
   failed on a slow macOS CI runner when one run took 1 ms and the other 0 ms. It now ignores measured time (`wall_ms`, `latency_ms`)
