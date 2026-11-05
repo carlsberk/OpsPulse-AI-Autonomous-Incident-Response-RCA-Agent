@@ -68,6 +68,23 @@ After fixing the cause, `POST /incidents/{id}/reopen-approval` (reviewer or admi
 `awaiting_approval` with a new approval for the same stored patch. Nothing is sent to GitHub by that call; a reviewer
 decides again, on the current configuration. If the patch itself is stale, re-submit the incident instead.
 
+## Reading the sandbox verdict
+
+The sandbox runs the repository's own tests before and after the patch (`SANDBOX_ENABLED=true`). The verdict says what
+those tests did; it never says the fix is correct.
+
+| Verdict | Meaning | What the reviewer does |
+|---|---|---|
+| `fixes_failing_tests` | the suite failed before the patch and passes after it | still read the patch: the tests may not cover the cause |
+| `partly_fixed` | both runs fail, but some tests that failed before pass now and none are new | read which tests still fail; they failed before the patch too |
+| `no_regression` | the suite passes before and after | the tests do not exercise the incident; judge the patch on its reasoning |
+| `still_failing` | the same tests fail before and after, or test ids were not available to compare | the sandbox says nothing about this patch |
+| `regression` | tests that passed before fail after (also new failures in a suite that was already red) | the proposal goes to `needs_review`, no approval is offered |
+| `error` / `timeout` / `unavailable` | the container could not run the tests (missing pytest or dependency, over `SANDBOX_TIMEOUT_SECONDS`, no Docker) | fix the image or the limits; no test evidence exists |
+
+Test ids come from pytest's short summary, so the default `SANDBOX_COMMAND` (`python -m pytest -q -p no:cacheprovider`)
+runs the whole suite. Adding `-x` makes both runs stop at the same first failure and hides everything after it.
+
 ## Rotating API keys
 
 1. `python -m scripts.make_api_key <name> <role>` for the replacement key.

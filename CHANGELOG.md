@@ -5,6 +5,10 @@ All notable changes are listed here. Versions of behaviour-critical components a
 
 ## [Unreleased]
 
+### Documentation
+- RUNBOOK: a table of the sandbox verdicts (what each means and what the reviewer does), including `partly_fixed` and why the
+  default `SANDBOX_COMMAND` has no `-x`.
+
 ### Added
 - Console: a "Re-open for approval" button on `pr_failed` incidents, calling `POST /incidents/{id}/reopen-approval`. The incident
   returns to awaiting approval; nothing is sent to GitHub until a reviewer decides again.
