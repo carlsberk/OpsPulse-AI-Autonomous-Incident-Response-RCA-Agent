@@ -248,6 +248,12 @@ def build_case(repo: pathlib.Path, python: str, cand: Candidate, repo_name: str)
 
 def verify_patch(repo: pathlib.Path, python: str, meta: dict, patch: str) -> tuple[str, str]:
     """Apply `patch` to the parent commit and run the tests the real fix added. Returns (verdict, detail)."""
+    verdict, detail, _ = verify_patch_detailed(repo, python, meta, patch)
+    return verdict, detail
+
+
+def verify_patch_detailed(repo: pathlib.Path, python: str, meta: dict, patch: str) -> tuple[str, str, str]:
+    """Like `verify_patch`, plus the full test output (empty when the tests did not run)."""
     target = meta["source_files"]
     with tempfile.TemporaryDirectory(prefix="opspulse-verify-", ignore_cleanup_errors=True) as tmp:
         work = pathlib.Path(tmp) / "wt"
@@ -257,19 +263,20 @@ def verify_patch(repo: pathlib.Path, python: str, meta: dict, patch: str) -> tup
             git(work, "checkout", meta["fix_commit"], "--", *tests)
             headers = re.findall(r"^\+\+\+ b/(\S+)", patch, flags=re.MULTILINE)
             if len(headers) != 1:
-                return "no_patch", "the run has no single-file patch"
+                return "no_patch", "the run has no single-file patch", ""
             path = work / headers[0]
             if not path.resolve().is_relative_to(work.resolve()) or not path.is_file():
-                return "patch_error", f"patch targets a file that is not in the repository: {headers[0]}"
+                return "patch_error", f"patch targets a file that is not in the repository: {headers[0]}", ""
             try:
                 path.write_text(apply_unified_diff(path.read_text(encoding="utf-8"), patch), encoding="utf-8")
             except PatchError as exc:
-                return "patch_error", f"patch does not apply: {str(exc)[:120]}"
+                return "patch_error", f"patch does not apply: {str(exc)[:120]}", ""
             code, output = run_tests(python, work, tests)
             where = "the real fix's file" if headers[0] in target else f"another file ({headers[0]})"
             if code == 0:
-                return "passes_tests", f"the real regression tests pass; patch is in {where}"
-            return "fails_tests", f"the real regression tests still fail; patch is in {where}; {output[-160:]!r}"
+                return "passes_tests", f"the real regression tests pass; patch is in {where}", output
+            detail = f"the real regression tests still fail; patch is in {where}; {output[-160:]!r}"
+            return "fails_tests", detail, output
         finally:
             subprocess.run(["git", "-C", str(repo), "worktree", "remove", "--force", str(work)], check=False)  # noqa: S603, S607
 
