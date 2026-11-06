@@ -59,3 +59,17 @@ def build_graph(
     graph.add_conditional_edges("analyze_root_cause", route_after_analysis)
     graph.add_conditional_edges("evaluate_analysis", route_after_evaluation)
     return graph.compile()
+
+
+def build_repair_graph(model_factory: ModelFactory | None = None) -> CompiledStateGraph[Any, Any, Any, Any]:
+    """One analysis pass with the gate, no retry loop: used when the sandbox rejects a gate-approved patch.
+
+    Its budget is separate from MAX_ANALYSIS_ITERATIONS (the gate retries may be spent already) and is bounded by
+    SANDBOX_FEEDBACK_ATTEMPTS in the service, which also owns every side effect."""
+    graph: StateGraph[IncidentState, None, IncidentState, IncidentState] = StateGraph(IncidentState)
+    graph.add_node("analyze_root_cause", make_analyze_root_cause(model_factory))  # type: ignore[arg-type]
+    graph.add_node("evaluate_analysis", evaluate_analysis)
+    graph.add_edge(START, "analyze_root_cause")
+    graph.add_conditional_edges("analyze_root_cause", route_after_analysis)
+    graph.add_edge("evaluate_analysis", END)
+    return graph.compile()

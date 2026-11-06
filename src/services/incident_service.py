@@ -35,9 +35,10 @@ from langgraph.graph.state import CompiledStateGraph
 from sqlalchemy.exc import SQLAlchemyError
 
 from src import metrics
-from src.agent.graph import build_graph
+from src.agent.graph import build_graph, build_repair_graph
 from src.agent.parsing import compute_fingerprint
 from src.agent.reproduction import ReproductionSpec, expected_error_name
+from src.agent.sandbox_feedback import build_feedback, is_improvement, needs_repair
 from src.agent.state import IncidentState, initial_state
 from src.config import settings
 from src.db import repositories
@@ -45,7 +46,7 @@ from src.errors import TRANSIENT_CATEGORIES, ErrorCategory
 from src.integrations import github
 from src.integrations.notify import notify_incident
 from src.integrations.observability import build_run_config, flush_traces, incident_trace
-from src.integrations.sandbox import run_patch_in_sandbox
+from src.integrations.sandbox import SandboxReport, run_patch_in_sandbox
 from src.logging_config import incident_id_var, redact, request_id_var
 from src.services import remediation_service
 from src.services.remediation_service import ApprovalForbiddenError, ProposedFix, RemediationOutcome
@@ -68,6 +69,11 @@ class IncidentNotFoundError(LookupError):
 @lru_cache(maxsize=1)
 def get_graph() -> CompiledStateGraph[Any, Any, Any, Any]:
     return build_graph(github.fetch_source_context, repositories.find_similar_incidents)
+
+
+@lru_cache(maxsize=1)
+def get_repair_graph() -> CompiledStateGraph[Any, Any, Any, Any]:
+    return build_repair_graph()
 
 
 def submit_incident(
@@ -205,6 +211,7 @@ def run_incident_pipeline(
     graph: CompiledStateGraph[Any, Any, Any, Any] | None = None,
     claim_token: str | None = None,
     commit_sha: str | None = None,
+    repair_graph: CompiledStateGraph[Any, Any, Any, Any] | None = None,
 ) -> dict[str, Any]:
     """Run the graph, persist the outcome, optionally propose/open a PR. Returns the stored incident.
 
@@ -229,6 +236,7 @@ def run_incident_pipeline(
                     graph or get_graph(),
                     claim_token,
                     commit_sha,
+                    repair_graph,
                 )
             except repositories.ClaimLostError:
                 logger.warning("claim lost to another worker; discarding this run's result")
@@ -257,6 +265,7 @@ def _run(
     graph: CompiledStateGraph[Any, Any, Any, Any],
     claim_token: str | None = None,
     commit_sha: str | None = None,
+    repair_graph: CompiledStateGraph[Any, Any, Any, Any] | None = None,
 ) -> dict[str, Any]:
     state = initial_state(str(incident_id), error_message, stack_trace, repo_name, commit_sha)
     try:
@@ -293,22 +302,30 @@ def _run(
     if final["quality_gate_passed"]:
         fix = _fix_from_state(incident_id, fingerprint, final)
         # Only this service writes `sandbox`; never trust a key of that name that came from the model.
-        fix = replace(fix, analysis={k: v for k, v in fix.analysis.items() if k != "sandbox"})
+        fix = replace(fix, analysis={k: v for k, v in fix.analysis.items() if k not in _SERVICE_KEYS})
         if settings.sandbox_enabled and fix.patch and fix.target_file:
             report = run_patch_in_sandbox(
                 fix.repo_name, fix.target_file, fix.patch, reproduction=_reproduction_spec(final)
             )
             logger.info("sandbox run: %s", report.status)
-            fix = replace(fix, analysis={**fix.analysis, "sandbox": report.as_dict()})
+            final, fix, report, repairs = _repair_with_sandbox(
+                incident_id, fingerprint, final, fix, report, repair_graph
+            )
+            extra = {"sandbox_feedback": repairs} if repairs else {}
+            fix = replace(fix, analysis={**fix.analysis, "sandbox": report.as_dict(), **extra})
             _persist_or_raise(
                 incident_id,
                 claim_token=claim_token,
+                suggested_patch=final["suggested_patch"],
+                quality_score=final["quality_score"],
+                iterations=final["iterations"],
                 root_cause_analysis={
                     **(final["root_cause_analysis"] or {}),
                     "attempts": final["attempts"],
                     "source_windows": source_windows(final),
                     "source_revision": source_revision(final),
                     "sandbox": report.as_dict(),
+                    **extra,
                 },
             )
         try:
@@ -333,6 +350,59 @@ def _run(
         result["iterations"],
     )
     return result
+
+
+# Written only by this service; a key of this name in the model's reply is never trusted.
+_SERVICE_KEYS = ("sandbox", "sandbox_feedback")
+
+
+def _repair_with_sandbox(
+    incident_id: uuid.UUID,
+    fingerprint: str,
+    final: IncidentState,
+    fix: ProposedFix,
+    report: SandboxReport,
+    repair_graph: CompiledStateGraph[Any, Any, Any, Any] | None,
+) -> tuple[IncidentState, ProposedFix, SandboxReport, list[dict[str, Any]]]:
+    """Opt-in (SANDBOX_FEEDBACK_ATTEMPTS): show the model the failing test output and let it correct the patch.
+
+    A corrected patch must pass the quality gate and get a strictly better sandbox verdict; otherwise the first
+    patch stays. Only analysis and sandbox runs happen here - the PR is still opened by `remediate`."""
+    log: list[dict[str, Any]] = []
+    while len(log) < settings.sandbox_feedback_attempts and needs_repair(report.as_dict()):
+        entry: dict[str, Any] = {"attempt": len(log) + 1, "verdict_before": report.status}
+        log.append(entry)
+        feedback = build_feedback(report.as_dict())
+        state = cast(IncidentState, {**final, "previous_feedback": feedback, "workflow_status": "running"})
+        try:
+            repaired = cast(IncidentState, (repair_graph or get_repair_graph()).invoke(state))
+        except Exception:  # boundary: a crashed repair pass must not lose the already approved patch
+            logger.exception("sandbox-feedback pass crashed")
+            entry["outcome"] = "crashed"
+            break
+        final = cast(IncidentState, {**final, "attempts": repaired["attempts"], "iterations": repaired["iterations"]})
+        new_patch = repaired["suggested_patch"]
+        if not repaired["quality_gate_passed"] or not new_patch or new_patch == fix.patch:
+            entry["outcome"] = "no_new_patch" if repaired["quality_gate_passed"] else "gate_failed"
+            break
+        candidate = replace(
+            _fix_from_state(incident_id, fingerprint, repaired),
+            analysis={k: v for k, v in (repaired["root_cause_analysis"] or {}).items() if k not in _SERVICE_KEYS},
+        )
+        new_report = run_patch_in_sandbox(
+            candidate.repo_name,
+            candidate.target_file or "",
+            new_patch,
+            reproduction=_reproduction_spec(repaired),
+        )
+        entry["verdict_after"] = new_report.status
+        if not is_improvement(report.as_dict(), new_report.as_dict()):
+            entry["outcome"] = "not_better"
+            break
+        entry["outcome"] = "accepted"
+        final, fix, report = repaired, candidate, new_report
+    logger.info("sandbox feedback: %s", [e.get("outcome") for e in log] or "not needed")
+    return final, fix, report, log
 
 
 def list_incidents(
