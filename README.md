@@ -1078,7 +1078,7 @@ stack traces or connection strings. Re-sending a request with the same `incident
 
 ```bash
 pytest                               # about 680 offline tests (SQLite, fakes for Groq/GitHub/Langfuse; includes property-based tests)
-pytest --cov=src --cov=evals         # coverage (about 95% total at time of writing; CI enforces a floor of 84%)
+pytest --cov=src --cov=evals         # coverage (about 91% across src and evals at time of writing; CI enforces a floor of 88%)
 python -m evals.ask_eval --mode mock # incident-assistant evaluation (offline)
 ruff check src tests evals scripts migrations && ruff format --check src tests evals scripts migrations
 mypy                                 # src/
@@ -1227,7 +1227,7 @@ One run of one bug - it shows the loop works end to end, not that it generalises
 
 ## Verified versions
 
-Checked on 2026-10-24: CI runs Python 3.11 (the image), 3.12 and 3.13; the local release gates ran on Windows with Python
+Checked on 2026-10-24: CI runs Python 3.11 (the image), 3.12, 3.13 and 3.14; the local release gates ran on Windows with Python
 3.14.3 and: fastapi 0.161.1, pydantic 2.14.1, SQLAlchemy 2.1.6, alembic 1.20.1, langgraph 1.2.16, langchain-core 1.7.0,
 langchain-groq 1.1.3, groq 0.37.1, langfuse 4.18.0, PyGithub 2.10.0, httpx 0.28.1, pytest 9.1.1, hypothesis 6.170.8,
 ruff 0.17.2 and mypy 2.4.0 (strict).
