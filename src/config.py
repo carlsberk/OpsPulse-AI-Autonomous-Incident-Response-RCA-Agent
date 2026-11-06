@@ -202,6 +202,11 @@ class Settings:
     )
     sandbox_memory_mb: int = field(default_factory=lambda: int(_number(("SANDBOX_MEMORY_MB",), 512, int, 128, 8192)))
     sandbox_max_repo_mb: int = field(default_factory=lambda: int(_number(("SANDBOX_MAX_REPO_MB",), 50, int, 1, 500)))
+    # Extra analysis passes when the sandbox shows the patch still fails / breaks a test (0 = off, the default).
+    # Each pass costs one more model call plus two more sandbox runs.
+    sandbox_feedback_attempts: int = field(
+        default_factory=lambda: int(_number(("SANDBOX_FEEDBACK_ATTEMPTS",), 0, int, 0, 3))
+    )
 
     # --- Inbound integrations ---
     sentry_client_secret: str = field(default_factory=lambda: _env("SENTRY_CLIENT_SECRET"))

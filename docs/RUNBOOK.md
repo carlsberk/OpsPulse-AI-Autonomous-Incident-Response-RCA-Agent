@@ -82,6 +82,11 @@ those tests did; it never says the fix is correct.
 | `regression` | tests that passed before fail after (also new failures in a suite that was already red) | the proposal goes to `needs_review`, no approval is offered |
 | `error` / `timeout` / `unavailable` | the container could not run the tests (missing pytest or dependency, over `SANDBOX_TIMEOUT_SECONDS`, no Docker) | fix the image or the limits; no test evidence exists |
 
+With `SANDBOX_FEEDBACK_ATTEMPTS` above 0, a `still_failing` or `regression` verdict triggers a corrected attempt before the
+reviewer sees anything. `analysis.sandbox_feedback` lists each attempt (`verdict_before`, `verdict_after`, `outcome`:
+`accepted`, `not_better`, `gate_failed`, `no_new_patch`, `crashed`); only `accepted` changed the patch. Cost: one more model
+call and two more sandbox runs per attempt.
+
 Test ids come from pytest's short summary, so the default `SANDBOX_COMMAND` (`python -m pytest -q -p no:cacheprovider`)
 runs the whole suite. Adding `-x` makes both runs stop at the same first failure and hides everything after it.
 

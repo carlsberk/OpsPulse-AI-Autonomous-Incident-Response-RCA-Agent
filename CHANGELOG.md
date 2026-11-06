@@ -18,6 +18,12 @@ All notable changes are listed here. Versions of behaviour-critical components a
   default `SANDBOX_COMMAND` has no `-x`.
 
 ### Added
+- Opt-in sandbox feedback (`SANDBOX_FEEDBACK_ATTEMPTS`, default 0 = off, max 3): when the sandbox verdict is `still_failing`
+  or `regression`, the model gets the failing test ids and output tail through the existing `<PREVIOUS_FEEDBACK>` channel and
+  may correct the patch. The corrected patch must pass the quality gate and earn a strictly better sandbox verdict, otherwise
+  the first patch stays; the attempts are recorded under `analysis.sandbox_feedback` and the extra model call is counted in
+  `attempts`. Side effects stay in the service layer (the repair graph only analyses and evaluates). With the setting off
+  nothing changes, so prompt, gate and retrieval versions are unchanged.
 - Console: a "Re-open for approval" button on `pr_failed` incidents, calling `POST /incidents/{id}/reopen-approval`. The incident
   returns to awaiting approval; nothing is sent to GitHub until a reviewer decides again.
 
