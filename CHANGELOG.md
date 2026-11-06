@@ -5,6 +5,14 @@ All notable changes are listed here. Versions of behaviour-critical components a
 
 ## [Unreleased]
 
+### Tests
+- `tests/unit/test_tooling_gaps.py` (+38 tests, no production code touched): the command-line paths of `evals.run_rca`
+  (`--min`, `--rescore`, `--dataset-file`, live mode without a key), `evals.run_retrieval` (exit code on a cross-repository
+  leak), `evals.reviewer_memory_eval`, `evals.repro_eval` (every outcome, with the sandbox faked), the review-outcome
+  report, and the incident CLI's HTTP transport (non-http schemes refused, HTTP errors returned as status and body) and
+  text formatters. Coverage of those modules went from 0-88% to 97-99%; `src` plus `evals` from 88% to 91%.
+- The CI coverage floor is raised from 84% to 88%, so the next untested feature is caught.
+
 ### Documentation
 - RUNBOOK: a table of the sandbox verdicts (what each means and what the reviewer does), including `partly_fixed` and why the
   default `SANDBOX_COMMAND` has no `-x`.

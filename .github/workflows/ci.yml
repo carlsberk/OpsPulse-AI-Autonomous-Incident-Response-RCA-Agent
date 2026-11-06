@@ -47,8 +47,8 @@ jobs:
         run: python -c "import src.main; from src.services.incident_service import get_graph; get_graph()"
 
       - name: Unit tests with coverage
-        # The floor sits just under the measured coverage (86%); it exists to catch an untested feature, not to chase a number.
-        run: pytest --cov=src --cov=evals --cov-report=term-missing:skip-covered --cov-report=xml --cov-fail-under=84
+        # The floor sits just under the measured coverage (91%); it exists to catch an untested feature, not to chase a number.
+        run: pytest --cov=src --cov=evals --cov-report=term-missing:skip-covered --cov-report=xml --cov-fail-under=88
 
       - name: Offline evaluation, regression gate against committed baselines
         # Scripted replies are deterministic, so any drop in a quality metric is a real behaviour change.
