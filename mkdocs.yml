@@ -29,6 +29,7 @@ nav:
       - Architecture: architecture.md
       - A worked example: trace-example.md
       - Limitations and what is proven: limitations.md
+      - Measurements in one place: measurements.md
   - Operations:
       - API reference: api.md
       - Runbook: runbook.md

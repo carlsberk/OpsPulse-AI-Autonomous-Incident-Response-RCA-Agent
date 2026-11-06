@@ -31,6 +31,7 @@ PAGES = {  # repo path -> site path
     "docs/API.md": "api.md",
     "docs/ARCHITECTURE.md": "architecture.md",
     "docs/LIMITATIONS.md": "limitations.md",
+    "docs/MEASUREMENTS.md": "measurements.md",
     "docs/TRACE_EXAMPLE.md": "trace-example.md",
 }
 

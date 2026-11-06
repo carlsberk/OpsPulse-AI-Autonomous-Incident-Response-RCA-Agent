@@ -124,8 +124,17 @@ function failure(error, messageId) {
     setConnection("bad", "Offline");
     setMessage(messageId, error.message, true);
   } else if (error.status === 401) {
-    setConnection("bad", "Invalid key");
-    setMessage(messageId, "Enter a valid API key to continue.", true);
+    const hasKey = Boolean(apiKey());
+    // A first visit is not an error: say what to do, and keep the red "Invalid key" for a key that was really refused.
+    setConnection(hasKey ? "bad" : "off", hasKey ? "Invalid key" : "Not connected");
+    setMessage(
+      messageId,
+      hasKey
+        ? "The server did not accept this key. Paste only the key itself (no name, quotes or spaces) and use a reporter or reviewer key."
+        : "Paste your API key in the box at the top and press Connect.",
+      hasKey,
+    );
+    if (messageId === "list-message") $("key-help").hidden = false;
   } else if (error.status === 403) {
     setMessage(messageId, "This key may not perform that action.", true);
   } else {
@@ -146,9 +155,9 @@ function applyTheme(mode) {
 }
 
 function cycleTheme() {
-  const current = store("local", THEME_STORAGE) || "auto";
+  const current = store("local", THEME_STORAGE) || "dark";
   const next = THEMES[(THEMES.indexOf(current) + 1) % THEMES.length];
-  store("local", THEME_STORAGE, next === "auto" ? null : next);
+  store("local", THEME_STORAGE, next); // "auto" is stored too: the default (nothing stored) is dark
   applyTheme(next);
 }
 
@@ -196,6 +205,8 @@ async function loadList(append = false) {
     $("load-more").hidden = !page.next_cursor;
     $("net-banner").hidden = true;
     setConnection("on", "Connected");
+    $("key-help").hidden = true;
+    state.enter = !append; // a fresh page of results may animate in; re-filtering and searching must not replay it
     renderRows();
   } catch (error) {
     if (isAbort(error) || mine !== seq.list) return;
@@ -312,8 +323,12 @@ function renderRows() {
   const items = visibleItems();
   state.queue = items.map((item) => item.incident_id); // the order the reviewer is working through
   state.focusIndex = -1;
+  body.classList.toggle("enter", Boolean(state.enter));
+  state.enter = false;
+  let order = 0;
   for (const item of items) {
     const row = document.createElement("tr");
+    row.style.setProperty("--i", String(Math.min(order++, 14))); // CSSOM: drives the staggered entrance (css)
     row.tabIndex = 0;
     row.dataset.id = item.incident_id;
     const target = `#/incident/${encodeURIComponent(item.incident_id)}`;
@@ -333,13 +348,19 @@ function renderRows() {
     box.title = "Deterministic rubric score from the quality gate, not a probability of being correct";
     box.append(el("span", score.toFixed(2), "score-num"), meter(score, toneForScore(score)));
     scoreCell.append(box);
+    // On narrow screens the header row is hidden and the cells stack; the labels keep a bare "1" or "just now" readable.
+    scoreCell.dataset.label = "Gate score";
+
+    const attemptsCell = el("td", item.iterations, "num");
+    attemptsCell.dataset.label = "Attempts";
 
     const when = el("td", ago(item.created_at));
+    when.dataset.label = "Submitted";
     when.dataset.created = item.created_at || "";
     when.title = fullDate(item.created_at);
     if (item.submitted_by) when.append(el("span", item.submitted_by, "file"));
 
-    row.append(statusCell, repoCell, scoreCell, el("td", item.iterations, "num"), when);
+    row.append(statusCell, repoCell, scoreCell, attemptsCell, when);
     row.addEventListener("click", (event) => {
       if (event.target.closest("a")) return; // the link navigates by itself (middle-click, copy link, ...)
       location.hash = target;
@@ -403,7 +424,7 @@ function resetDetail() {
   state.current = null;
   $("d-title").textContent = "Loading incident…";
   document.title = "Loading incident - OpsPulse";
-  for (const id of ["guide", "tests-card", "trail", "audit", "approval", "retry", "d-pr", "d-severity", "d-reason"]) {
+  for (const id of ["guide", "tests-card", "trail", "audit", "approval", "retry", "reopen", "d-pr", "d-severity", "d-reason"]) {
     $(id).hidden = true;
   }
   for (const id of ["d-evidence", "d-checks", "d-attempts", "d-patch", "d-uncertainties", "d-tests"]) {
@@ -519,6 +540,7 @@ function renderDetail(incident) {
   $("d-error").textContent = incident.error_message || "";
 
   $("retry").hidden = incident.status !== "failed";
+  $("reopen").hidden = incident.status !== "pr_failed";
   renderAsk(incident);
   renderTests(analysis);
   loadGuidance(incident);
@@ -708,7 +730,7 @@ function renderGuidance(guide) {
 // ------------------------------------------------------------------ test evidence (sandbox + reproduction)
 
 const SANDBOX_TONE = {
-  fixes_failing_tests: "s-ok", no_regression: "s-ok", regression: "s-bad", still_failing: "s-warn",
+  fixes_failing_tests: "s-ok", partly_fixed: "s-warn", no_regression: "s-ok", regression: "s-bad", still_failing: "s-warn",
   reproduced_and_fixed: "s-ok", reproduced_not_fixed: "s-bad", not_reproduced: "s-warn", fails_for_another_reason: "s-warn",
 };
 
@@ -963,6 +985,23 @@ async function retry() {
   }
 }
 
+async function reopenApproval() {
+  const incident = state.current;
+  if (!incident) return;
+  $("reopen").disabled = true;
+  try {
+    const updated = await api(`/incidents/${encodeURIComponent(incident.incident_id)}/reopen-approval`, { method: "POST" });
+    if (!state.current || state.current.incident_id !== incident.incident_id) return;
+    state.current = updated;
+    renderDetail(updated);
+    toast("Re-opened: a reviewer decides again; nothing was sent to GitHub");
+  } catch (error) {
+    toast(error.message);
+  } finally {
+    $("reopen").disabled = false;
+  }
+}
+
 function confirmApproval(incident, pending) {
   const dialog = $("confirm");
   if (typeof dialog.showModal !== "function") {
@@ -1056,13 +1095,53 @@ function applyQueryOptions() {
   if (diffMode === "split" || diffMode === "unified") store("local", DIFF_STORAGE, diffMode);
 }
 
+/** The decision card follows the pointer by a few degrees. Skipped for reduced motion, touch, and while typing. */
+function initTilt() {
+  const calm = matchMedia("(prefers-reduced-motion: reduce)").matches || matchMedia("(pointer: coarse)").matches;
+  const card = $("approval");
+  if (calm || !card) return;
+  let frame = 0;
+  const reset = () => { card.style.setProperty("--rx", "0deg"); card.style.setProperty("--ry", "0deg"); };
+  card.addEventListener("pointermove", (event) => {
+    if (frame || card.matches(":focus-within")) return;
+    frame = requestAnimationFrame(() => {
+      frame = 0;
+      const box = card.getBoundingClientRect();
+      const x = (event.clientX - box.left) / box.width - 0.5;
+      const y = (event.clientY - box.top) / box.height - 0.5;
+      card.style.setProperty("--ry", `${(x * 4).toFixed(2)}deg`);
+      card.style.setProperty("--rx", `${(-y * 4).toFixed(2)}deg`);
+    });
+  });
+  card.addEventListener("pointerleave", reset);
+  card.addEventListener("focusin", reset);
+}
+
+/** The first-run plate stack leans toward the pointer. Same rules as the tilt: not for reduced motion or touch. */
+function initStage() {
+  const calm = matchMedia("(prefers-reduced-motion: reduce)").matches || matchMedia("(pointer: coarse)").matches;
+  const stage = document.querySelector(".stage3d");
+  if (calm || !stage) return;
+  let frame = 0;
+  document.addEventListener("pointermove", (event) => {
+    if (frame || $("key-help").hidden) return;
+    frame = requestAnimationFrame(() => {
+      frame = 0;
+      stage.style.setProperty("--sx", `${((event.clientX / innerWidth - 0.5) * 36).toFixed(1)}deg`);
+      stage.style.setProperty("--sy", `${(-(event.clientY / innerHeight - 0.5) * 24).toFixed(1)}deg`);
+    });
+  });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
-  applyTheme(store("local", THEME_STORAGE) || "auto");
+  initTilt();
+  initStage();
+  applyTheme(store("local", THEME_STORAGE) || "dark");
   applyQueryOptions();
   $("theme").addEventListener("click", cycleTheme);
   $("key-form").addEventListener("submit", (event) => {
     event.preventDefault();
-    setKey($("api-key").value.trim());
+    setKey(U.cleanApiKey($("api-key").value));
     $("api-key").value = "";
     route();
   });
@@ -1109,6 +1188,7 @@ document.addEventListener("DOMContentLoaded", () => {
   $("approve").addEventListener("click", () => decide("approve"));
   $("reject").addEventListener("click", () => decide("reject"));
   $("retry").addEventListener("click", retry);
+  $("reopen").addEventListener("click", reopenApproval);
   $("ask-clear").addEventListener("click", clearConversation);
   $("ask-form").addEventListener("submit", (event) => {
     event.preventDefault();

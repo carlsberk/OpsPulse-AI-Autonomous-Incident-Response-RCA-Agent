@@ -81,6 +81,17 @@ def test_console_has_the_confirmation_dialog_and_live_regions():
     assert 'id="approve"' in html and 'id="confirm-ok"' in html
 
 
+def test_first_run_guidance_and_key_cleaning_are_wired():
+    """A first visit says what to do (not a red "Invalid key"), a refused key says what to check, and a pasted line is
+    reduced to the key by the same pure helper the unit tests cover."""
+    script = (STATIC_DIR / "app.js").read_text(encoding="utf-8")
+    page = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    assert "U.cleanApiKey(" in script
+    assert 'id="key-help"' in page and "make_api_key" in page
+    assert "Paste your API key in the box at the top" in script
+    assert "did not accept this key" in script
+
+
 def test_console_script_is_syntactically_valid():
     import shutil
     import subprocess
@@ -235,3 +246,72 @@ def test_console_queue_card_is_wired_and_uses_only_text_nodes():
     block = source[source.index("function renderQueueCard") : source.index("function renderRows")]
     assert "U.queueSummary" in block and "U.duration" in block
     assert "innerHTML" not in block and "insertAdjacentHTML" not in block
+
+
+def test_stacked_list_cells_carry_their_own_labels_and_touch_targets_are_large():
+    """Below 760 px the header row is hidden: values that are not self-explanatory ("1", "just now") need a label,
+    and on touch devices the secondary controls need 44 px targets, not only the primary buttons."""
+    script = (STATIC_DIR / "app.js").read_text(encoding="utf-8")
+    styles = (STATIC_DIR / "styles.css").read_text(encoding="utf-8")
+    for label in ("Gate score", "Attempts", "Submitted"):
+        assert f'dataset.label = "{label}"' in script
+    narrow = styles[styles.index("@media (max-width: 760px)") :]
+    assert "td[data-label]::before" in narrow and "attr(data-label)" in narrow
+    start = styles.index("@media (pointer: coarse)")
+    coarse = styles[start : styles.index("\n}\n", start)]
+    for selector in (".btn.tiny", ".seg-btn", ".icon-btn", ".gate summary"):
+        assert selector in coarse
+
+
+def _outside_blocks(css: str, marker: str) -> str:
+    """The stylesheet with every `@media ...marker... { ... }` block removed (brace matching, nesting aware)."""
+    out, i = [], 0
+    while True:
+        j = css.find(marker, i)
+        if j < 0:
+            out.append(css[i:])
+            return "".join(out)
+        start = css.rfind("@media", 0, j)
+        out.append(css[i:start])
+        depth, k = 0, css.index("{", j)
+        while True:
+            depth += css[k] == "{"
+            depth -= css[k] == "}"
+            k += 1
+            if depth == 0:
+                break
+        i = k
+
+
+def test_all_motion_sits_inside_the_no_preference_query_and_dark_is_the_default():
+    """Anyone who asked their system for less motion gets none, and a first visit is dark (the stored choice wins).
+
+    Two older animations (toast, skeleton shimmer) live outside the query; the `reduce` block switches both off.
+    Anything else that animates must be inside `prefers-reduced-motion: no-preference`."""
+    styles = (STATIC_DIR / "styles.css").read_text(encoding="utf-8")
+    still = _outside_blocks(styles, "prefers-reduced-motion: no-preference")
+    animated = {
+        selector.strip().split("}")[-1].strip()
+        for selector in re.findall(r"([^{}]+)\{[^{}]*animation:\s*(?!none)\S", still)
+    }
+    assert animated == {".toast", ".skeleton td > span"}, animated
+    reduce = styles[styles.index("@media (prefers-reduced-motion: reduce)") :]
+    assert ".skeleton td > span, .toast { animation: none; }" in reduce
+    keyframes_outside = re.findall(r"@keyframes ([\w-]+)", still)
+    assert set(keyframes_outside) == {"toast-in", "shimmer"}, keyframes_outside
+    page = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    script = (STATIC_DIR / "app.js").read_text(encoding="utf-8")
+    assert '<html lang="en" data-theme="dark">' in page
+    assert script.count('store("local", THEME_STORAGE) || "dark"') == 2
+    assert 'store("local", THEME_STORAGE, next);' in script  # "auto" is stored, so choosing it survives a reload
+
+
+def test_a_failed_pr_can_be_reopened_from_the_console_and_the_button_is_hidden_otherwise():
+    html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    script = (STATIC_DIR / "app.js").read_text(encoding="utf-8")
+    assert re.search(r'<button[^>]*id="reopen"[^>]*\bhidden\b', html)
+    assert '$("reopen").hidden = incident.status !== "pr_failed"' in script
+    reset = script.split("function resetDetail()", 1)[1].split("\n}\n", 1)[0]
+    assert '"reopen"' in reset  # hidden while another incident loads
+    assert "/reopen-approval" in script and 'method: "POST"' in script
+    assert '$("reopen").addEventListener("click", reopenApproval)' in script

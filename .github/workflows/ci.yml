@@ -108,6 +108,30 @@ jobs:
       - name: Unit tests
         run: pytest -q
 
+  macos:
+    # The developer machine is often a Mac: this caught nothing yet, but the demo scripts already failed there once
+    # (symlinked temp directories print `/private/var/...`) while every Linux job was green.
+    name: Unit tests on macOS
+    runs-on: macos-15
+    timeout-minutes: 20
+    env:
+      DATABASE_URL: sqlite://
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements*.txt
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Unit tests
+        run: pytest -q
+      - name: End-to-end flow (the script that broke on macOS)
+        run: python -m scripts.e2e_flow
+
   postgres:
     name: Migrations and tests on PostgreSQL 16
     runs-on: ubuntu-24.04
@@ -188,7 +212,9 @@ jobs:
           cache: pip
           cache-dependency-path: requirements*.txt
       - run: pip install -r requirements-dev.txt
-      - name: Real fix, regression, missing test runner and five escape attempts (network, writes, root, secrets, fork bomb)
+      - name: Build the image that runs third-party tests for the real-repository evaluation
+        run: docker build -t opspulse-history-tests -f evals/history_tests.Dockerfile evals
+      - name: Real fix, regression, missing test runner and five escape attempts (network, writes, root, secrets, fork bomb), plus the history builder in its container
         env:
           RUN_DOCKER_TESTS: "1"
           DATABASE_URL: sqlite://

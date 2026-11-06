@@ -298,25 +298,41 @@ def cmd_build(args: argparse.Namespace) -> int:
 
 
 def cmd_verify(args: argparse.Namespace) -> int:
+    """Run each run's patch against the real regression test.
+
+    Accepts a `run_rca` report (`results`) or an `evals.repro_eval` report (`rows`); for the latter the model's own
+    reproduction-test outcome is printed next to the real verdict and tallied against it.
+    """
     metas = json.loads(args.dataset.with_suffix(".meta.json").read_text())
     repo_of = {c["id"]: c["repo_name"] for c in json.loads(args.dataset.read_text())["cases"]}
     repos = dict(spec.split("=", 1) for spec in args.repo or [])
     report = json.loads(args.report.read_text())
+    runs = report.get("results") or report.get("rows") or []
     counts: dict[str, int] = {}
-    for run in report["results"]:
-        meta = metas.get(run["case_id"])
+    paired: dict[str, int] = {}
+    for run in runs:
+        case_id = run.get("case_id")
+        meta = metas.get(case_id)
         if meta is None:
             continue
-        repo = pathlib.Path(repos.get(repo_of[run["case_id"]], args.repo_dir or ""))
-        patch = run.get("patch") or ""
+        repo = pathlib.Path(repos.get(repo_of[case_id], args.repo_dir or ""))
+        patch = run.get("patch_text") if "patch_text" in run else run.get("patch")
+        patch = patch if isinstance(patch, str) else ""
         try:
             verdict, detail = verify_patch(repo, args.python, meta, patch) if patch else ("no_patch", "no patch")
         except RuntimeError as exc:  # e.g. no clone given for this case's repository
             verdict, detail = "not_checked", str(exc)[:120]
         counts[verdict] = counts.get(verdict, 0) + 1
-        accepted = run.get("workflow_status") == "accepted"
-        print(f"  {run['case_id']}: {verdict} (gate {'accepted' if accepted else 'did not accept'}) - {detail}")
+        if "outcome" in run:  # repro_eval row: the model's own test against the real one
+            own = run["outcome"]
+            paired[f"{own} / {verdict}"] = paired.get(f"{own} / {verdict}", 0) + 1
+            print(f"  {case_id}: own test {own}; real test {verdict} - {detail}")
+        else:
+            accepted = run.get("workflow_status") == "accepted"
+            print(f"  {case_id}: {verdict} (gate {'accepted' if accepted else 'did not accept'}) - {detail}")
     print("\nsummary:", json.dumps(counts, sort_keys=True))
+    if paired:
+        print("model's own test / real test:", json.dumps(paired, sort_keys=True))
     return 0
 
 

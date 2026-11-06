@@ -5,6 +5,71 @@ All notable changes are listed here. Versions of behaviour-critical components a
 
 ## [Unreleased]
 
+### Documentation
+- RUNBOOK: a table of the sandbox verdicts (what each means and what the reviewer does), including `partly_fixed` and why the
+  default `SANDBOX_COMMAND` has no `-x`.
+
+### Added
+- Console: a "Re-open for approval" button on `pr_failed` incidents, calling `POST /incidents/{id}/reopen-approval`. The incident
+  returns to awaiting approval; nothing is sent to GitHub until a reviewer decides again.
+
+### Fixed
+- `test_mock_run_is_deterministic_and_exercises_the_gate` compared two runs including each attempt's measured `latency_ms`, so it
+  failed on a slow macOS CI runner when one run took 1 ms and the other 0 ms. It now ignores measured time (`wall_ms`, `latency_ms`)
+  and still compares everything else. Test-only change; the harness was already deterministic.
+
+### Fixed
+- Sandbox: a repository whose suite already had a failing test reported "tests fail both before and after the patch" even when the patch
+  fixed the failure it targeted, and could not see a patch that broke other tests. When both runs fail, the sandbox now compares the
+  failing test ids from pytest's summary: new failures are a `regression` (and block the PR proposal like any regression), fewer
+  failures are `partly_fixed`, identical failures stay `still_failing`. Found in the pilot, where one scenario's patch was
+  judged against a pre-existing failing test. The default `SANDBOX_COMMAND` no longer passes `-x` (stop at the first failure):
+  with it both runs stopped at the same old failure and never reached the targeted test; a full run is slower, bounded by `SANDBOX_TIMEOUT_SECONDS`.
+
+### Added
+- `POST /incidents/{id}/reopen-approval` (reviewer/admin): a `pr_failed` incident used to be a dead end (the approval was spent,
+  re-submitting re-ran the whole analysis). It now returns to `awaiting_approval` with a new approval for the same stored patch.
+  Nothing is sent to GitHub by the call; a reviewer decides again under the current configuration and the four-eyes rule.
+
+### Fixed
+- `pilot_check --online` said "token can push" for a fine-grained token that could only read: it trusted the repository's
+  `permissions.push` flag, which describes the account. It now sends two write probes that cannot create anything (a branch with an
+  impossible commit id, a pull request with no title; GitHub checks permission before validating, so 422 means allowed and 403 means
+  denied) and names the missing permission. Found when a real pilot approval failed with `github_permission`.
+
+### Fixed
+- Console, narrow screens: the incident list hides its header row below 760 px and stacked the cells, so a bare "1" or "just now"
+  had no meaning. Gate score, attempts and submitted now carry their own label.
+- Console, touch devices: the evidence filters, patch actions (side by side, copy, download), copy-id, section summaries, the
+  brand link and the theme button were 24-29 px tall; they are 44 px on `pointer: coarse`.
+
+### Added
+- CI: a macOS job (`macos-15`, Python 3.11) runs the unit tests and `scripts.e2e_flow`; the demo scripts had failed on a Mac while
+  every Linux job was green. The runner-label test now accepts a pinned `macos-NN` next to `ubuntu-NN.NN`.
+
+### Documentation
+- CONTRIBUTING: how to set up Python 3.11 with uv (macOS ships 3.9), how to run Docker Desktop's CLI and the opt-in Docker tests, and
+  three macOS gotchas (symlinked temp directories, zsh word splitting, keeping the Groq key out of command lines).
+
+### Documentation
+- `docs/MEASUREMENTS.md`: every measured number by version with its 95 % Wilson interval, led by the finding that a passing
+  gate does not mean a correct fix. Added to the docs site.
+
+### Added
+- `evals.repro_eval` keeps each run's patch, and `history_real_repo verify` accepts its report: every patch is run against
+  the real regression test and paired with the model's own reproduction-test outcome, to measure whether the model's test
+  predicts the real one.
+
+### Added
+- First measurement on 20 real bug-fix cases from 6 libraries (`evals/results/history-real20-*`): of 27 gate-accepted runs, 18 passed the real
+  regression test (67 %, interval 48-81 %). It also shows the run-to-run noise is larger than the differences between prompt/gate
+  versions measured earlier on 5 cases, which `docs/LIMITATIONS.md` now says.
+
+### Changed
+- `pilot_check`: a missing sandbox image now says how to build a starting one, and a bare `python:*` image (no pytest) gets a
+  warning instead of a green "present".
+- CI: the Docker job also builds `opspulse-history-tests`, so the history builder's container test runs there instead of skipping.
+
 ### Changed
 - `evals.history_real_repo` runs a repository's tests in a Docker container by default (no network, read-only root, no
   capabilities, unprivileged user, memory/CPU/process/time caps) instead of on the host. Build the image with
@@ -29,6 +94,33 @@ All notable changes are listed here. Versions of behaviour-critical components a
   - Offline: 5 mock datasets show no regression against the committed baselines. Live, on the 5 real cases: on the four
     cases that had verdicts before, 2 of 9 accepted patches pass the real test against 2 of 10 under v7.1, so
     **no measured improvement** (`evals/results/history-real-*2026-10-27*`).
+
+### Fixed
+- Unit tests did not pin `SANDBOX_ENABLED`, so a developer's local `.env` with the sandbox on made
+  `test_a_forged_sandbox_key_from_the_model_is_ignored` fail. The sandbox settings are pinned like every other setting.
+
+### Changed
+- Console, first run: a first visit shows a neutral "Not connected" and says what to do instead of a red "Invalid key"; a refused
+  key says what to check; a short help line explains who issues keys. A pasted line (`name (role): key`), quotes or a trailing
+  newline are reduced to the key itself (`cleanApiKey`, unit-tested).
+
+### Changed
+- **Console redesign: an incident ledger instead of a generic SaaS dashboard.** Warm paper and ink (dark theme: warm near-black),
+  one rust accent used sparingly, primary actions in ink rather than a brand colour, square corners and hairline rules, a serif for
+  headings and monospace for facts (ids, files, scores, statuses), square status stamps instead of rounded pills, a new favicon and
+  logotype. Only `styles.css` and the favicon changed (no markup or script change, the CSP rules and tests are unchanged); contrast
+  was re-measured over every visible text element in both themes (no failures) and the README screenshots were regenerated.
+- **Console depth and motion** (CSS 3D, no libraries, no new network requests): staggered perspective entrances for the list rows and
+  detail cards, a tactile ink primary button, status badges that land like a stamp, score bars that fill, a decision card that
+  follows the pointer by up to 2 degrees, 3D toasts and dialog, and a slowly turning stack of plates (the layers of evidence) on
+  the first-run screen. Everything that moves sits inside `prefers-reduced-motion: no-preference`; the tilt is also off on touch
+  and while typing; entrances play on a fresh load only, never on a search keystroke or a filter change.
+- **Console, night mode by default.** A first visit is dark (the theme button still offers automatic and light; the choice, including
+  automatic, is remembered). Deeper near-black palette with an ember accent and a glow, a faint blueprint grid and a slow ember
+  drifting behind the page; a pulsing connection marker, a blinking marker on anything awaiting approval, a beacon on the logo, a
+  shine sweep on primary buttons, ordered entrances for evidence and timeline, a one-time flash on added and removed diff lines,
+  and a first-run plate stack that leans toward the pointer. A new test fails if any animation is added outside
+  `prefers-reduced-motion: no-preference`. Contrast re-measured in both themes: no failures.
 
 ## [1.9.0] - 2026-10-27
 

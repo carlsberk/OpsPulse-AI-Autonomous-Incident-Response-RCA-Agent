@@ -264,3 +264,18 @@ test("queueSummary: an incident that appears twice (overlapping pages) counts on
   assert.deepEqual(summary.awaiting.ids, ["a"]);
   assert.equal(summary.awaiting.count, 1);
 });
+
+test("cleanApiKey: a pasted line, quotes and whitespace all reduce to the key itself", () => {
+  const key = "AbC_123-xyz";
+  assert.equal(U.cleanApiKey(key), key);
+  assert.equal(U.cleanApiKey(`  ${key}\n`), key);
+  assert.equal(U.cleanApiKey(`"${key}"`), key);
+  assert.equal(U.cleanApiKey(`'${key}',`), key);
+  assert.equal(U.cleanApiKey(`pilot-reviewer (reviewer): ${key}`), key);
+  assert.equal(U.cleanApiKey(`X-API-Key: ${key}`), key);
+  assert.equal(U.cleanApiKey("`" + key + "`"), key);
+  assert.equal(U.cleanApiKey(""), "");
+  assert.equal(U.cleanApiKey("   \n\t "), "");
+  assert.equal(U.cleanApiKey(null), "");
+  assert.equal(U.cleanApiKey(undefined), "");
+});

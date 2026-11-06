@@ -52,6 +52,8 @@ def evaluate_case(case: EvalCase) -> dict[str, Any]:
         "case_id": case.id,
         "workflow_status": final["workflow_status"],
         "patch": bool(patch),
+        "patch_text": patch
+        or "",  # lets `history_real_repo verify` run the same patch against the real regression test
         "wall_ms": wall_ms,
         "reproduction_test": test,
     }

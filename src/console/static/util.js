@@ -306,8 +306,17 @@
     };
   }
 
+  /** The API key as it should be sent, from whatever was pasted. People paste the whole line they copied
+   *  ("reviewer (reviewer): <key>", "X-API-Key: <key>"), wrap the key in quotes or leave a trailing newline; a key
+   *  never contains whitespace, so the last whitespace-separated word is the key. Garbage in, empty string out. */
+  function cleanApiKey(raw) {
+    const words = String(raw === null || raw === undefined ? "" : raw).trim().split(/\s+/).filter(Boolean);
+    if (words.length === 0) return "";
+    return words[words.length - 1].replace(/^["'`]+|["'`,;]+$/g, "");
+  }
+
   return {
-    inlineDiff, annotateDiff, splitDiff, queuePosition, queueSummary, duration, STALE_MS, SORT_KEYS, DEFAULT_SORT, STATUS_OPTIONS,
+    cleanApiKey, inlineDiff, annotateDiff, splitDiff, queuePosition, queueSummary, duration, STALE_MS, SORT_KEYS, DEFAULT_SORT, STATUS_OPTIONS,
     humanize, ago, toneForScore, plainMarkup, filterItems, sortItems, statusCounts, parseDiff, readState, writeState,
   };
 });

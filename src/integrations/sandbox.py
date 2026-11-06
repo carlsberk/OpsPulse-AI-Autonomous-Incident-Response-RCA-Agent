@@ -40,6 +40,7 @@ Snapshot = Callable[[str, Path, int], str]
 class SandboxRun:
     exit_code: int | None  # None: timed out
     output_tail: str
+    failed: tuple[str, ...] = ()  # ids of failing tests from pytest's summary, parsed from the full output
 
 
 @dataclass(frozen=True)
@@ -55,7 +56,7 @@ class ReproductionReport:
 
 @dataclass(frozen=True)
 class SandboxReport:
-    # fixes_failing_tests | no_regression | still_failing | regression | timeout | error | unavailable
+    # fixes_failing_tests | partly_fixed | no_regression | still_failing | regression | timeout | error | unavailable
     status: str
     summary: str
     commit_sha: str | None = None
@@ -99,7 +100,16 @@ def _run(checkout: Path, runner: Runner, command: str | None = None) -> SandboxR
         build_docker_command(f"opspulse-sandbox-{uuid.uuid4().hex[:12]}", checkout, command),
         settings.sandbox_timeout_seconds,
     )
-    return SandboxRun(code, redact(output)[-OUTPUT_TAIL_CHARS:])
+    return SandboxRun(code, redact(output)[-OUTPUT_TAIL_CHARS:], failed_tests(output))
+
+
+_FAILED_LINE = re.compile(r"^(?:FAILED|ERROR) (\S+)", re.MULTILINE)
+MAX_FAILED_IDS = 200
+
+
+def failed_tests(output: str) -> tuple[str, ...]:
+    """Ids of the tests pytest lists as FAILED or ERROR in its short summary (sorted, de-duplicated, capped)."""
+    return tuple(sorted(set(_FAILED_LINE.findall(output)))[:MAX_FAILED_IDS])
 
 
 ENVIRONMENT_MARKERS = ("No module named", "command not found", ": not found", "executable file not found")
@@ -129,7 +139,26 @@ def classify(before: SandboxRun, after: SandboxRun) -> tuple[str, str]:
         return "regression", "tests passed before the patch and fail after it"
     if before.exit_code == 0:
         return "no_regression", "tests pass both before and after the patch"
-    return "still_failing", "tests fail both before and after the patch"
+    return _compare_failures(before, after)
+
+
+def _compare_failures(before: SandboxRun, after: SandboxRun) -> tuple[str, str]:
+    """Both runs fail. A suite that already had a failing test must not hide what the patch did: compare which tests
+    fail. Without test ids in both outputs (another test runner) the comparison is not possible."""
+    if not before.failed or not after.failed:
+        return "still_failing", "tests fail both before and after the patch"
+    broken = sorted(set(after.failed) - set(before.failed))
+    fixed = sorted(set(before.failed) - set(after.failed))
+    if broken:
+        return "regression", f"{len(broken)} test(s) pass before the patch and fail after it: {', '.join(broken[:3])}"
+    if fixed:
+        remaining = len(after.failed)
+        return (
+            "partly_fixed",
+            f"{len(fixed)} failing test(s) pass after the patch; {remaining} still fail "
+            "(they also failed before the patch)",
+        )
+    return "still_failing", "the same tests fail before and after the patch"
 
 
 def _raised(error_name: str, output: str) -> bool:

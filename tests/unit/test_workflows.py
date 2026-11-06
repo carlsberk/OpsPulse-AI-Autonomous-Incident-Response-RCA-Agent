@@ -51,10 +51,10 @@ def test_test_workflows_do_not_keep_the_checkout_token():
 
 
 def test_runner_image_is_a_pinned_version_not_latest():
-    """`ubuntu-latest` moves on GitHub's own schedule and changes Python, Docker and tooling under every job."""
+    """`ubuntu-latest` / `macos-latest` move on GitHub's own schedule and change Python and tooling under every job."""
     for path in WORKFLOWS:
         document = yaml.safe_load(path.read_text(encoding="utf-8"))
         for name, job in document["jobs"].items():
-            assert re.fullmatch(r"ubuntu-\d\d\.\d\d", str(job["runs-on"])), (
+            assert re.fullmatch(r"ubuntu-\d\d\.\d\d|macos-\d\d", str(job["runs-on"])), (
                 f"{path.name}:{name} runs on {job['runs-on']}"
             )

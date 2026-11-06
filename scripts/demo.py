@@ -3,6 +3,8 @@
     python -m scripts.demo            # scripted model reply, clearly labelled MOCK
     python -m scripts.demo --live     # real Groq model (needs GROQ_API_KEY)
 
+
+
 Steps: copy the service to a temp dir -> run its tests (expect a failure) -> reproduce the crash in a
 subprocess and capture the real traceback -> run the OpsPulse graph on it -> if the quality gate accepts the
 analysis, apply the patch to the temp copy (pure-Python diff application, never `exec`) -> run the tests again

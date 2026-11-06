@@ -9,6 +9,38 @@ pip install -r requirements-dev.txt
 pre-commit install
 ```
 
+### Python 3.11 or newer is required
+
+The project needs Python 3.11+ (`pyproject.toml`). macOS ships 3.9 as `python3`, so a plain `python3 -m venv` fails in
+confusing ways. The least friction is [uv](https://docs.astral.sh/uv/), which installs the interpreter for you:
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh        # installs to ~/.local/bin; add it to PATH
+uv venv --python 3.11 .venv
+uv pip install --python .venv/bin/python -r requirements.txt -r requirements-dev.txt
+.venv/bin/python -m pytest -q
+```
+
+### Docker (optional, needed for the sandbox and the real-repository evaluation)
+
+The sandbox, the opt-in Docker tests and `evals.history_real_repo` need a running Docker daemon.
+
+- Docker Desktop installs the CLI inside the app: if `docker` is not found, either enable the system CLI tools in Docker
+  Desktop (Settings, Advanced) or put `/Applications/Docker.app/Contents/Resources/bin` on `PATH`.
+- Start Docker Desktop and wait for it to report that the engine is running; until then `docker` commands hang or fail
+  to connect to `~/.docker/run/docker.sock`.
+- Opt-in tests: `RUN_DOCKER_TESTS=1 pytest tests/integration/test_sandbox_docker.py`.
+- The real-repository evaluation runs third-party tests in a container; build its image once:
+  `docker build -t opspulse-history-tests -f evals/history_tests.Dockerfile evals`.
+
+### Gotchas seen on macOS
+
+- Temporary directories are symlinks (`/var/...` resolves to `/private/var/...`). A tool that prints resolved paths while
+  your code compares against the unresolved one will not match; resolve both (`Path.resolve()`).
+- In zsh an unquoted variable is not split into words (`$ARGS` stays one argument); use an array, `"${args[@]}"`.
+- Running a live evaluation needs `GROQ_API_KEY`. Keep it in a private file outside the repository (for example
+  `~/.opspulse.env`, mode 600) and load it only for the command that needs it; never put it in a command line or a commit.
+
 ## Before opening a pull request
 
 Run the same checks as CI:

@@ -198,3 +198,51 @@ def test_a_forged_sandbox_key_from_the_model_is_ignored(client, fake_llm, source
     fake_llm([forged])
     body = client.post("/webhook/incident?wait=true", json=incident_payload(), headers=API_HEADERS).json()
     assert "sandbox" not in (body["analysis"] or {})
+
+
+# ------------------------------------------------------------------ a suite that already had a failing test
+
+
+PRE_EXISTING = "FAILED tests/test_old.py::test_legacy - AssertionError"
+TARGETED = "FAILED tests/test_stock.py::test_reserve_unknown - TypeError"
+
+
+def failing(*lines):
+    from src.integrations.sandbox import failed_tests
+
+    text = "\n".join(lines)
+    return SandboxRun(1, text, failed_tests(text))
+
+
+def test_failing_test_ids_are_read_from_pytests_summary():
+    from src.integrations.sandbox import failed_tests
+
+    out = f"noise\n{PRE_EXISTING}\nERROR tests/test_x.py::test_y\n{PRE_EXISTING}\n2 failed"
+    assert failed_tests(out) == ("tests/test_old.py::test_legacy", "tests/test_x.py::test_y")
+    assert failed_tests("3 passed") == ()
+
+
+def test_a_patch_that_fixes_its_target_is_not_hidden_by_an_old_failure():
+    status, summary = classify(failing(PRE_EXISTING, TARGETED), failing(PRE_EXISTING))
+    assert status == "partly_fixed" and "1 failing test(s) pass" in summary and "1 still fail" in summary
+
+
+def test_a_patch_that_breaks_another_test_is_a_regression_even_though_the_suite_was_red():
+    broken = "FAILED tests/test_other.py::test_new_break - AssertionError"
+    status, summary = classify(failing(PRE_EXISTING), failing(PRE_EXISTING, broken))
+    assert status == "regression" and "tests/test_other.py::test_new_break" in summary
+
+
+def test_the_same_failures_before_and_after_stay_still_failing():
+    assert classify(failing(PRE_EXISTING), failing(PRE_EXISTING))[0] == "still_failing"
+
+
+def test_without_test_ids_the_old_behaviour_is_kept():
+    assert classify(ran(1, "boom"), failing(PRE_EXISTING))[0] == "still_failing"
+
+
+def test_the_default_command_does_not_stop_at_the_first_failure():
+    """With `-x` both runs stop at the same old failing test and never reach the one the patch targets."""
+    from src.config import Settings
+
+    assert "-x" not in Settings().sandbox_command.split()

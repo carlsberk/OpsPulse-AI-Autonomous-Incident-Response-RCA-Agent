@@ -31,6 +31,8 @@ os.environ.update(
         "ALLOW_UNAUTHENTICATED": "false",
         "ALLOWED_REPOSITORIES": "o/r",
         "ENABLE_GITHUB_REMEDIATION": "false",
+        "SANDBOX_ENABLED": "false",  # a local `.env` with the sandbox on must not change what the unit tests exercise
+        "SANDBOX_IMAGE": "python:3.11-slim",
         "QUALITY_THRESHOLD": "0.85",
         "MAX_ANALYSIS_ITERATIONS": "3",
         "MAX_PATCH_CHANGED_LINES": "40",
