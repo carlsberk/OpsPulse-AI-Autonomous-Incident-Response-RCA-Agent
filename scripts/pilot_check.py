@@ -269,8 +269,9 @@ def docker(cfg: Any, run: Callable[[list[str]], int] | None = None) -> list[Find
                 FAIL,
                 "docker",
                 f"image {cfg.sandbox_image} is not present locally: the sandbox has no network, build or pull it first "
-                "(it must contain pytest and your project's dependencies; a starting point is "
-                "`docker build -t opspulse-sandbox -f evals/history_tests.Dockerfile evals`)",
+                "(it must contain pytest and your project's dependencies; "
+                "`python -m scripts.build_sandbox_image owner/repo` builds one from the repository's own "
+                "dependency files)",
             )
         ]
     if cfg.sandbox_image.startswith("python:"):
@@ -279,10 +280,37 @@ def docker(cfg: Any, run: Callable[[list[str]], int] | None = None) -> list[Find
                 WARN,
                 "docker",
                 f"image {cfg.sandbox_image} is a bare Python image without pytest: every test run will report an "
-                "environment error. Build an image that has pytest and your dependencies and set SANDBOX_IMAGE",
+                "environment error. Build one with `python -m scripts.build_sandbox_image owner/repo` "
+                "and set SANDBOX_IMAGE",
             )
         ]
-    return [Finding(OK, "docker", f"daemon answers, image {cfg.sandbox_image} present")]
+    if (
+        run(
+            [
+                "docker",
+                "run",
+                "--rm",
+                "--network",
+                "none",
+                "--entrypoint",
+                "python",
+                cfg.sandbox_image,
+                "-m",
+                "pytest",
+                "--version",
+            ]
+        )
+        != 0
+    ):
+        return [
+            Finding(
+                WARN,
+                "docker",
+                f"image {cfg.sandbox_image} cannot run pytest: every test run will report an environment error "
+                "(`python -m scripts.build_sandbox_image owner/repo` builds a suitable image)",
+            )
+        ]
+    return [Finding(OK, "docker", f"daemon answers, image {cfg.sandbox_image} present and runs pytest")]
 
 
 def _run(argv: list[str]) -> int:

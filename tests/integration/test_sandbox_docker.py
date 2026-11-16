@@ -228,3 +228,27 @@ def test_history_builder_runs_a_repository_in_the_isolated_container(tmp_path):
     case, _ = built
     assert "IndexError" in case["error_message"] and "/srv/pkg/mod.py" in case["stack_trace"]
     assert "/tmp/" not in case["stack_trace"] and "/private/" not in case["stack_trace"]
+
+
+def test_an_image_built_by_the_builder_runs_a_repository_that_needs_a_dependency(tmp_path):
+    """`scripts.build_sandbox_image` reads the repository's dependency file, builds with network (wheels only), and the
+    resulting image runs that repository's tests with NO network: the case a bare python image reports as `error`."""
+    from scripts import build_sandbox_image
+
+    repo = tmp_path / "repo"
+    (repo / "tests").mkdir(parents=True)
+    (repo / "requirements.txt").write_text("attrs>=23\n")
+    (repo / "pkg.py").write_text("import attrs\n\n@attrs.define\nclass Item:\n    sku: str\n")
+    (repo / "tests" / "test_pkg.py").write_text(
+        "from pkg import Item\n\ndef test_item():\n    assert Item('a').sku == 'a'\n"
+    )
+    tag = "opspulse-sandbox-builder-test"
+    assert build_sandbox_image.build(repo, tag, "python:3.11-slim", binary_only=True) == 0
+    original = settings.sandbox_image
+    object.__setattr__(settings, "sandbox_image", tag)
+    try:
+        run = sandbox._run(repo, sandbox._docker_runner)
+    finally:
+        object.__setattr__(settings, "sandbox_image", original)
+        subprocess.run(["docker", "rmi", "-f", tag], capture_output=True, check=False)  # noqa: S603, S607
+    assert run.exit_code == 0, run.output_tail

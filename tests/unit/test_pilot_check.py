@@ -277,7 +277,7 @@ def test_a_bare_python_image_is_warned_about_because_it_has_no_pytest():
 def test_the_missing_image_message_says_how_to_build_one():
     codes = iter([0, 1])
     (finding,) = pilot_check.docker(_cfg(sandbox_enabled=True), run=lambda argv: next(codes))
-    assert "docker build -t opspulse-sandbox" in finding.message
+    assert "scripts.build_sandbox_image" in finding.message
 
 
 # ------------------------------------------------------------------ command line
@@ -291,3 +291,11 @@ def test_main_exit_code_follows_blockers(monkeypatch, capsys):
     assert "[FAIL] GITHUB_TOKEN" in out and SECRET_GROQ not in out
     monkeypatch.setattr("src.config.settings", _cfg(), raising=False)
     assert pilot_check.main([]) == 0
+
+
+def test_an_image_that_cannot_run_pytest_gets_a_warning_pointing_to_the_builder():
+    codes = iter([0, 0, 1])  # daemon answers, image present, `python -m pytest --version` fails
+    cfg = _cfg(sandbox_enabled=True, sandbox_image="opspulse-sandbox")
+    (finding,) = pilot_check.docker(cfg, run=lambda argv: next(codes))
+    assert finding.level == WARN and "cannot run pytest" in finding.message
+    assert "build_sandbox_image" in finding.message
