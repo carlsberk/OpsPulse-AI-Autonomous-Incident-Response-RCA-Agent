@@ -5,6 +5,14 @@ All notable changes are listed here. Versions of behaviour-critical components a
 
 ## [Unreleased]
 
+### Security
+- The Docker image now installs **`requirements.lock`**: every runtime package and its dependencies at an exact version with
+  SHA-256 hashes (`pip install --require-hashes --no-deps`). Before, the image installed version *ranges*, so two builds of
+  the same commit could contain different code, and a swapped or tampered package would not have been noticed. The lock is
+  generated for the image's Python (3.11) with `scripts/update_lock.sh`; `requirements.txt` still holds the allowed ranges
+  (and still drives Dependabot). New tests check that the lock has hashes and satisfies every declared range, and the
+  security workflow audits the locked versions with `pip-audit`. Dev and CI installs are unchanged.
+
 ### Changed
 - The README is now a **90-line front page**: what it is, a two-minute demo, how it works in six steps, why it is built this way, a
   minimal run-it-for-real block, a "where to read more" table and an honest-status paragraph. The rest moved, unchanged apart from

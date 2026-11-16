@@ -7,8 +7,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install -r requirements.txt
+# requirements.lock pins every package (and its dependencies) to an exact version with hashes, so two builds of the same
+# commit contain the same code and a tampered or swapped package fails the install. Refresh it with scripts/update_lock.sh.
+COPY requirements.lock .
+RUN pip install --require-hashes --no-deps -r requirements.lock
 
 COPY alembic.ini ./
 COPY migrations ./migrations
