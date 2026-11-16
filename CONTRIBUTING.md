@@ -21,6 +21,12 @@ uv pip install --python .venv/bin/python -r requirements.txt -r requirements-dev
 .venv/bin/python -m pytest -q
 ```
 
+### Changing runtime dependencies
+
+`requirements.txt` holds the allowed ranges; the Docker image installs `requirements.lock` (exact versions with hashes).
+After editing `requirements.txt`, or to pick up new releases, run `scripts/update_lock.sh`, commit the result and let CI
+rebuild the image. `tests/unit/test_requirements_lock.py` fails if the two files disagree.
+
 ### Docker (optional, needed for the sandbox and the real-repository evaluation)
 
 The sandbox, the opt-in Docker tests and `evals.history_real_repo` need a running Docker daemon.
