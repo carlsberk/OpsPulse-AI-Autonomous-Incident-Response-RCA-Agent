@@ -23,7 +23,7 @@ class Expected(BaseModel):
         default_factory=list,
         description="Other categories a careful reviewer would accept for this failure (a genuinely ambiguous label)",
     )
-    note: str = Field("", description="Why the label is what it is, when that is not obvious")
+    note: str = Field(default="", description="Why the label is what it is, when that is not obvious")
 
     @model_validator(mode="after")
     def _known_category(self) -> Expected:

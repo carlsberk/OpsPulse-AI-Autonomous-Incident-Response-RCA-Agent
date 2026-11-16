@@ -14,6 +14,7 @@ from collections.abc import Callable
 from typing import Any, cast
 
 from langchain_core.messages import AIMessage
+from langchain_core.runnables import Runnable
 
 from evals.dataset import EvalCase
 from src.agent.evaluation import EvaluationInput, verify_affected_files, verify_evidence
@@ -185,6 +186,11 @@ class ScriptedModel:
         reply = self.replies[min(self.calls, len(self.replies) - 1)]
         self.calls += 1
         return AIMessage(content=reply)
+
+
+def scripted_factory(model: ScriptedModel) -> ModelFactory:
+    """A `ModelFactory` that always returns the scripted stand-in (it only needs `invoke`, not the Runnable API)."""
+    return lambda temperature: cast("Runnable[Any, Any]", model)
 
 
 # ------------------------------------------------------------------ run one case

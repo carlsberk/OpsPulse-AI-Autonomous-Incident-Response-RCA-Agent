@@ -2,8 +2,33 @@
 
 import pathlib
 import re
+from html.parser import HTMLParser
 
 from src.console import STATIC_DIR
+
+
+class _HtmlInventory(HTMLParser):
+    """Counts what the CSP forbids: scripts without `src`, `style` attributes and `on*` event-handler attributes."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.inline_scripts = 0
+        self.style_attributes: list[str] = []
+        self.event_handlers: list[str] = []
+
+    def handle_starttag(self, tag, attrs):
+        names = {name for name, _ in attrs}
+        if tag == "script" and "src" not in names:
+            self.inline_scripts += 1
+        if "style" in names:
+            self.style_attributes.append(tag)
+        self.event_handlers.extend(f"{tag}[{name}]" for name in names if name.startswith("on"))
+
+
+def test_the_html_inventory_sees_what_a_regex_would_miss():
+    page = _HtmlInventory()
+    page.feed('<SCRIPT >x</script ><p STYLE=a onclick="b"></p><script src="/a.js"></script>')
+    assert page.inline_scripts == 1 and page.style_attributes == ["p"] and page.event_handlers == ["p[onclick]"]
 
 
 def test_console_page_has_strict_csp_and_security_headers(client):
@@ -37,9 +62,11 @@ def test_api_responses_are_never_cacheable(client):
 
 def test_console_has_no_inline_script_or_unsafe_dom_sinks():
     html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
-    assert not re.search(r"<script(?![^>]*\bsrc=)[^>]*>", html), "inline <script> would violate the CSP"
-    assert not re.search(r"\sstyle\s*=", html), "inline styles would violate the CSP"
-    assert not re.search(r"\son[a-z]+\s*=", html), "inline event handlers would violate the CSP"
+    page = _HtmlInventory()  # a real parser: a regex over HTML misses forms such as `</script >` or odd quoting
+    page.feed(html)
+    assert page.inline_scripts == 0, "inline <script> would violate the CSP"
+    assert not page.style_attributes, "inline styles would violate the CSP"
+    assert not page.event_handlers, "inline event handlers would violate the CSP"
     for name in ("app.js", "util.js"):
         source = pathlib.Path(STATIC_DIR / name).read_text(encoding="utf-8")
         js = "\n".join(line for line in source.splitlines() if not line.strip().startswith("//"))  # ignore comments

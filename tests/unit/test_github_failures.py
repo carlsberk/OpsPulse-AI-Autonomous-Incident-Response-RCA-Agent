@@ -1,8 +1,11 @@
 """GitHub failure paths: error classification, cleanup after a half-finished PR, plan fallbacks, odd targets."""
 
+import io
+import tarfile
 from types import SimpleNamespace
 
 import pytest
+import requests
 from github import GithubException, RateLimitExceededException
 
 from src.errors import ErrorCategory
@@ -176,3 +179,85 @@ def test_fetch_treats_directories_and_empty_files_as_not_found(monkeypatch, set_
     empty = TrackingRepo({"src/app.py": ""})
     monkeypatch.setattr(github, "get_repo", lambda name: empty)
     assert fetch_source_context("o/r", "/app/src/app.py", 3) is None
+
+
+# --- download_repository_snapshot: the archive comes from a repository we do not control -------------------------
+
+
+class _Response:
+    def __init__(self, chunks=(), error=None):
+        self._chunks, self._error = chunks, error
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def raise_for_status(self):
+        if self._error:
+            raise self._error
+
+    def iter_content(self, size):
+        yield from self._chunks
+
+
+def _tarball(files):
+    buffer = io.BytesIO()
+    with tarfile.open(fileobj=buffer, mode="w:gz") as tar:
+        for name, data in files.items():
+            info = tarfile.TarInfo(f"o-r-sha/{name}")
+            info.size = len(data)
+            tar.addfile(info, io.BytesIO(data))
+    return buffer.getvalue()
+
+
+def _snapshot_repo(monkeypatch, response, branch_error=None):
+    class Repo:
+        default_branch = "main"
+
+        def get_branch(self, name):
+            if branch_error:
+                raise branch_error
+            return SimpleNamespace(commit=SimpleNamespace(sha="c" * 40))
+
+        def get_archive_link(self, kind, ref):
+            return "https://example.invalid/archive"
+
+    monkeypatch.setattr(github, "get_repo", lambda name: Repo())
+    monkeypatch.setattr(github.requests, "get", lambda url, **kwargs: response)
+
+
+def test_the_snapshot_is_extracted_and_its_commit_returned(monkeypatch, tmp_path):
+    _snapshot_repo(monkeypatch, _Response([_tarball({"pkg/a.py": b"print(1)\n"})]))
+    dest = tmp_path / "snap"
+    assert github.download_repository_snapshot("o/r", dest, 10_000) == "c" * 40
+    assert (dest / "pkg" / "a.py").read_bytes() == b"print(1)\n"
+    assert not (tmp_path / "snap.tar.gz").exists()  # the temporary archive is always removed
+
+
+def test_an_oversized_download_is_refused_and_leaves_no_archive(monkeypatch, tmp_path):
+    _snapshot_repo(monkeypatch, _Response([b"x" * 600, b"x" * 600]))
+    with pytest.raises(GitHubError, match="size limit"):
+        github.download_repository_snapshot("o/r", tmp_path / "snap", 1000)
+    assert not (tmp_path / "snap.tar.gz").exists()
+
+
+def test_a_broken_archive_is_a_one_line_error_naming_only_the_exception_type(monkeypatch, tmp_path):
+    _snapshot_repo(monkeypatch, _Response([b"this is not a gzip file"]))
+    with pytest.raises(GitHubError, match=r"cannot fetch repository archive: \w+Error$"):
+        github.download_repository_snapshot("o/r", tmp_path / "snap", 10_000)
+    assert not (tmp_path / "snap.tar.gz").exists()
+
+
+def test_a_failed_http_download_does_not_leak_the_url(monkeypatch, tmp_path):
+    _snapshot_repo(monkeypatch, _Response(error=requests.HTTPError("403 for https://example.invalid/archive?token=S")))
+    with pytest.raises(GitHubError) as caught:
+        github.download_repository_snapshot("o/r", tmp_path / "snap", 10_000)
+    assert "token" not in str(caught.value) and "example.invalid" not in str(caught.value)
+
+
+def test_a_github_error_before_the_download_is_categorised(monkeypatch, tmp_path):
+    _snapshot_repo(monkeypatch, _Response(), branch_error=GithubException(404, {"message": "Not Found"}, None))
+    with pytest.raises(GitHubError, match="cannot fetch repository archive"):
+        github.download_repository_snapshot("o/r", tmp_path / "snap", 10_000)

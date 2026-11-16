@@ -43,6 +43,10 @@ def authenticate(
         if settings.allow_unauthenticated:
             return Principal("anonymous", "admin")
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "API authentication is not configured (API_KEYS)")
+    # SHA-256 is right here, and a slow password hash (bcrypt, argon2) would only add a cost to every request: the keys
+    # are not passwords. `scripts.make_api_key` issues 256 random bits (`secrets.token_urlsafe(32)`), which cannot be
+    # guessed or looked up offline even from a leaked digest. (CodeQL's weak-sensitive-data-hashing rule assumes
+    # human-chosen secrets; the generator's output is pinned by a test.)
     digest = hashlib.sha256((provided or "").encode()).hexdigest()
     match = None
     for identity in settings.api_identities:  # compare against every identity: no early exit on a hit

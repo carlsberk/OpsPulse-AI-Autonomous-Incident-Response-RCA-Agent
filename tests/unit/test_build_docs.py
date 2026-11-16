@@ -41,7 +41,19 @@ def test_build_writes_the_pages_and_images(tmp_path):
 
 def test_the_understanding_pages_are_published_and_link_only_to_things_that_exist(tmp_path):
     written = build(out=tmp_path / "site-src")
-    assert {"architecture.md", "limitations.md", "trace-example.md"} <= set(written)
-    for name in ("architecture.md", "limitations.md", "trace-example.md"):
+    pages = (
+        "architecture.md",
+        "limitations.md",
+        "trace-example.md",
+        "evaluation.md",
+        "integrations.md",
+        "overview.md",
+        "how-it-works.md",
+        "review-and-safety.md",
+        "setup.md",
+        "project-status.md",
+    )
+    assert set(pages) <= set(written)
+    for name in pages:
         text = (tmp_path / "site-src" / name).read_text(encoding="utf-8")
         assert "](docs/" not in text and "](../" not in text, f"{name} has an unrewritten relative link"

@@ -88,3 +88,15 @@ def test_rate_limit_message_keeps_only_the_limit_kind(monkeypatch):
     with pytest.raises(LLMError) as info:
         invoke_json_model([], 0.0, None)
     assert str(info.value) == "the LLM provider rate limit was exceeded (TPD)"
+
+
+def test_the_chat_model_is_built_in_json_mode_with_the_configured_limits(set_settings):
+    set_settings(groq_api_key="test-key-not-real", llm_max_retries=1, llm_timeout_seconds=7)
+    llm.get_chat_model.cache_clear()
+    try:
+        model = llm.get_chat_model(0.0)  # constructing the client makes no network call
+        assert model.kwargs == {"response_format": {"type": "json_object"}}  # type: ignore[attr-defined]
+        assert model.bound.max_retries == 1 and model.bound.request_timeout == 7  # type: ignore[attr-defined]
+        assert llm.get_chat_model(0.0) is model  # cached per temperature
+    finally:
+        llm.get_chat_model.cache_clear()

@@ -206,3 +206,50 @@ def test_sentry_exception_values_of_the_wrong_type_are_ignored():
     for values in (True, 5, "text", {"a": 1}, None, [None, 3, "x"]):
         payload = {"data": {"event": {"event_id": "1", "title": "t", "exception": {"values": values}}}}
         assert to_incident(payload).error_message == "t"
+
+
+# ---- input that reaches the server before anything has authenticated it, or that is stored as is -----------------
+
+from src.agent.parsing import clean_text, compute_fingerprint, extract_exception_type, extract_frames  # noqa: E402
+from src.integrations.sentry import signature_is_valid  # noqa: E402
+from src.services.incident_service import _storable  # noqa: E402
+
+_ANY_TEXT = st.text(max_size=300)
+_NASTY = st.text(
+    alphabet=st.sampled_from(["\x00", "\ud800", "\udfff", " ", "[", "{", '"', "\\", "é", "😀", "a"]), max_size=40
+)
+
+
+@PROFILE
+@given(
+    st.binary(max_size=400) | _NASTY.map(lambda s: s.encode("utf-8", "surrogatepass")), st.text(max_size=70) | st.none()
+)
+def test_the_sentry_signature_check_never_raises_for_any_body_or_header(body, provided):
+    # It runs before the signature is known to be valid (an anonymous client controls both arguments). It once raised
+    # UnicodeEncodeError on a lone surrogate escape and RecursionError on deep nesting: HTTP 500 instead of 401.
+    assert signature_is_valid("secret", body, provided) in (True, False)
+
+
+@PROFILE
+@given(_NASTY | _ANY_TEXT)
+def test_storable_text_always_encodes_as_utf8_and_has_no_nul(text):
+    stored = _storable(text)
+    stored.encode("utf-8")  # raises on a lone surrogate
+    assert "\x00" not in stored
+
+
+@PROFILE
+@given(_NASTY | _ANY_TEXT)
+def test_cleaned_text_has_no_nul_or_carriage_return(text):
+    cleaned = clean_text(text)
+    assert "\x00" not in cleaned and "\r" not in cleaned
+
+
+@PROFILE
+@given(_ANY_TEXT, _ANY_TEXT, _ANY_TEXT)
+def test_fingerprint_and_trace_parsing_are_total_and_stable(repo, message, trace):
+    first = compute_fingerprint(repo, message, trace)
+    assert re.fullmatch(r"[0-9a-f]{64}", first) and compute_fingerprint(repo, message, trace) == first
+    frames, language = extract_frames(trace)
+    assert isinstance(language, str) and all(f.line >= 0 for f in frames)
+    assert extract_exception_type(message, trace)  # falls back to "UnknownError", never empty or raising
