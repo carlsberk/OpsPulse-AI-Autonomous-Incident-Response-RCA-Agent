@@ -7,6 +7,14 @@ x-app: &app
     - path: .env
       required: false
   restart: unless-stopped
+  # The app needs no privileges and writes nothing but /tmp: drop everything it does not use.
+  read_only: true
+  tmpfs:
+    - /tmp
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
 
 services:
   db:

@@ -25,11 +25,12 @@ import subprocess
 import sys
 import tempfile
 from datetime import UTC, datetime
+from typing import Any
 
 os.environ.setdefault("DATABASE_URL", "sqlite://")
 
 from evals.dataset import EvalCase, Expected
-from evals.harness import ScriptedModel, local_history, local_source_fetcher
+from evals.harness import ScriptedModel, local_history, local_source_fetcher, scripted_factory
 from src.agent.graph import build_graph
 from src.agent.patching import PatchError, apply_unified_diff
 from src.agent.state import initial_state
@@ -66,7 +67,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.live and not settings.groq_api_key:
         raise SystemExit("--live needs GROQ_API_KEY")
-    report: dict = {"started_at": datetime.now(UTC).isoformat(), "model": settings.model_name if args.live else "MOCK"}
+    report: dict[str, Any] = {
+        "started_at": datetime.now(UTC).isoformat(),
+        "model": settings.model_name if args.live else "MOCK",
+    }
 
     with tempfile.TemporaryDirectory(prefix="opspulse-demo-") as tmp:
         work = pathlib.Path(tmp) / "service"
@@ -101,10 +105,7 @@ def main(argv: list[str] | None = None) -> int:
             expected=Expected(root_cause_category="null_reference", inconclusive=False),
             mock_replies=[MOCK_REPLY],
         )
-        factory = None
-        if not args.live:
-            model = ScriptedModel(case)
-            factory = lambda temperature: model  # noqa: E731
+        factory = None if args.live else scripted_factory(ScriptedModel(case))
         graph = build_graph(local_source_fetcher(case), local_history(case), factory)
         final = graph.invoke(
             initial_state("demo", error, trace, "demo/inventory"),

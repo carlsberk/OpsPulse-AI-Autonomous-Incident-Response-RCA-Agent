@@ -45,16 +45,20 @@ def signature_is_valid(secret: str, raw_body: bytes, provided: str | None) -> bo
     if not secret or not provided:
         return False
     candidates = [raw_body]
+    # This runs before the signature is known to be valid, so any body an anonymous client can send must end in
+    # "invalid", never in an exception: a lone surrogate (`\\ud800`) makes the re-encoding below raise
+    # UnicodeEncodeError, and absurdly nested JSON makes `json.loads` raise RecursionError.
     try:
         parsed = json.loads(raw_body)
-    except ValueError:
-        parsed = None  # not JSON: only the raw-body form can match; the payload is rejected later anyway
-    if parsed is not None:
         candidates.append(json.dumps(parsed, separators=(",", ":"), ensure_ascii=False).encode("utf-8"))
+    except (ValueError, RecursionError):
+        pass  # not JSON or not re-encodable: only the raw-body form can match; the payload is rejected later anyway
     valid = False
     for body in candidates:  # evaluate every candidate: no early exit
         digest = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
-        valid |= hmac.compare_digest(digest, provided.strip().lower())
+        # bytes, not str: compare_digest raises TypeError for a str with non-ASCII characters, and a header can carry
+        # any latin-1 byte, so an anonymous request with `Sentry-Hook-Signature: é` would otherwise be an HTTP 500.
+        valid |= hmac.compare_digest(digest.encode(), provided.strip().lower().encode("utf-8", errors="replace"))
     return valid
 
 

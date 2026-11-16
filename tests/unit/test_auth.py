@@ -61,3 +61,22 @@ def test_sliding_window_frees_slots_after_a_minute():
     assert limiter.check("b", 1, now=30.0) is None  # limits are per identity
     assert limiter.check("a", 1, now=60.0) is None
     assert limiter.check("a", 0, now=60.0) is None  # 0 disables
+
+
+def test_generated_api_keys_carry_256_random_bits_which_is_why_a_fast_hash_is_enough(capsys):
+    """`authenticate` stores SHA-256 digests of keys. That is only sound for high-entropy keys, so pin the generator."""
+    import base64
+    import hashlib
+
+    from scripts import make_api_key
+
+    keys = []
+    for _ in range(3):
+        make_api_key.main(["alice", "reviewer"])
+        out = capsys.readouterr().out
+        key = out.split("\n  ")[1].split("\n")[0]
+        entry = out.rsplit("\n  ", 1)[1].strip()
+        assert entry.endswith(hashlib.sha256(key.encode()).hexdigest())
+        assert len(base64.urlsafe_b64decode(key + "=" * (-len(key) % 4))) >= 32  # 256 bits
+        keys.append(key)
+    assert len(set(keys)) == 3

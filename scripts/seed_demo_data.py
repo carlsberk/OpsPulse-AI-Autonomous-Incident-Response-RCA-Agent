@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import os
 import uuid
-from typing import cast
 
 # Demo defaults; explicit environment variables still win.
 os.environ.setdefault("ENABLE_GITHUB_REMEDIATION", "true")
@@ -21,10 +20,9 @@ os.environ.setdefault("GITHUB_TOKEN", "demo-placeholder-not-a-token")
 os.environ.setdefault("REQUIRE_REMEDIATION_APPROVAL", "true")
 
 from evals.dataset import load_rca_dataset
-from evals.harness import ScriptedModel, local_history, local_source_fetcher
+from evals.harness import ScriptedModel, local_history, local_source_fetcher, scripted_factory
 from src.agent.graph import build_graph
 from src.config import settings
-from src.integrations.llm import ModelFactory
 from src.services import incident_service
 
 DEMO_CASES = (
@@ -41,11 +39,6 @@ DEMO_CASES = (
 )
 
 
-def _scripted(model: ScriptedModel) -> ModelFactory:
-    """A model factory that always returns the scripted model (the temperature is irrelevant)."""
-    return cast(ModelFactory, lambda temperature: model)  # the scripted model is a duck-typed chat model
-
-
 def main() -> int:
     if not settings.database_url:
         raise SystemExit("DATABASE_URL is not set")
@@ -53,7 +46,7 @@ def main() -> int:
     for case_id in DEMO_CASES:
         case = cases[case_id]
         model = ScriptedModel(case)
-        graph = build_graph(local_source_fetcher(case), local_history(case), _scripted(model))
+        graph = build_graph(local_source_fetcher(case), local_history(case), scripted_factory(model))
         incident_id = uuid.uuid4()
         incident_service.submit_incident(
             incident_id, case.repo_name, case.error_message, case.stack_trace, submitted_by="demo-reporter"

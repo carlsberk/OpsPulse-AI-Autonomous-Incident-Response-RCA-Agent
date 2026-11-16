@@ -162,7 +162,7 @@ def _recent_commits(repo: Repository, path: str, limit: int = 5) -> list[str]:
         commit: Commit
         for commit in repo.get_commits(path=path, since=since)[:limit]:
             when: str = commit.commit.author.date.strftime("%Y-%m-%d")
-            subject: str = (commit.commit.message or "").splitlines()[0][:100]
+            subject: str = next(iter((commit.commit.message or "").strip().splitlines()), "")[:100]  # may be empty
             out.append(f"{commit.sha[:7]} {when} {subject}")
         return out
     except GithubException as exc:

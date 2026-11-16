@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from sqlalchemy import update
 
+from src.db import repositories
 from src.db.client import session_scope
 from src.db.models import RemediationApproval
 from src.integrations.github import PullRequestResult
@@ -226,3 +227,11 @@ def test_re_opening_is_blocked_when_the_configuration_no_longer_allows_a_pr(clie
         and resp.json()["status"] == "analysis_ready"
         and resp.json()["pending_approval"] is None
     )
+
+
+def test_a_nul_in_the_reviewer_note_is_not_stored(client, proposal):
+    # PostgreSQL text cannot hold U+0000; SQLite can, so this only fails on a real server unless it is removed first.
+    incident, _ = proposal
+    decide(client, incident, "reject", note="wrong\x00 layer")
+    (stored,) = [a for a in repositories.list_approvals(uuid.UUID(incident["incident_id"]))]
+    assert stored["decision_note"] == "wrong layer"

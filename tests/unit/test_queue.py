@@ -124,7 +124,11 @@ def test_heartbeat_renews_the_lease_while_work_runs_and_stops_after():
     incident_id = _queued()
     token = repositories.claim_incident(incident_id, timedelta(seconds=1))
     with LeaseHeartbeat(incident_id, token, timedelta(minutes=5), interval=0.05) as heartbeat:
-        time.sleep(0.3)
+        # Wait for the renewals instead of sleeping a fixed time: a fixed 0.3 s saw only one renewal on a slow macOS CI
+        # runner. The deadline is generous; on a healthy machine this returns after ~0.1 s.
+        deadline = time.monotonic() + 5
+        while heartbeat.renewals < 2 and time.monotonic() < deadline:
+            time.sleep(0.02)
     assert heartbeat.renewals >= 2
     with session_scope() as session:
         lease = session.get(Incident, incident_id).lease_expires_at

@@ -5,6 +5,76 @@ All notable changes are listed here. Versions of behaviour-critical components a
 
 ## [Unreleased]
 
+### Changed
+- The README is now a **90-line front page**: what it is, a two-minute demo, how it works in six steps, why it is built this way, a
+  minimal run-it-for-real block, a "where to read more" table and an honest-status paragraph. The rest moved, unchanged apart from
+  heading levels and relative links, into `docs/OVERVIEW.md` (feature and results tables), `docs/HOW_IT_WORKS.md`,
+  `docs/REVIEW_AND_SAFETY.md`, `docs/SETUP.md` and `docs/PROJECT_STATUS.md` (security model, limitations, roadmap). All five are
+  documentation-site pages; `tests/unit/test_docs_links.py` and `mkdocs build --strict` pass.
+- The README was 1 243 lines. The 400-line **Evaluation** section moved to `docs/EVALUATION.md` and the Sentry,
+  Alertmanager, notifications and observability sections to `docs/INTEGRATIONS.md` (README now about 750 lines, with a
+  grouped contents list and a "their own pages" map). Content is unchanged apart from heading levels and relative links;
+  every link and anchor that pointed at the moved sections was rewritten. Both pages are part of the documentation site.
+- New `tests/unit/test_docs_links.py` checks that every relative link and `#anchor` in the README, CONTRIBUTING,
+  SECURITY and `docs/*.md` resolves, so a split or rename cannot leave a dead link. `mkdocs build --strict` passes locally.
+
+### Security
+- The Compose `api` and `worker` containers now run with a read-only root filesystem (only `/tmp` is a writable tmpfs), all
+  Linux capabilities dropped and `no-new-privileges`. They already ran as a non-root user. Verified on a Docker stack built
+  from this change: migrations, API and worker start healthy and an incident travels API -> queue -> worker (it ends as
+  `failed / llm_not_configured` without a model key, the same outcome the CI smoke test expects).
+
+### Fixed
+- `POST /integrations/sentry` answered **HTTP 500** instead of 401 to an anonymous request whose `Sentry-Hook-Signature` header
+  contained a non-ASCII character (`hmac.compare_digest` raises `TypeError` for such a `str`). Found by a new property test that
+  feeds the signature check arbitrary bodies and headers; the digests are now compared as bytes.
+- NUL (U+0000) in a reported error, stack trace or reviewer note was stored as is. SQLite accepts it (so every test passed),
+  but PostgreSQL text columns reject it, which on a real deployment would fail the submission (and, for Sentry and
+  Alertmanager, be retried forever). It is now removed before persisting and before the fingerprint is computed, so the
+  same failure with and without NUL is still one incident. Not reproduced against a live PostgreSQL here: the new tests
+  assert that no NUL is stored, and they fail without the fix on SQLite.
+- The Sentry webhook re-encoded the body to check the signature *before* knowing the signature was valid, so an anonymous
+  request containing a lone surrogate escape (`\ud800`) raised `UnicodeEncodeError`, and one with ~200 000 nested `[`
+  raised `RecursionError`: HTTP 500 and an "unhandled error" log instead of 401. Both now end as an invalid signature.
+  Lone surrogates that did pass a valid signature are replaced by `?` before storing, like NUL.
+- `docs/LIMITATIONS.md` and the README quoted "about 680 tests" and "about 95 % coverage". Measured with the CI command
+  (`pytest --cov=src --cov=evals`): 922 tests, 89 % coverage. The 95 % figure was never reproduced, so it is replaced by
+  the measured one and dated.
+- A commit with an empty message among the file's commits of the last 14 days crashed the source-context fetch with an
+  uncaught `IndexError` (`"".splitlines()[0]`), so the analysis of that incident failed. Found while writing tests for
+  `_recent_commits`; the commit is now listed with an empty subject.
+
+### Tests
+- `github.download_repository_snapshot` (downloads and unpacks an archive from a repository we do not control) had no test at
+  all; coverage of `src/integrations/github.py` was 84%. New tests cover the happy path, the download size cap, a corrupt
+  archive, an HTTP failure whose message must not leak the URL, and a GitHub error before the download; each also checks that the
+  temporary archive is removed. No production code changed.
+
+### Changed
+- `mypy` (and so the CI lint job) now also checks `scripts/`, which had 12 type errors that nothing ran: untyped `dict`s and JSON
+  returns in `capture_screenshots`/`demo`, a model stand-in passed where a `Runnable` is declared (new typed helper
+  `evals.harness.scripted_factory`), a pydantic default that type checkers could not see (`Expected.note`) and a PR function taken from a re-export.
+  No behaviour changes.
+
+### Security
+- CodeQL "bad HTML filtering regexp" in `tests/unit/test_console.py`: the CSP guard test searched the page with regexes, which miss
+  forms like `</script >` or odd quoting. It now uses `html.parser`, with a test showing what the old regexes would have missed.
+- CodeQL "weak hashing of sensitive data" in `authenticate`: kept, now explained in a comment and pinned by a test. API keys are
+  256 random bits from `scripts.make_api_key`, for which SHA-256 is the right hash; a slow password hash would only slow every request.
+
+### Fixed
+- `test_heartbeat_renews_the_lease_while_work_runs_and_stops_after` slept a fixed 0.3 s and expected two lease renewals; a slow
+  macOS CI runner managed one. It now waits (up to 5 s) until two renewals have happened. Test-only; `LeaseHeartbeat` is unchanged.
+
+### Added
+- `python -m scripts.pilot_digest`: a one-screen digest of the incidents waiting for a reviewer (title, first line of the error, the
+  model's category, file, patch size, sandbox verdict, number of listed uncertainties). It states facts and gives no recommendation;
+  the key comes from `OPSPULSE_API_KEY` and is never printed.
+
+### Fixed
+- `pilot_check` now warns when `SANDBOX_COMMAND` contains `-x` (an older `.env.example` shipped it): the sandbox would stop at the same
+  first failure before and after the patch, hiding the comparison added in the failing-test fix.
+
 ### Tests
 - `tests/unit/test_tooling_gaps.py` (+38 tests, no production code touched): the command-line paths of `evals.run_rca`
   (`--min`, `--rescore`, `--dataset-file`, live mode without a key), `evals.run_retrieval` (exit code on a cross-repository

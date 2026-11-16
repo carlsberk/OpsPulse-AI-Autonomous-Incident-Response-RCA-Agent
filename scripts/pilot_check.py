@@ -15,6 +15,7 @@ docs/RUNBOOK.md ("Running a real pilot").
 from __future__ import annotations
 
 import argparse
+import shlex
 import subprocess
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -113,6 +114,14 @@ def configuration(cfg: Any) -> list[Finding]:
 
     if cfg.sandbox_enabled:
         add(OK, "SANDBOX_ENABLED", f"true (image {cfg.sandbox_image})")
+        if "-x" in shlex.split(cfg.sandbox_command) or "--exitfirst" in cfg.sandbox_command:
+            add(
+                WARN,
+                "SANDBOX_COMMAND",
+                "stops at the first failing test (-x): a suite that already has a failing test hides what the patch "
+                "did, so the verdict cannot say partly_fixed or name a new failure. Remove -x (an older "
+                ".env.example had it)",
+            )
     else:
         add(
             NOTE,

@@ -76,6 +76,20 @@ def get_repair_graph() -> CompiledStateGraph[Any, Any, Any, Any]:
     return build_repair_graph()
 
 
+def _without_nul(text: str) -> str:
+    """PostgreSQL text columns cannot hold NUL (U+0000): the driver rejects the whole statement, which would surface as
+    a server error (or, mapped from a database exception, a 503 that Sentry and Alertmanager retry forever). SQLite
+    accepts it, so tests on SQLite never noticed. NUL carries no diagnostic value in an error message or a note."""
+    return text.replace("\x00", "")
+
+
+def _storable(text: str) -> str:
+    """`_without_nul`, and lone UTF-16 surrogates (which JSON `\\ud800` escapes can carry in, and which no UTF-8 column
+    can store) replaced by `?`. The direct webhook already rejects such text (422); the Sentry and Alertmanager
+    adapters do not go through that schema, so without this they raised an unhandled UnicodeEncodeError."""
+    return _without_nul(text).encode("utf-8", errors="replace").decode("utf-8")
+
+
 def submit_incident(
     incident_id: uuid.UUID,
     repo_name: str,
@@ -85,6 +99,7 @@ def submit_incident(
     commit_sha: str | None = None,
 ) -> tuple[dict[str, Any], bool]:
     """Persist a new `queued` incident, or return the existing one for a repeated delivery."""
+    error_message, stack_trace = _storable(error_message), _storable(stack_trace)
     fingerprint = compute_fingerprint(repo_name, error_message, stack_trace)
     try:
         row, created = repositories.create_incident(
@@ -475,6 +490,7 @@ def decide_remediation(
     incident_id: uuid.UUID, approval_id: uuid.UUID, patch_sha256: str, approve: bool, reviewer: str, note: str | None
 ) -> dict[str, Any]:
     """Apply a human approval/rejection. Raises IncidentNotFoundError, ApprovalError, DatabaseUnavailableError."""
+    note = _storable(note) if note else note
     token = incident_id_var.set(str(incident_id))
     try:
         row = repositories.get_incident(incident_id)

@@ -88,12 +88,12 @@ def run(quiet: bool = False) -> dict[str, Any]:
         from fastapi.testclient import TestClient
 
         from evals.dataset import EvalCase, Expected
-        from evals.harness import ScriptedModel, local_history, local_source_fetcher
+        from evals.harness import ScriptedModel, local_history, local_source_fetcher, scripted_factory
         from scripts.demo import MOCK_REPLY, SERVICE, pytest_cmd
         from scripts.demo import run as run_in_sandbox
         from src.agent.graph import build_graph
         from src.agent.patching import apply_unified_diff
-        from src.integrations.github import PullRequestResult
+        from src.integrations.github import PullRequestResult, create_fix_pull_request
         from src.main import app
         from src.services import incident_service, remediation_service
         from src.worker import Worker
@@ -128,12 +128,11 @@ def run(quiet: bool = False) -> dict[str, Any]:
             expected=Expected(root_cause_category="null_reference", inconclusive=False),
             mock_replies=[MOCK_REPLY],
         )
-        model = ScriptedModel(case)
-        graph = build_graph(local_source_fetcher(case), local_history(case), lambda temperature: model)
+        graph = build_graph(local_source_fetcher(case), local_history(case), scripted_factory(ScriptedModel(case)))
         incident_service.get_graph = lambda: graph  # type: ignore[assignment]
         pull_requests: list[dict[str, Any]] = []
 
-        real_create_fix_pull_request = remediation_service.create_fix_pull_request
+        real_create_fix_pull_request = create_fix_pull_request
 
         def record_pull_request(**kwargs: Any) -> PullRequestResult:
             pull_requests.append(kwargs)
@@ -143,7 +142,7 @@ def run(quiet: bool = False) -> dict[str, Any]:
                 return result
             return PullRequestResult("https://github.com/demo/inventory/pull/1", 1, "opspulse/fix-e2e", False)
 
-        remediation_service.create_fix_pull_request = record_pull_request  # type: ignore[assignment]
+        remediation_service.create_fix_pull_request = record_pull_request  # type: ignore[assignment,attr-defined]
 
         client = TestClient(app)
         reporter = {"Authorization": f"Bearer {REPORTER_KEY}"}
@@ -253,7 +252,7 @@ def run(quiet: bool = False) -> dict[str, Any]:
             events == ["submitted", "analysed", "proposed", "approved", "pr_opened"],
             " > ".join(events),
         )
-        approval_event = next((e for e in audit["events"] if e["event"] == "approved"), {})
+        approval_event: dict[str, Any] = next((e for e in audit["events"] if e["event"] == "approved"), {})
         log.check(
             "the decision names who and why",
             approval_event.get("actor") == "bob" and "contract" in approval_event.get("detail", ""),

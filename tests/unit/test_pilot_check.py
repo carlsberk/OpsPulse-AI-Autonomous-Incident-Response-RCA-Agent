@@ -31,6 +31,7 @@ def _cfg(**overrides):
         "github_token": SECRET_TOKEN,
         "sandbox_enabled": False,
         "sandbox_image": "python:3.11-slim",
+        "sandbox_command": "python -m pytest -q -p no:cacheprovider",
         "history_reviewer_notes": True,
         "notify_webhook_url": "https://hooks.example/x",
     }
@@ -81,6 +82,18 @@ def test_warnings_do_not_block(override, name):
     findings = pilot_check.configuration(_cfg(**override))
     assert any(f.name == name and f.level == WARN for f in findings)
     assert FAIL not in {f.level for f in findings}
+
+
+@pytest.mark.parametrize("command", ["python -m pytest -q -x", "pytest --exitfirst -q"])
+def test_a_sandbox_command_that_stops_at_the_first_failure_is_warned_about(command):
+    findings = pilot_check.configuration(_cfg(sandbox_enabled=True, sandbox_command=command))
+    assert any(f.name == "SANDBOX_COMMAND" and f.level == WARN and "-x" in f.message for f in findings)
+    assert FAIL not in {f.level for f in findings}
+
+
+def test_the_default_sandbox_command_and_a_disabled_sandbox_raise_no_warning():
+    for cfg in (_cfg(sandbox_enabled=True), _cfg(sandbox_enabled=False, sandbox_command="pytest -x")):
+        assert "SANDBOX_COMMAND" not in _levels(pilot_check.configuration(cfg))
 
 
 def test_notes_say_what_is_off():
