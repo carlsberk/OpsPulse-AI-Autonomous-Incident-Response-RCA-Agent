@@ -5,6 +5,15 @@ All notable changes are listed here. Versions of behaviour-critical components a
 
 ## [Unreleased]
 
+### Added
+- `python -m scripts.build_sandbox_image owner/repo`: builds the sandbox image for a repository from its own dependency
+  declarations (`requirements*.txt`, `requirements/*.txt`, `pyproject.toml` dependencies and test/dev extras) plus pytest, and
+  prints the tag for `SANDBOX_IMAGE`. The sandbox has no network, so until now the user had to hand-build such an image or every
+  run ended as `error`. Prebuilt wheels only by default (no `setup.py` runs during the build), VCS/URL/local dependencies skipped
+  and listed, `--dry-run` to see the plan, `--from-dir` to use a local checkout.
+- `scripts.pilot_check` now also runs `python -m pytest --version` inside the configured sandbox image (no network) and warns
+  when it cannot, instead of only checking that the image exists; its messages point to the new builder.
+
 ### Security
 - The Docker image now installs **`requirements.lock`**: every runtime package and its dependencies at an exact version with
   SHA-256 hashes (`pip install --require-hashes --no-deps`). Before, the image installed version *ranges*, so two builds of

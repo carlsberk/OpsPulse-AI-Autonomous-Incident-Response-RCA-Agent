@@ -126,7 +126,10 @@ code with real review decisions. Use a repository you own and can throw away; no
 2. **Configuration.** `ALLOWED_REPOSITORIES=<owner>/<repo>`, `ENABLE_GITHUB_REMEDIATION=true`,
    `REQUIRE_REMEDIATION_APPROVAL=true`, `GITHUB_PR_DRAFT=true`, `ALLOW_SELF_APPROVAL=false`, a reporter key and a reviewer key
    in `API_KEYS` (two identities, so the four-eyes rule applies), and optionally `SANDBOX_ENABLED=true` with an image that
-   contains your project's dependencies.
+   contains your project's dependencies. The sandbox has no network, so a bare Python image ends every run as `error`:
+   `python -m scripts.build_sandbox_image <owner>/<repo>` builds one from the repository's `requirements*.txt` and
+   `pyproject.toml` (test and dev extras too) and prints the tag for `SANDBOX_IMAGE`. It installs prebuilt wheels only unless
+   you pass `--allow-source-builds`, skips VCS/URL/local dependencies and lists them, and `--dry-run` shows the plan first.
    Then run `python -m scripts.pilot_check` (configuration and database only) and, once the token is in `.env`,
    `python -m scripts.pilot_check --online`, which also makes read-only GitHub calls (is the repository reachable, can the token
    push, is it archived) and checks Docker when the sandbox is on. It names the setting, never its value, and exits 1 while
